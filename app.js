@@ -355,10 +355,14 @@ function ClientApp({back,user,parentId,onSignOut}){
   <Bar title={'My children · '+parentId} back={back} onSignOut={onSignOut}/>
   <div className="card">
    <h2 style={{marginBottom:16}}>Select a child to journal</h2>
-   {dyads.map(d=><button key={d.childId} className="btn btn-secondary btn-block" style={{marginBottom:10,textAlign:'left',padding:'14px 18px'}} onClick={()=>{setDyad(d);setStage('journal');}}>
-    <div style={{fontWeight:700,fontSize:15}}>Child ID: {d.childId}</div>
-    <div style={{fontSize:12,color:'#888',marginTop:2}}>Born: {d.childDob||'—'} · {d.childGender||'—'}</div>
-   </button>)}
+   {dyads.map(d=>{
+    const age=ageFrom(d.childDob,null);
+    const need=childNeed(age===null?null:parseFloat(d.childDob?(new Date()-new Date(d.childDob))/(1000*60*60*24*365.25):null));
+    return <button key={d.childId} className="btn btn-secondary btn-block" style={{marginBottom:10,textAlign:'left',padding:'14px 18px'}} onClick={()=>{setDyad(d);setStage('journal');}}>
+     <div style={{fontWeight:700,fontSize:15}}>Child ID: {d.childId} <span style={{fontWeight:400,color:'#666'}}>· {d.childGender||'—'}</span></div>
+     <div style={{fontSize:13,color:'#555',marginTop:4}}>{age?<span>🎂 {age} old</span>:<span style={{color:'#aaa'}}>Age unknown</span>}</div>
+    </button>;
+   })}
    <button className="btn btn-primary btn-block" style={{marginTop:8}} onClick={()=>{setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}}>+ Add new child</button>
   </div>
  </div>;
