@@ -17,6 +17,26 @@ const Auth = {
   onAuthChange: (cb) => sb.auth.onAuthStateChange(cb),
 };
 
+// ---- PROFILES ----
+const genParentId = () => 'P-' + Math.random().toString(36).substr(2,5).toUpperCase();
+
+const Profile = {
+  get: async (userId) => {
+    const { data } = await sb.from('profiles').select('parent_id').eq('user_id', userId).maybeSingle();
+    return data ? data.parent_id : null;
+  },
+  create: async (userId) => {
+    const parentId = genParentId();
+    await sb.from('profiles').insert({ user_id: userId, parent_id: parentId });
+    return parentId;
+  },
+  getOrCreate: async (userId) => {
+    let id = await Profile.get(userId);
+    if (!id) id = await Profile.create(userId);
+    return id;
+  },
+};
+
 // ---- DATABASE ----
 const DB = {
   // Dyads

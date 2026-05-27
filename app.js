@@ -259,22 +259,35 @@ function App(){
  const [role,setRole]=useState(null);
  const [user,setUser]=useState(null);
  const [authReady,setAuthReady]=useState(false);
+ const [parentId,setParentId]=useState(null);
+
  useEffect(()=>{
   Auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setAuthReady(true);});
-  const {data:{subscription}}=Auth.onAuthChange((_,session)=>{setUser(session?.user||null);});
+  const {data:{subscription}}=Auth.onAuthChange((_,session)=>{
+   setUser(session?.user||null);
+   if(!session){setParentId(null);setEntered(false);setRole(null);}
+  });
   return ()=>subscription.unsubscribe();
  },[]);
- const signOut=()=>{Auth.signOut();setUser(null);setEntered(false);setRole(null);};
+
+ useEffect(()=>{
+  if(user) Profile.getOrCreate(user.id).then(setParentId);
+ },[user]);
+
+ const signOut=()=>{Auth.signOut();};
+
  if(!authReady) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;
  if(!user) return <AuthScreen onAuth={setUser}/>;
+ if(!parentId) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Setting up your account…</div></div>;
  if(!entered) return <Landing onEnter={()=>setEntered(true)}/>;
- if(!role) return <RoleGate onPick={setRole} back={()=>setEntered(false)} onSignOut={signOut}/>;
- return role==='client' ? <ClientApp back={()=>setRole(null)} user={user}/> : <CounsellorApp back={()=>setRole(null)} user={user}/>;
+ if(!role) return <RoleGate onPick={setRole} back={()=>setEntered(false)} onSignOut={signOut} parentId={parentId}/>;
+ return role==='client' ? <ClientApp back={()=>setRole(null)} user={user} parentId={parentId}/> : <CounsellorApp back={()=>setRole(null)} user={user}/>;
 }
 
-function RoleGate({onPick,back,onSignOut}){
+function RoleGate({onPick,back,onSignOut,parentId}){
  return <div className="wrap">
   <div className="card banner" style={{position:'relative'}}><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>Guiding children with structure, while staying emotionally connected.</p>
+   {parentId&&<p style={{opacity:.7,fontSize:12,marginTop:4}}>Your ID: <b>{parentId}</b></p>}
    <div style={{position:'absolute',top:18,right:18,display:'flex',gap:8}}>
     {back && <button className="switch" onClick={back}>← Home</button>}
     {onSignOut && <button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>Sign out</button>}
@@ -299,35 +312,18 @@ function RoleGate({onPick,back,onSignOut}){
 }
 
 /* ---------- CLIENT ---------- */
-function ClientApp({back,user}){
- const [parentId,setParentId]=useState('');
+function ClientApp({back,user,parentId}){
  const [dyad,setDyad]=useState(null);
- const [stage,setStage]=useState('login'); // login | journal | done
- const [loginLoading,setLoginLoading]=useState(false);
+ const [stage,setStage]=useState('loading'); // loading | register | journal | done
 
- const login=async()=>{
-  if(!parentId){alert('Please enter your Parent ID.');return;}
-  setLoginLoading(true);
-  const dy=await DB.getDyad(user.id,parentId);
-  setLoginLoading(false);
-  if(!dy){setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}
-  else{setDyad(dy);setStage('journal');}
- };
+ useEffect(()=>{
+  DB.getDyad(user.id,parentId).then(dy=>{
+   if(!dy){setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}
+   else{setDyad(dy);setStage('journal');}
+  });
+ },[]);
 
- if(stage==='login') return <div className="wrap">
-  <Bar title="Parent sign-in" back={back}/>
-  <div className="card">
-   <div className="login-illus"><img src={IMG.loginParent} alt="Welcome" style={{width:120,height:120,borderRadius:'50%',objectFit:'cover',display:'block',margin:'0 auto',border:'3px solid #fff',boxShadow:'0 6px 16px rgba(42,59,54,.12)'}}/></div>
-   <div className="field"><label>Your Parent ID</label>
-    <div style={{display:'flex',gap:8}}>
-     <input placeholder="e.g. P-7FK3Q" value={parentId} onChange={e=>setParentId(e.target.value.toUpperCase())}/>
-     <button className="btn btn-ghost" style={{flexShrink:0}} onClick={()=>setParentId(genId('P'))}>New</button>
-    </div>
-    <p className="hint">Your counsellor gives you this. It keeps your name private — only a code is stored.</p>
-   </div>
-   <button className="btn btn-primary btn-block" onClick={login} disabled={loginLoading}>{loginLoading?'Loading…':'Continue'}</button>
-  </div>
- </div>;
+ if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your space…</div></div>;
 
  if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);setStage('journal');}} back={()=>setStage('login')}/>;
 
