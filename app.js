@@ -562,23 +562,19 @@ function CounsellorApp({back,user,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [openId,setOpenId]=useState(null);
  const [loadingEntries,setLoadingEntries]=useState(true);
- const [search,setSearch]=useState('');
  const refresh=async()=>{setLoadingEntries(true);const data=await DB.getAllEntries();setEntries(data);setLoadingEntries(false);};
  useEffect(()=>{refresh();},[]);
  const open=entries.find(e=>e.id===openId);
 
  if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user}/>;
 
- const filtered=search.trim()===''?entries:entries.filter(e=>(e.parentId||'').toLowerCase().includes(search.trim().toLowerCase())||(e.childId||'').toLowerCase().includes(search.trim().toLowerCase()));
-
  return <div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
   <div className="card">
    <div className="topbar"><h2>Client reflections</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
-   <p className="sub" style={{marginBottom:12}}>Self-journals submitted by parents.</p>
-   <div className="field" style={{marginBottom:16}}><input placeholder="Search by Parent ID or Child ID…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%'}}/></div>
-   {loadingEntries ? <div className="empty">Loading entries…</div> : filtered.length===0 ? <div className="empty">{entries.length===0?'No reflections yet. Ask a parent to journal an activity — then refresh.':'No entries match your search.'}</div> :
-    filtered.map(e=>{
+   <p className="sub" style={{marginBottom:16}}>Self-journals submitted by parents.</p>
+   {loadingEntries ? <div className="empty">Loading entries…</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to journal an activity — then refresh.</div> :
+    entries.map(e=>{
      const childAge=ageFrom(e.childDob,e.date);
      const parentAge=ageFrom(e.parentDob,e.date);
      const fmt=d=>{if(!d)return'—';const dt=new Date(d);return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});};
