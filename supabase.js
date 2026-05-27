@@ -22,18 +22,18 @@ const genParentId = () => 'P-' + Math.random().toString(36).substr(2,5).toUpperC
 
 const Profile = {
   get: async (userId) => {
-    const { data } = await sb.from('profiles').select('parent_id').eq('user_id', userId).maybeSingle();
-    return data ? data.parent_id : null;
+    const { data } = await sb.from('profiles').select('parent_id, role').eq('user_id', userId).maybeSingle();
+    return data || null;
   },
-  create: async (userId) => {
+  create: async (userId, role) => {
     const parentId = genParentId();
-    await sb.from('profiles').insert({ user_id: userId, parent_id: parentId });
-    return parentId;
+    await sb.from('profiles').insert({ user_id: userId, parent_id: parentId, role: role || 'parent' });
+    return { parent_id: parentId, role: role || 'parent' };
   },
-  getOrCreate: async (userId) => {
-    let id = await Profile.get(userId);
-    if (!id) id = await Profile.create(userId);
-    return id;
+  getOrCreate: async (userId, role) => {
+    let profile = await Profile.get(userId);
+    if (!profile) profile = await Profile.create(userId, role);
+    return profile;
   },
 };
 

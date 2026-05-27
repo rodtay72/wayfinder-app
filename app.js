@@ -240,7 +240,7 @@ function AuthScreen({onAuth}){
   setLoading(false);
  };
  return <div className="wrap">
-  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>A space to find your way back to each other</p></div>
+  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other'}</p></div>
   <div className="card">
    <h2>{mode==='signin'?'Sign in':'Create account'}</h2>
    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
@@ -256,32 +256,41 @@ function AuthScreen({onAuth}){
 
 function App(){
  const [entered,setEntered]=useState(false);
- const [role,setRole]=useState(null);
  const [user,setUser]=useState(null);
  const [authReady,setAuthReady]=useState(false);
- const [parentId,setParentId]=useState(null);
+ const [profile,setProfile]=useState(null);
+ const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
 
  useEffect(()=>{
   Auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setAuthReady(true);});
   const {data:{subscription}}=Auth.onAuthChange((_,session)=>{
    setUser(session?.user||null);
-   if(!session){setParentId(null);setEntered(false);setRole(null);}
+   if(!session){setProfile(null);setEntered(false);}
   });
   return ()=>subscription.unsubscribe();
  },[]);
 
  useEffect(()=>{
-  if(user) Profile.getOrCreate(user.id).then(setParentId);
+  if(user) Profile.getOrCreate(user.id, APP_ROLE).then(setProfile);
  },[user]);
 
  const signOut=()=>{Auth.signOut();};
 
  if(!authReady) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;
- if(!user) return <AuthScreen onAuth={setUser}/>;
- if(!parentId) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Setting up your account…</div></div>;
+ if(!user) return <AuthScreen onAuth={setUser} role={APP_ROLE}/>;
+ if(!profile) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Setting up your account…</div></div>;
+
+ // Wrong portal check
+ if(profile.role !== APP_ROLE) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
+  <h2 style={{marginBottom:12}}>Wrong portal</h2>
+  <p className="sub">Your account is registered as a <b>{profile.role}</b>.</p>
+  <p className="sub" style={{marginTop:8}}>{profile.role==='parent'?'Please go to the main app to sign in.':'Please go to the counsellor portal to sign in.'}</p>
+  <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
+ </div></div>;
+
  if(!entered) return <Landing onEnter={()=>setEntered(true)}/>;
- if(!role) return <RoleGate onPick={setRole} back={()=>setEntered(false)} onSignOut={signOut} parentId={parentId}/>;
- return role==='client' ? <ClientApp back={()=>setRole(null)} user={user} parentId={parentId}/> : <CounsellorApp back={()=>setRole(null)} user={user}/>;
+ if(APP_ROLE==='counsellor') return <CounsellorApp back={()=>setEntered(false)} user={user} onSignOut={signOut}/>;
+ return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} onSignOut={signOut}/>;
 }
 
 function RoleGate({onPick,back,onSignOut,parentId}){
@@ -517,7 +526,7 @@ function ClientJournal({parentId,dyad,onDone,back,user}){
 }
 
 /* ---------- COUNSELLOR ---------- */
-function CounsellorApp({back,user}){
+function CounsellorApp({back,user,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [openId,setOpenId]=useState(null);
  const [loadingEntries,setLoadingEntries]=useState(true);
@@ -528,7 +537,7 @@ function CounsellorApp({back,user}){
  if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user}/>;
 
  return <div className="wrap">
-  <Bar title="Counsellor workspace" back={back}/>
+  <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
   <div className="card">
    <div className="topbar"><h2>Client reflections</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
    <p className="sub" style={{marginBottom:16}}>Self-journals submitted by parents. Open one to notice congruence and coach gently.</p>
@@ -706,10 +715,13 @@ function CounsellorReview({entry,back,user}){
  </div>;
 }
 
-function Bar({title,back}){
+function Bar({title,back,onSignOut}){
  return <div className="card banner" style={{padding:'18px 22px'}}>
   <div className="topbar"><div><div style={{fontSize:18,fontWeight:700}}>Shared Journeys</div><div style={{opacity:.82,fontSize:13}}>{title}</div></div>
-  <button className="switch" onClick={back}>← Switch</button></div>
+  <div style={{display:'flex',gap:8}}>
+   <button className="switch" onClick={back}>← Back</button>
+   {onSignOut&&<button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>Sign out</button>}
+  </div></div>
  </div>;
 }
 
