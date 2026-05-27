@@ -337,46 +337,12 @@ function RoleGate({onPick,back,onSignOut,parentId}){
 }
 
 /* ---------- CLIENT ---------- */
-function discDescriptor(discStr){
- const s=(discStr||'').toUpperCase().replace(/[^DISC]/g,'');
- const map=[
-  {blends:['D'],name:'Establisher',desc:'You lead with drive and confidence. Your child feels your strength - now let them also feel your warmth. Your growth edge: pausing before stepping in, so your child can find their own footing.'},
-  {blends:['I'],name:'Communicator',desc:'You bring energy, enthusiasm and connection. Your child loves your warmth. Your growth edge: slowing down to listen fully before responding, so they feel truly heard.'},
-  {blends:['S'],name:'Specialist',desc:'You offer your child a steady, safe presence. Your consistency is a gift. Your growth edge: voicing your feelings gently, so your child learns that emotions are safe to name.'},
-  {blends:['C'],name:'Logical Thinker',desc:'You bring high standards and careful thinking. Your child learns rigour from you. Your growth edge: separating analysis from affection - your child needs warmth alongside your precision.'},
-  {blends:['DI','ID'],name:'Influencer',desc:'You combine drive and people-warmth. Your child feels your energy and care. Your growth edge: making space for others\' pace - not every moment needs to be fast or forward.'},
-  {blends:['DS','SD'],name:'Attainer',desc:'You are steady and determined - a calm, reliable force. Your child trusts your consistency. Your growth edge: building closeness alongside achieving goals, so your child feels seen, not just supported.'},
-  {blends:['DC'],name:'Challenger',desc:'You are results-focused and precise. Your child learns determination from you. Your growth edge: softening correction with connection - your child needs to feel accepted, not just directed.'},
-  {blends:['CD'],name:'Designer',desc:'You are creative, analytical and determined. Your child benefits from your high standards and precision. Your growth edge: allowing some things to be "good enough" — your child needs your warmth to flow freely, not just when everything is correct.'},
-  {blends:['IS','SI'],name:'Counsellor',desc:'You lead with warmth and genuine care. Your child feels loved and listened to. Your growth edge: holding your own feelings with the same care you give others - your needs matter too.'},
-  {blends:['IC','CI'],name:'Assessor',desc:'You combine enthusiasm with thoughtfulness. Your child benefits from your encouragement. Your growth edge: trusting your instincts more - you already see people clearly.'},
-  {blends:['SC','CS'],name:'Precisionist',desc:'You are patient, detailed and people-centred. Your child feels both cared for and secure. Your growth edge: stepping forward with confidence - your calm voice deserves to be heard.'},
-  {blends:['DIS','DSI'],name:'Director',desc:'You are visionary, energetic and people-oriented. Your child is inspired by your drive. Your growth edge: attending to the small, quiet emotional moments - big picture and tender detail can coexist.'},
-  {blends:['ISD'],name:'Motivator',desc:'You motivate through warmth and encouragement. Your child thrives in your positive energy. Your growth edge: acknowledging your own needs openly - your child learns emotional honesty by watching you.'},
-  {blends:['DSC','DCS','SDI','SID'],name:'Attainer',desc:'You are determined, steady and analytical. Your child feels safe and supported. Your growth edge: letting relationships come before results - connection is its own achievement.'},
-  {blends:['ICS','ISC'],name:'Governor',desc:'You are caring, communicative and high-energy. Your child loves your warmth. Your growth edge: slowing to match your child\'s emotional pace - they need your presence more than your pace.'},
-  {blends:['CDI','CID','DCI','DIC'],name:'Chancellor',desc:'You balance precision with people-focus. Your child benefits from your high standards and care. Your growth edge: letting good enough be enough sometimes - your child needs ease alongside excellence.'},
-  {blends:['CSI'],name:'Practitioner',desc:'You are caring, thorough and friendly. Your child sees your effort and love. Your growth edge: releasing the need for perfection in emotional moments - being present matters more than being perfect.'},
-  {blends:['SCD','SDC'],name:'Inquirer',desc:'You are steady, analytical and service-oriented. Your child feels deeply supported. Your growth edge: expressing warmth more freely - your child wants to feel your heart, not just your helping hand.'},
-  {blends:['ICD','IDC'],name:'Leader',desc:'You lead with energy and people-skills. Your child is inspired by your vision. Your growth edge: listening before leading - your child needs to feel heard before they can follow.'},
-  {blends:['CSD','CDS'],name:'Contemplator',desc:'You bring quality, steadiness and care. Your child benefits from your high standards. Your growth edge: valuing warmth as much as correctness - emotional accuracy matters as much as factual accuracy.'},
-  {blends:['CIS'],name:'Mediator',desc:'You blend precision with genuine care. Your child sees your thoughtfulness. Your growth edge: allowing imperfect emotional moments - connection doesn\'t need to be perfectly worded.'},
-  {blends:['IDS'],name:'Reformer',desc:'You are social, caring and task-focused. Your child benefits from your drive and warmth. Your growth edge: resting in relationship without needing to improve or fix anything.'},
-  {blends:['SCI','SIC'],name:'Advocate',desc:'You are steady, sociable and relationship-focused. Your child feels unconditionally accepted. Your growth edge: asserting your own feelings with the same courage you show in supporting others.'},
- ];
- if(!s) return {name:'Your DISC blend',desc:'Complete the DISC blend field in your profile to unlock your parenting style descriptor.'};
- for(const m of map){
-  if(m.blends.some(b=>b===s)) return m;
- }
- const primary=s[0];
- const fallback=map.find(m=>m.blends.includes(primary));
- return fallback||{name:'Your style',desc:'You bring a unique blend of strengths to your parenting. Every reflection you make here is a step toward deeper connection with your child.'};
-}
-
 function ClientApp({back,user,parentId,onSignOut}){
  const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
  const [entries,setEntries]=useState([]);
+ const [aiInsight,setAiInsight]=useState('');
+ const [insightLoading,setInsightLoading]=useState(false);
  const [stage,setStage]=useState('loading'); // loading | dashboard | selectChild | register | journal | done
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
@@ -389,8 +355,30 @@ function ClientApp({back,user,parentId,onSignOut}){
   const [all,allEntries]=await Promise.all([DB.getAllDyads(user.id),DB.getEntries(user.id)]);
   setDyads(all);
   setEntries(allEntries);
-  if(all.length===0){setDyad(blankDyad());setStage('register');}
-  else setStage('dashboard');
+  setAiInsight('');
+  setInsightLoading(false);
+  if(all.length===0){setDyad(blankDyad());setStage('register');return;}
+  setStage('dashboard');
+
+  const primaryDyad=all.find(d=>d.disc)||all[0];
+  if(primaryDyad?.disc){
+   setInsightLoading(true);
+   const childAgeYrs=primaryDyad.childDob
+    ? Math.floor((new Date()-new Date(primaryDyad.childDob))/(1000*60*60*24*365.25))
+    : null;
+   fetch('/api/disc-insight',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+     disc:primaryDyad.disc,
+     childAge:childAgeYrs!==null ? childAgeYrs+' years' : 'unknown',
+     childGender:primaryDyad.childGender||''
+    })
+   })
+    .then(r=>r.json())
+    .then(d=>{setAiInsight(d.insight||'');setInsightLoading(false);})
+    .catch(()=>setInsightLoading(false));
+  }
  };
  const startNewEntry=()=>{
   if(dyads.length===1){setDyad(dyads[0]);setStage('journal');}
@@ -404,7 +392,6 @@ function ClientApp({back,user,parentId,onSignOut}){
 
  if(stage==='dashboard'){
   const discDyad=dyads.find(d=>d.disc)||dyads[0]||{};
-  const descriptor=discDescriptor(discDyad.disc);
   const shiftWords=SHIFT_WORDS.raiseIS||SHIFT_RAISE_IS||[];
   return <div className="wrap">
    <div className="card banner" style={{position:'relative'}}>
@@ -420,12 +407,16 @@ function ClientApp({back,user,parentId,onSignOut}){
    <div className="card">
     <div style={{background:'#f0f4f2',borderRadius:12,padding:20,marginBottom:16}}>
      {discDyad.disc ? <>
-      <h2 style={{marginBottom:4}}>{descriptor.name}</h2>
-      <p className="sub" style={{marginBottom:12}}>{discDyad.disc.toUpperCase()} blend</p>
-      <p style={{lineHeight:1.65,color:'#40514b'}}>{descriptor.desc}</p>
+      <h2 style={{marginBottom:4}}>{discDyad.disc.toUpperCase()} - Your parenting style</h2>
+      {insightLoading
+       ? <p className="sub">Personalising your insight...</p>
+       : aiInsight
+        ? <p style={{lineHeight:1.7,color:'#40514b'}}>{aiInsight}</p>
+        : <p className="sub">Your personalised insight will appear here.</p>
+      }
      </> : <>
       <h2 style={{marginBottom:8}}>Your parenting style</h2>
-      <p className="sub">Add your DISC blend in your profile to unlock your parenting style.</p>
+      <p className="sub">Add your DISC blend in your profile to unlock your personalised insight.</p>
      </>}
     </div>
 
