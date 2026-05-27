@@ -241,7 +241,9 @@ function AuthScreen({onAuth}){
  };
  return <div className="wrap">
   <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other'}</p></div>
-  <div className="card">
+  <div className="card" style={{padding:0,overflow:'hidden'}}>
+   <img src="login-hero.jpg" alt="A warm counselling team" style={{width:'100%',height:220,objectFit:'cover',objectPosition:'center top',display:'block'}}/>
+   <div style={{padding:24}}>
    <h2>{mode==='signin'?'Sign in':'Create account'}</h2>
    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
    <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
@@ -250,6 +252,7 @@ function AuthScreen({onAuth}){
    <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
     {mode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signup');setError('');}}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signin');setError('');}}>Sign in</span></span>}
    </p>
+   </div>
   </div>
  </div>;
 }
