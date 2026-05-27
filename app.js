@@ -337,12 +337,136 @@ function RoleGate({onPick,back,onSignOut,parentId}){
 }
 
 /* ---------- CLIENT ---------- */
+function discDescriptor(discStr){
+ if(!discStr) return null;
+ const key=discStr.toUpperCase().trim();
+ const blends={
+  D:{name:'The Driver',desc:'You bring decisiveness, structure and direction. Your growth edge is softening urgency during activity moments, so your child can stay curious rather than feel rushed.'},
+  C:{name:'The Analyser',desc:'You bring precision, reliability and care for quality. Your growth edge is reducing correction in the moment, so your child can experience mistakes as part of learning.'},
+  I:{name:'The Inspirer',desc:'You bring warmth, playfulness and emotional openness. Your growth edge is slowing your enthusiasm enough for your child\'s pace to be included.'},
+  S:{name:'The Supporter',desc:'You bring calm, patience and emotional safety. Your growth edge is naming your own feelings and boundaries clearly, so your child sees calm confidence.'},
+  DC:{name:'The Challenger',desc:'You bring drive and precision together. Your growth edge is softening both urgency and correction during shared activities, so the child can explore without feeling they must perform.'},
+  CD:{name:'The Designer',desc:'You lead with standards and follow through with determination. Your growth edge is letting the activity be imperfect, so your child learns that connection remains safe even when outcomes are not perfect.'},
+  IS:{name:'The Collaborator',desc:'You bring warmth and steadiness together. This is naturally supportive for co-regulation, with the growth edge of holding gentle boundaries when needed.'},
+  SI:{name:'The Harmoniser',desc:'You bring steadiness and warmth together. Your growth edge is expressing your own perspective clearly while keeping the emotional tone calm.'},
+  CS:{name:'The Perfectionist',desc:'You bring consistency and standards. Your growth edge is allowing more unfinished or imperfect process during shared activities, so your child feels safe to try.'},
+  SC:{name:'The Specialist',desc:'You bring patient consistency and careful attention. Your growth edge is noticing when helpful guidance becomes too much guidance.'}
+ };
+ return blends[key]||{name:`${key} blend`,desc:'Your DISC blend shapes how you respond under pressure. More journal entries and DISC detail will help personalise this insight.'};
+}
+
+function DISCIntensityChart({bars}){
+ const BASELINE={D:48,I:52,S:55,C:50};
+ const HOT=['D','C'];
+ if(!bars) return null;
+ return <div style={{marginTop:16}}>
+  <p style={{fontSize:12,color:'#888',marginBottom:8}}>Grey band = approximate population average. Higher D/C intensity may feel emotionally strong to children during pressured moments.</p>
+  <div style={{display:'flex',gap:12,alignItems:'flex-end',height:120}}>
+   {['D','I','S','C'].map(q=>{
+    const val=bars[q];
+    if(val===null||val===undefined) return null;
+    const base=BASELINE[q];
+    const isHighDC=HOT.includes(q)&&val>base+10;
+    const isLowIS=!HOT.includes(q)&&val<base-10;
+    const col=isHighDC?'#e07b54':isLowIS?'#5ba89e':'#94bfba';
+    const heightPct=Math.max(4,Math.min(100,val));
+    return <div key={q} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',position:'relative',height:'100%'}}>
+     <div style={{width:'100%',height:100,position:'relative',background:'#f5f5f5',borderRadius:6,overflow:'visible'}}>
+      <div style={{position:'absolute',bottom:`${Math.max(0,base-8)}%`,left:0,right:0,height:'16%',background:'rgba(0,0,0,0.07)',borderRadius:3,zIndex:1}} />
+      <div style={{position:'absolute',bottom:0,left:'10%',right:'10%',height:`${heightPct}%`,background:col,borderRadius:'4px 4px 0 0',transition:'height 0.5s ease',zIndex:2}} />
+     </div>
+     <div style={{marginTop:4,fontSize:11,fontWeight:600,color:col}}>{q}</div>
+     {isHighDC&&<div style={{fontSize:10,color:'#e07b54',marginTop:2}}>soften</div>}
+     {isLowIS&&<div style={{fontSize:10,color:'#5ba89e',marginTop:2}}>support</div>}
+    </div>;
+   })}
+  </div>
+  <p style={{fontSize:11,color:'#999',marginTop:8}}>This chart is reflective, not diagnostic. Use it to notice pressure patterns, not to label yourself.</p>
+ </div>;
+}
+
+function DISCImageUpload({userId,existingBars,onBarsUpdated}){
+ const [uploading,setUploading]=useState(false);
+ const [manualMode,setManualMode]=useState(false);
+ const [manual,setManual]=useState(existingBars||{D:'',I:'',S:'',C:''});
+ const [status,setStatus]=useState('');
+
+ const handleFile=async(e)=>{
+  const file=e.target.files?.[0];
+  if(!file) return;
+  setUploading(true);
+  setStatus('Reading your DISC profile image...');
+  try{
+   const reader=new FileReader();
+   reader.onload=async(ev)=>{
+    try{
+     const base64=ev.target.result.split(',')[1];
+     const mediaType=file.type||'image/png';
+     const resp=await fetch('/api/disc-vision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:base64,imageMediaType:mediaType})});
+     const {bars,error}=await resp.json();
+     const hasUsableBars=bars&&['D','I','S','C'].some(q=>bars[q]!==null&&bars[q]!==undefined);
+     if(error||!hasUsableBars){
+      setStatus('Could not read the image reliably. Please enter the values manually.');
+      setManualMode(true);
+     }else{
+      setStatus('');
+      await Profile.saveDiscBars(userId,bars);
+      onBarsUpdated(bars);
+     }
+    }catch{
+     setStatus('Could not read the image reliably. Please enter the values manually.');
+     setManualMode(true);
+    }finally{
+     setUploading(false);
+    }
+   };
+   reader.readAsDataURL(file);
+  }catch{
+   setStatus('Upload failed. Please try manual entry.');
+   setManualMode(true);
+   setUploading(false);
+  }
+ };
+
+ const handleManualSave=async()=>{
+  const bars={
+   D:Math.max(0,Math.min(100,parseInt(manual.D)||0)),
+   I:Math.max(0,Math.min(100,parseInt(manual.I)||0)),
+   S:Math.max(0,Math.min(100,parseInt(manual.S)||0)),
+   C:Math.max(0,Math.min(100,parseInt(manual.C)||0))
+  };
+  await Profile.saveDiscBars(userId,bars);
+  onBarsUpdated(bars);
+  setManualMode(false);
+ };
+
+ if(manualMode) return <div style={{marginTop:12}}>
+  <p style={{fontSize:13,color:'#666',marginBottom:8}}>Enter your DISC bar heights from 0 to 100:</p>
+  <div style={{display:'flex',gap:8,marginBottom:10}}>{['D','I','S','C'].map(q=><div key={q} style={{flex:1,textAlign:'center'}}>
+   <div style={{fontSize:12,fontWeight:600,marginBottom:4}}>{q}</div>
+   <input type="number" min="0" max="100" value={manual[q]} onChange={e=>setManual(m=>({...m,[q]:e.target.value}))} style={{width:'100%',padding:'6px 4px',border:'1px solid #ddd',borderRadius:6,textAlign:'center',fontSize:14}} />
+  </div>)}</div>
+  <button className="btn btn-primary" style={{width:'100%'}} onClick={handleManualSave}>Save DISC values</button>
+  <button className="btn btn-secondary" style={{width:'100%',marginTop:6}} onClick={()=>setManualMode(false)}>Cancel</button>
+ </div>;
+
+ return <div style={{marginTop:12}}>
+  {status&&<p style={{fontSize:13,color:'#e07b54',marginBottom:8}}>{status}</p>}
+  <label style={{display:'block',padding:'10px 16px',border:'1px dashed #bbb',borderRadius:8,textAlign:'center',cursor:'pointer',color:'#666',fontSize:13}}>
+   {uploading?'Reading image...':'+ Upload your DISC profile image'}
+   <input type="file" accept="image/*" style={{display:'none'}} onChange={handleFile} disabled={uploading} />
+  </label>
+  <button style={{marginTop:6,fontSize:12,color:'#888',background:'none',border:'none',cursor:'pointer',textDecoration:'underline',padding:0}} onClick={()=>setManualMode(true)}>Enter values manually instead</button>
+ </div>;
+}
+
 function ClientApp({back,user,parentId,onSignOut}){
  const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
  const [entries,setEntries]=useState([]);
  const [aiInsight,setAiInsight]=useState('');
  const [insightLoading,setInsightLoading]=useState(false);
+ const [discBars,setDiscBars]=useState(null);
  const [stage,setStage]=useState('loading'); // loading | dashboard | selectChild | register | trail | journal | done
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
@@ -352,33 +476,65 @@ function ClientApp({back,user,parentId,onSignOut}){
   return date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
  };
  const loadDashboard=async()=>{
-  const [all,allEntries]=await Promise.all([DB.getAllDyads(user.id),DB.getEntries(user.id)]);
-  setDyads(all);
-  setEntries(allEntries);
   setAiInsight('');
   setInsightLoading(false);
-  if(all.length===0){setDyad(blankDyad());setStage('register');return;}
-  setStage('dashboard');
+  const allDyads=await DB.getAllDyads(user.id);
+  setDyads(allDyads);
 
-  const primaryDyad=all.find(d=>d.disc)||all[0];
+  const extProfile=await Profile.getExtended(user.id);
+  setDiscBars(extProfile?.disc_bars||null);
+
+  const allEntries=await DB.getEntries(user.id);
+  setEntries(allEntries);
+
+  if(allDyads.length===0){setDyad(blankDyad());setStage('register');return;}
+
+  const primaryDyad=allDyads[0];
   if(primaryDyad?.disc){
-   setInsightLoading(true);
-   const childAgeYrs=primaryDyad.childDob
-    ? Math.floor((new Date()-new Date(primaryDyad.childDob))/(1000*60*60*24*365.25))
-    : null;
-   fetch('/api/disc-insight',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-     disc:primaryDyad.disc,
-     childAge:childAgeYrs!==null ? childAgeYrs+' years' : 'unknown',
-     childGender:primaryDyad.childGender||''
-    })
-   })
-    .then(r=>r.json())
-    .then(d=>{setAiInsight(d.insight||'');setInsightLoading(false);})
-    .catch(()=>setInsightLoading(false));
+   const currentCount=allEntries.length;
+   const sortedEntries=[...allEntries].sort((a,b)=>new Date(b.timestamp||b.submittedAt||b.date)-new Date(a.timestamp||a.submittedAt||a.date));
+   const latestRaw=sortedEntries[0]?.timestamp||sortedEntries[0]?.submittedAt||sortedEntries[0]?.date||null;
+   const latestDate=latestRaw?new Date(latestRaw):null;
+   const latestEntryAt=latestDate&&!isNaN(latestDate)?latestDate.toISOString():latestRaw;
+   const cachedDate=extProfile?.insight_latest_entry_at?new Date(extProfile.insight_latest_entry_at):null;
+   const cachedLatest=cachedDate&&!isNaN(cachedDate)?cachedDate.toISOString():extProfile?.insight_latest_entry_at;
+
+   const cacheValid=extProfile?.insight_text&&
+    extProfile.insight_entry_count===currentCount&&
+    String(cachedLatest||'')===String(latestEntryAt||'');
+
+   if(cacheValid){
+    setAiInsight(extProfile.insight_text);
+   }else{
+    setInsightLoading(true);
+    const childAgeYrs=primaryDyad.childDob
+     ? Math.floor((new Date()-new Date(primaryDyad.childDob))/(1000*60*60*24*365.25))
+     : null;
+    try{
+     const resp=await fetch('/api/disc-insight',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+       disc:primaryDyad.disc,
+       childAge:childAgeYrs,
+       childGender:primaryDyad.childGender,
+       entryCount:currentCount
+      })
+     });
+     const {insight}=await resp.json();
+     if(insight){
+      setAiInsight(insight);
+      await Profile.saveInsight(user.id,insight,currentCount,latestEntryAt);
+     }
+    }catch(err){
+     console.error('disc insight error:',err);
+    }finally{
+     setInsightLoading(false);
+    }
+   }
   }
+
+  setStage('dashboard');
  };
  const startNewEntry=()=>{
   if(dyads.length===1){setDyad(dyads[0]);setStage('journal');}
@@ -407,16 +563,21 @@ function ClientApp({back,user,parentId,onSignOut}){
    <div className="card">
     <div style={{background:'#f0f4f2',borderRadius:12,padding:20,marginBottom:16}}>
      {discDyad.disc ? <>
-      <h2 style={{marginBottom:4}}>{discDyad.disc.toUpperCase()} - Your parenting style</h2>
+      <h2 style={{marginBottom:4}}>{discDyad.disc.toUpperCase()} - {discDescriptor(discDyad.disc)?.name||discDyad.disc.toUpperCase()}</h2>
+      <p style={{fontSize:13,color:'#888',marginBottom:8,marginTop:0}}>Your behavioural responses under pressure - what your child observes</p>
       {insightLoading
        ? <p className="sub">Personalising your insight...</p>
        : aiInsight
         ? <p style={{lineHeight:1.7,color:'#40514b'}}>{aiInsight}</p>
-        : <p className="sub">Your personalised insight will appear here.</p>
+        : <p className="sub">{discDescriptor(discDyad.disc)?.desc||'More journal entries and DISC detail will help personalise this insight.'}</p>
       }
+      <DISCIntensityChart bars={discBars}/>
+      <DISCImageUpload userId={user.id} existingBars={discBars} onBarsUpdated={(bars)=>setDiscBars(bars)}/>
      </> : <>
-      <h2 style={{marginBottom:8}}>Your parenting style</h2>
+      <h2 style={{marginBottom:8}}>Your behavioural responses under pressure</h2>
       <p className="sub">Add your DISC blend in your profile to unlock your personalised insight.</p>
+      <DISCIntensityChart bars={discBars}/>
+      <DISCImageUpload userId={user.id} existingBars={discBars} onBarsUpdated={(bars)=>setDiscBars(bars)}/>
      </>}
     </div>
 
@@ -540,10 +701,34 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
     })}
    </div>
    {patternGroups.D.length>0||patternGroups.C.length>0 ? <p className="sub" style={{marginTop:12,fontSize:12}}>
-    Your D/C patterns: {[...patternGroups.D,...patternGroups.C].join(', ')}. Growth edge: raising I/S warmth and steadiness.
+    Your D/C patterns: {[...patternGroups.D,...patternGroups.C].join(', ')}. Growth edge: softening intensity so warmth and steadiness have more room.
    </p> : patternGroups.I.length>0||patternGroups.S.length>0 ? <p className="sub" style={{marginTop:12,fontSize:12}}>
-    Your I/S patterns: {[...patternGroups.I,...patternGroups.S].join(', ')}. You are building emotional safety.
+    Your I/S patterns: {[...patternGroups.I,...patternGroups.S].join(', ')}. These can support emotional safety when paced and bounded.
    </p> : null}
+   {entries.length>=4 && (()=>{
+    const chronological=[...entries].sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const countWords=(list)=>{
+     const counts={};
+     list.forEach(e=>(e.autoWords||[]).forEach(w=>{counts[w]=(counts[w]||0)+1;}));
+     return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    };
+    const firstWords=countWords(chronological.slice(0,3));
+    const recentWords=countWords(chronological.slice(-3));
+    const chip=([w,count])=>{
+     const q=WORD_Q[w];
+     const bg=q==='D'||q==='C'?'#FBE9E7':q==='I'||q==='S'?'#E0F2F1':'#eee';
+     const color=q==='D'||q==='C'?'#BF360C':q==='I'||q==='S'?'#00796B':'#666';
+     return <span key={w} style={{background:bg,color,borderRadius:20,padding:'4px 10px',fontSize:12,fontWeight:600}}>{w} <span style={{fontWeight:400,opacity:.7}}>x{count}</span></span>;
+    };
+    return <div style={{marginTop:16,paddingTop:12,borderTop:'1px solid rgba(0,0,0,.08)'}}>
+     <h3 style={{fontSize:15,marginBottom:8}}>Early entries vs recent entries</h3>
+     <div style={{display:'grid',gap:10}}>
+      <div><div style={{fontSize:12,fontWeight:700,marginBottom:6,color:'#777'}}>First 3 entries</div><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{firstWords.map(chip)}</div></div>
+      <div><div style={{fontSize:12,fontWeight:700,marginBottom:6,color:'#777'}}>Last 3 entries</div><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{recentWords.map(chip)}</div></div>
+     </div>
+     <p className="sub" style={{fontSize:12,marginTop:10}}>Patterns are reflective signals, not fixed traits.</p>
+    </div>;
+   })()}
   </div>}
 
   {totalEntries>0 && <div className="card">

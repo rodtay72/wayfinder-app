@@ -25,6 +25,14 @@ const Profile = {
     const { data } = await sb.from('profiles').select('parent_id, role').eq('user_id', userId).maybeSingle();
     return data || null;
   },
+  getExtended: async (userId) => {
+    const { data, error } = await sb.from('profiles')
+      .select('parent_id, role, disc_image_url, disc_bars, insight_text, insight_generated_at, insight_entry_count, insight_latest_entry_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) console.error('getExtended error:', error);
+    return data || null;
+  },
   create: async (userId, role) => {
     const parentId = genParentId();
     await sb.from('profiles').insert({ user_id: userId, parent_id: parentId, role: role || 'parent' });
@@ -39,6 +47,29 @@ const Profile = {
       profile.role = role;
     }
     return profile;
+  },
+  saveDiscBars: async (userId, bars) => {
+    const { error } = await sb.from('profiles')
+      .update({ disc_bars: bars })
+      .eq('user_id', userId);
+    if (error) console.error('saveDiscBars error:', error);
+  },
+  saveDiscImageUrl: async (userId, url) => {
+    const { error } = await sb.from('profiles')
+      .update({ disc_image_url: url })
+      .eq('user_id', userId);
+    if (error) console.error('saveDiscImageUrl error:', error);
+  },
+  saveInsight: async (userId, text, entryCount, latestEntryAt) => {
+    const { error } = await sb.from('profiles')
+      .update({
+        insight_text: text,
+        insight_generated_at: new Date().toISOString(),
+        insight_entry_count: entryCount,
+        insight_latest_entry_at: latestEntryAt || null
+      })
+      .eq('user_id', userId);
+    if (error) console.error('saveInsight error:', error);
   },
 };
 

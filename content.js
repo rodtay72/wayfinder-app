@@ -135,8 +135,8 @@ const VALUE_GROUPS = [
 
 // SHIFT GUIDANCE WORDS
 const SHIFT_WORDS = {
-  lowerDC: ['Pausing', 'Softening', 'Allowing', 'Releasing'],
-  raiseIS: ['Noticing', 'Connecting', 'Inviting', 'Staying']
+  lowerDC: ['Pausing', 'Releasing', 'Softening', 'Waiting', 'Allowing', 'Stepping back'],
+  raiseIS: ['Noticing', 'Connecting', 'Inviting', 'Staying', 'Being curious', 'Following their lead']
 };
 
 // CHILD NEEDS (I&S words)
@@ -177,8 +177,8 @@ const UI_TEXT = {
     awarenessSubtitle: "Tick what was genuinely there as you emotionally attended to your child:",
     
     shiftGuideTitle: "To support this shift:",
-    shiftLowerLabel: "Lower the gear on directing & correcting:",
-    shiftRaiseLabel: "Raise the gear on warmth & presence:",
+    shiftLowerLabel: "Soften D & C - reduce directing and correcting:",
+    shiftRaiseLabel: "Let I & S rise - warmth and presence follow naturally:",
     
     summaryTitle: "Remember for next time",
     summaryWhatIDo: "What I will do:",
