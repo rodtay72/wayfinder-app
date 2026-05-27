@@ -725,4 +725,4 @@ function Bar({title,back,onSignOut}){
  </div>;
 }
 
-ReactDOM.render(<App/>,document.getElementById('root'));
+// Mounted by each HTML page (see index.html / counsellor.html)
