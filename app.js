@@ -343,7 +343,7 @@ function ClientApp({back,user,parentId,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [aiInsight,setAiInsight]=useState('');
  const [insightLoading,setInsightLoading]=useState(false);
- const [stage,setStage]=useState('loading'); // loading | dashboard | selectChild | register | journal | done
+ const [stage,setStage]=useState('loading'); // loading | dashboard | selectChild | register | trail | journal | done
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
  const formatEntryDate=(value)=>{
@@ -441,6 +441,7 @@ function ClientApp({back,user,parentId,onSignOut}){
       </div>;
      })}
     </div>
+    <button className="btn btn-secondary btn-block" style={{marginTop:8}} onClick={()=>setStage('trail')}>My journal trail</button>
    </div>
 
    <div className="card" style={{background:'#fbf5ea'}}>
@@ -465,6 +466,8 @@ function ClientApp({back,user,parentId,onSignOut}){
   </div>
  </div>;
 
+ if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+
  if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()}/>;
 
  if(stage==='done') return <div className="wrap">
@@ -484,6 +487,112 @@ function ClientApp({back,user,parentId,onSignOut}){
  </div>;
 
  return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={()=>setStage('dashboard')} user={user} onSignOut={onSignOut}/>;
+}
+
+function JournalTrail({user,parentId,dyads,back,onSignOut}){
+ const [entries,setEntries]=useState([]);
+ const [loading,setLoading]=useState(true);
+ const [openId,setOpenId]=useState(null);
+
+ useEffect(()=>{
+  DB.getEntries(user.id).then(data=>{
+   setEntries(data.sort((a,b)=>new Date(b.date)-new Date(a.date)));
+   setLoading(false);
+  });
+ },[]);
+
+ const wordCounts={};
+ entries.forEach(e=>(e.autoWords||[]).forEach(w=>{wordCounts[w]=(wordCounts[w]||0)+1;}));
+ const topWords=Object.entries(wordCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+ const patternGroups={I:[],S:[],D:[],C:[]};
+ topWords.forEach(([w])=>{const q=WORD_Q[w];if(q&&patternGroups[q])patternGroups[q].push(w);});
+
+ const markerCounts={};
+ entries.forEach(e=>{
+  Object.entries(e.markers||{}).forEach(([k,v])=>{
+   if(v.claimed) markerCounts[k]=(markerCounts[k]||0)+1;
+  });
+ });
+ const totalEntries=entries.length;
+
+ const fmt=d=>{
+  if(!d) return '-';
+  return new Date(d).toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
+ };
+
+ if(loading) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your journal trail...</div></div>;
+
+ return <div className="wrap">
+  <Bar title={'Journal trail - '+parentId} back={back} onSignOut={onSignOut}/>
+
+  {topWords.length>0 && <div className="card" style={{background:'#f0f4f2'}}>
+   <h2 style={{marginBottom:4}}>Your emotional patterns</h2>
+   <p className="sub" style={{marginBottom:14}}>Words that show up most in your reflections.</p>
+   <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+    {topWords.map(([w,count])=>{
+     const q=WORD_Q[w]||'D';
+     const colors={I:{bg:'#E8F5E9',color:'#2E7D32'},S:{bg:'#E3F2FD',color:'#1565C0'},D:{bg:'#FBE9E7',color:'#BF360C'},C:{bg:'#F3E5F5',color:'#6A1B9A'}};
+     const c=colors[q]||colors.D;
+     return <span key={w} style={{background:c.bg,color:c.color,borderRadius:20,padding:'5px 14px',fontSize:13,fontWeight:600}}>
+      {w} <span style={{fontWeight:400,opacity:.7}}>x{count}</span>
+     </span>;
+    })}
+   </div>
+   {patternGroups.D.length>0||patternGroups.C.length>0 ? <p className="sub" style={{marginTop:12,fontSize:12}}>
+    Your D/C patterns: {[...patternGroups.D,...patternGroups.C].join(', ')}. Growth edge: raising I/S warmth and steadiness.
+   </p> : patternGroups.I.length>0||patternGroups.S.length>0 ? <p className="sub" style={{marginTop:12,fontSize:12}}>
+    Your I/S patterns: {[...patternGroups.I,...patternGroups.S].join(', ')}. You are building emotional safety.
+   </p> : null}
+  </div>}
+
+  {totalEntries>0 && <div className="card">
+   <h2 style={{marginBottom:4}}>Congruence markers</h2>
+   <p className="sub" style={{marginBottom:14}}>How often you claimed each marker across {totalEntries} {totalEntries===1?'entry':'entries'}.</p>
+   <div style={{display:'grid',gap:8}}>
+    {MARKERS.map(m=>{
+     const count=markerCounts[m.key]||0;
+     const pct=totalEntries>0?Math.round((count/totalEntries)*100):0;
+     return <div key={m.key}>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:3}}>
+       <span style={{fontWeight:600}}>{m.label}</span>
+       <span style={{color:'#888'}}>{count}/{totalEntries}</span>
+      </div>
+      <div style={{background:'#eee',borderRadius:4,height:6}}>
+       <div style={{background:'var(--sage)',borderRadius:4,height:6,width:pct+'%',transition:'width .4s'}}/>
+      </div>
+     </div>;
+    })}
+   </div>
+  </div>}
+
+  <div className="card">
+   <h2 style={{marginBottom:14}}>Past entries <span style={{fontWeight:400,fontSize:14,color:'#888'}}>({totalEntries})</span></h2>
+   {totalEntries===0 ? <p className="sub">No entries yet. Your journal trail will build here as you reflect.</p> : entries.map(e=>{
+    const isOpen=openId===e.id;
+    const childAge=ageFrom(e.childDob,e.date);
+    return <div key={e.id} style={{borderBottom:'1px solid #eee',paddingBottom:12,marginBottom:12}}>
+     <div style={{cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}} onClick={()=>setOpenId(isOpen?null:e.id)}>
+      <div>
+       <div style={{fontWeight:700,fontSize:14}}>{e.activity}</div>
+       <div className="sub" style={{fontSize:12,marginTop:2}}>{fmt(e.date)} &middot; {PHASES[e.phase]} &middot; Child {e.childId} &middot; {childAge||'-'} old</div>
+      </div>
+      <span style={{fontSize:18,color:'#999',marginLeft:8}}>{isOpen?'^':'v'}</span>
+     </div>
+     {isOpen && <div style={{marginTop:12,background:'#fafafa',borderRadius:8,padding:14,fontSize:14,lineHeight:1.7}}>
+      <div style={{marginBottom:8}}><strong>Thoughts:</strong> {e.cab?.thoughts||'-'}</div>
+      <div style={{marginBottom:8}}><strong>Feelings:</strong> {e.cab?.feelings||'-'}</div>
+      <div style={{marginBottom:8}}><strong>Actions:</strong> {e.cab?.actions||'-'}</div>
+      <div style={{marginBottom:8}}><strong>Meaning:</strong> {e.cab?.meaning||'-'}</div>
+      {(e.autoWords||[]).length>0 && <div style={{marginTop:8}}><strong>Trait words:</strong> {e.autoWords.join(', ')}</div>}
+      {Object.values(e.markers||{}).filter(m=>m.claimed).length>0 && <div style={{marginTop:6}}>
+       <strong>Markers claimed:</strong> {Object.entries(e.markers).filter(([,v])=>v.claimed).map(([k])=>MARKERS.find(m=>m.key===k)?.label||k).join(', ')}
+      </div>}
+     </div>}
+    </div>;
+   })}
+  </div>
+ </div>;
 }
 
 function RegisterDyad({parentId,initial,onSave,back}){
