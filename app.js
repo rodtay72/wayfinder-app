@@ -223,18 +223,62 @@ function Landing({onEnter}){
  </div>;
 }
 
+function AuthScreen({onAuth}){
+ const [mode,setMode]=useState('signin');
+ const [email,setEmail]=useState('');
+ const [password,setPassword]=useState('');
+ const [error,setError]=useState('');
+ const [loading,setLoading]=useState(false);
+ const submit=async()=>{
+  setError('');setLoading(true);
+  try{
+   const {data,error:err}=mode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
+   if(err)throw err;
+   if(mode==='signup'&&!data.session){setError('Check your email to confirm your account, then sign in.');setLoading(false);return;}
+   onAuth(data.user||data.session?.user);
+  }catch(e){setError(e.message||'Something went wrong.');}
+  setLoading(false);
+ };
+ return <div className="wrap">
+  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>A space to find your way back to each other</p></div>
+  <div className="card">
+   <h2>{mode==='signin'?'Sign in':'Create account'}</h2>
+   <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   {error&&<div style={{color:'#c0392b',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fdecea',borderRadius:6}}>{error}</div>}
+   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>{loading?'Please wait…':mode==='signin'?'Sign in':'Create account'}</button>
+   <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
+    {mode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signup');setError('');}}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signin');setError('');}}>Sign in</span></span>}
+   </p>
+  </div>
+ </div>;
+}
+
 function App(){
  const [entered,setEntered]=useState(false);
  const [role,setRole]=useState(null);
+ const [user,setUser]=useState(null);
+ const [authReady,setAuthReady]=useState(false);
+ useEffect(()=>{
+  Auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setAuthReady(true);});
+  const {data:{subscription}}=Auth.onAuthChange((_,session)=>{setUser(session?.user||null);});
+  return ()=>subscription.unsubscribe();
+ },[]);
+ const signOut=()=>{Auth.signOut();setUser(null);setEntered(false);setRole(null);};
+ if(!authReady) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;
+ if(!user) return <AuthScreen onAuth={setUser}/>;
  if(!entered) return <Landing onEnter={()=>setEntered(true)}/>;
- if(!role) return <RoleGate onPick={setRole} back={()=>setEntered(false)}/>;
- return role==='client' ? <ClientApp back={()=>setRole(null)}/> : <CounsellorApp back={()=>setRole(null)}/>;
+ if(!role) return <RoleGate onPick={setRole} back={()=>setEntered(false)} onSignOut={signOut}/>;
+ return role==='client' ? <ClientApp back={()=>setRole(null)} user={user}/> : <CounsellorApp back={()=>setRole(null)} user={user}/>;
 }
 
-function RoleGate({onPick,back}){
+function RoleGate({onPick,back,onSignOut}){
  return <div className="wrap">
   <div className="card banner" style={{position:'relative'}}><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>Guiding children with structure, while staying emotionally connected.</p>
-   {back && <button className="switch" style={{position:'absolute',top:18,right:18}} onClick={back}>← Home</button>}
+   <div style={{position:'absolute',top:18,right:18,display:'flex',gap:8}}>
+    {back && <button className="switch" onClick={back}>← Home</button>}
+    {onSignOut && <button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>Sign out</button>}
+   </div>
   </div>
   <div className="card">
    <div className="illus-band"><img src={IMG.signin} alt="A parent and child together at home" style={{display:'block',width:'100%',height:'auto'}}/></div>
@@ -255,16 +299,19 @@ function RoleGate({onPick,back}){
 }
 
 /* ---------- CLIENT ---------- */
-function ClientApp({back}){
+function ClientApp({back,user}){
  const [parentId,setParentId]=useState('');
  const [dyad,setDyad]=useState(null);
  const [stage,setStage]=useState('login'); // login | journal | done
+ const [loginLoading,setLoginLoading]=useState(false);
 
- const login=()=>{
+ const login=async()=>{
   if(!parentId){alert('Please enter your Parent ID.');return;}
-  const dyads=LS.dyads(); let dy=dyads[parentId];
-  if(!dy){ dy={childId:'',parentDob:'',childDob:'',disc:'',ethnicity:'Chinese'}; }
-  setDyad(dy); setStage(parentId&&dyads[parentId]?'journal':'register');
+  setLoginLoading(true);
+  const dy=await DB.getDyad(user.id,parentId);
+  setLoginLoading(false);
+  if(!dy){setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}
+  else{setDyad(dy);setStage('journal');}
  };
 
  if(stage==='login') return <div className="wrap">
@@ -278,11 +325,11 @@ function ClientApp({back}){
     </div>
     <p className="hint">Your counsellor gives you this. It keeps your name private — only a code is stored.</p>
    </div>
-   <button className="btn btn-primary btn-block" onClick={login}>Continue</button>
+   <button className="btn btn-primary btn-block" onClick={login} disabled={loginLoading}>{loginLoading?'Loading…':'Continue'}</button>
   </div>
  </div>;
 
- if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={(dy)=>{const all=LS.dyads();all[parentId]=dy;LS.saveDyads(all);setDyad(dy);setStage('journal');}} back={()=>setStage('login')}/>;
+ if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);setStage('journal');}} back={()=>setStage('login')}/>;
 
  if(stage==='done') return <div className="wrap">
   <Bar title="Entry saved" back={back}/>
@@ -300,7 +347,7 @@ function ClientApp({back}){
   </div>
  </div>;
 
- return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={back}/>;
+ return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={back} user={user}/>;
 }
 
 function RegisterDyad({parentId,initial,onSave,back}){
@@ -330,7 +377,7 @@ function RegisterDyad({parentId,initial,onSave,back}){
  </div>;
 }
 
-function ClientJournal({parentId,dyad,onDone,back}){
+function ClientJournal({parentId,dyad,onDone,back,user}){
  const [stage,setStage]=useState('entry'); // entry | review
  const [phase,setPhase]=useState('A');
  const [activity,setActivity]=useState('');
@@ -355,10 +402,10 @@ function ClientJournal({parentId,dyad,onDone,back}){
   setStage('review');
  };
 
- const finalSubmit=()=>{
+ const finalSubmit=async()=>{
   const entry={id:Date.now(),parentId,childId:dyad.childId,date:new Date().toISOString().split('T')[0],phase,activity,
     cab,autoWords,markers,disc:dyad.disc,ethnicity:dyad.ethnicity,childDob:dyad.childDob,parentDob:dyad.parentDob,parentGender:dyad.parentGender,childGender:dyad.childGender,submittedAt:new Date().toLocaleString()};
-  const all=LS.entries(); all.unshift(entry); LS.saveEntries(all);
+  await DB.saveEntry(user.id, entry);
   onDone();
  };
 
@@ -474,25 +521,27 @@ function ClientJournal({parentId,dyad,onDone,back}){
 }
 
 /* ---------- COUNSELLOR ---------- */
-function CounsellorApp({back}){
- const [entries,setEntries]=useState(LS.entries());
+function CounsellorApp({back,user}){
+ const [entries,setEntries]=useState([]);
  const [openId,setOpenId]=useState(null);
- const refresh=()=>setEntries(LS.entries());
+ const [loadingEntries,setLoadingEntries]=useState(true);
+ const refresh=async()=>{setLoadingEntries(true);const data=await DB.getEntries(user.id);setEntries(data);setLoadingEntries(false);};
+ useEffect(()=>{refresh();},[]);
  const open=entries.find(e=>e.id===openId);
 
- if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}}/>;
+ if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user}/>;
 
  return <div className="wrap">
   <Bar title="Counsellor workspace" back={back}/>
   <div className="card">
    <div className="topbar"><h2>Client reflections</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
    <p className="sub" style={{marginBottom:16}}>Self-journals submitted by parents. Open one to notice congruence and coach gently.</p>
-   {entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to sign in and journal an activity — then refresh.</div> :
+   {loadingEntries ? <div className="empty">Loading entries…</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to sign in and journal an activity — then refresh.</div> :
     entries.map(e=>{
      const cy=ageFrom(e.childDob,e.date);
      return <div className="entry-row" key={e.id} onClick={()=>setOpenId(e.id)}>
       <div className="er-top">{e.parentId} &amp; {e.childId} · {e.activity}</div>
-      <div className="er-sub">{e.date} · {PHASES[e.phase]} · child {fmtAge(cy)} · {e.valueWords.length} trait words · {Object.values(e.markers).filter(m=>m.claimed).length}/6 markers</div>
+      <div className="er-sub">{e.date} · {PHASES[e.phase]} · child {fmtAge(cy)} · {(e.autoWords||[]).length} trait words · {Object.values(e.markers).filter(m=>m.claimed).length}/6 markers</div>
      </div>;
     })
    }
@@ -500,12 +549,12 @@ function CounsellorApp({back}){
  </div>;
 }
 
-function CounsellorReview({entry,back}){
+function CounsellorReview({entry,back,user}){
  const TABS=['Review','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative'];
  const [tab,setTab]=useState('Review');
- const reviews=LS.reviews();
- const [rv,setRv]=useState(reviews[entry.id]||{moments:[{cog:'',aff:'',beh:'',congruence:null,note:'',question:''}],satir:{instinct:'',congruent:'',cultural:''},stance:null,gap:'',narrative:''});
- const saveRv=(next)=>{const all=LS.reviews();all[entry.id]=next;LS.saveReviews(all);setRv(next);};
+ const [rv,setRv]=useState({moments:[{cog:'',aff:'',beh:'',congruence:null,note:'',question:''}],satir:{instinct:'',congruent:'',cultural:''},stance:null,gap:'',narrative:''});
+ useEffect(()=>{DB.getReview(user.id,entry.id).then(r=>{if(r)setRv(r);});},[]);
+ const saveRv=async(next)=>{await DB.saveReview(user.id,entry.id,next);setRv(next);};
  const setM=(i,k,v)=>{const m=structuredClone(rv.moments);m[i][k]=v;saveRv({...rv,moments:m});};
  const addM=()=>saveRv({...rv,moments:[...rv.moments,{cog:'',aff:'',beh:'',congruence:null,note:'',question:''}]});
  const rmM=(i)=>saveRv({...rv,moments:rv.moments.filter((_,x)=>x!==i)});
