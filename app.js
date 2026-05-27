@@ -661,7 +661,64 @@ function CounsellorApp({back,user,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [openId,setOpenId]=useState(null);
  const [loadingEntries,setLoadingEntries]=useState(true);
- const refresh=async()=>{setLoadingEntries(true);const data=await DB.getAllEntries();setEntries(data);setLoadingEntries(false);};
+ const [flags,setFlags]=useState({});
+ const [longitudinalSummaries,setLongitudinalSummaries]=useState({});
+ const [longitudinalOpen,setLongitudinalOpen]=useState({});
+
+ const entryChildAge=(e)=>{
+  if(!e.childDob||!e.date) return 'unknown';
+  const yrs=Math.floor((new Date(e.date)-new Date(e.childDob))/(1000*60*60*24*365.25));
+  return Number.isFinite(yrs) ? yrs+' years' : 'unknown';
+ };
+ const refresh=async()=>{
+  setLoadingEntries(true);
+  setFlags({});
+  setLongitudinalSummaries({});
+  const data=await DB.getAllEntries();
+  const withChildAge=data.map(e=>({...e,childAge:entryChildAge(e)}));
+  setEntries(withChildAge);
+
+  const flagResults=await Promise.all(
+   withChildAge.map(e=>
+    fetch('/api/counsellor-analysis',{
+     method:'POST',
+     headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({mode:'entry',entry:e})
+    })
+     .then(r=>r.json())
+     .then(d=>({id:e.id,flag:d.flag||''}))
+     .catch(()=>({id:e.id,flag:''}))
+   )
+  );
+  const flagMap={};
+  flagResults.forEach(f=>{flagMap[f.id]=f.flag;});
+  setFlags(flagMap);
+
+  const groupedByParent=withChildAge.reduce((acc,e)=>{
+   const key=e.parentId||'unknown-parent';
+   if(!acc[key]) acc[key]=[];
+   acc[key].push(e);
+   return acc;
+  },{});
+  const longitudinalResults=await Promise.all(
+   Object.entries(groupedByParent)
+    .filter(([,parentEntries])=>parentEntries.length>=2)
+    .map(([pid,parentEntries])=>
+     fetch('/api/counsellor-analysis',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({mode:'longitudinal',parentId:pid,entries:parentEntries})
+     })
+      .then(r=>r.json())
+      .then(d=>({parentId:pid,summary:d.recurringPatterns?d:null}))
+      .catch(()=>({parentId:pid,summary:null}))
+    )
+  );
+  const longMap={};
+  longitudinalResults.forEach(r=>{if(r.summary) longMap[r.parentId]=r.summary;});
+  setLongitudinalSummaries(longMap);
+  setLoadingEntries(false);
+ };
  useEffect(()=>{refresh();},[]);
  const open=entries.find(e=>e.id===openId);
 
@@ -672,31 +729,55 @@ function CounsellorApp({back,user,onSignOut}){
   <div className="card">
    <div className="topbar"><h2>Client reflections</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
    <p className="sub" style={{marginBottom:16}}>Self-journals submitted by parents.</p>
-   {loadingEntries ? <div className="empty">Loading entries…</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to journal an activity — then refresh.</div> :
+
+   {Object.entries(longitudinalSummaries).length>0 && <div style={{marginBottom:18}}>
+    <h3 style={{marginBottom:10}}>Longitudinal AI Reflections</h3>
+    {Object.entries(longitudinalSummaries).map(([pid,summary])=>(
+     <div key={pid} style={{border:'1px solid #E8D9B5',background:'#FFFDF7',borderRadius:8,padding:12,marginBottom:10}}>
+      <button type="button" onClick={()=>setLongitudinalOpen(prev=>({...prev,[pid]:!prev[pid]}))} style={{background:'transparent',border:0,padding:0,fontWeight:700,cursor:'pointer'}}>
+       {longitudinalOpen[pid]?'v':'>'} Parent {pid}
+      </button>
+      {longitudinalOpen[pid] && <div style={{marginTop:10,fontSize:14,lineHeight:1.5}}>
+       <p><strong>Recurring Patterns:</strong> {summary.recurringPatterns}</p>
+       <p><strong>Coping Evolution:</strong> {summary.copingEvolution}</p>
+       <p><strong>DISC Pattern:</strong> {summary.discPatternAcrossEntries}</p>
+       <p><strong>Blind Spots:</strong> {summary.blindSpots}</p>
+       <p><strong>Protective Factors:</strong> {summary.protectiveFactors}</p>
+       <p><strong>Developmental Considerations:</strong> {summary.developmentalConsiderations}</p>
+       <p><strong>Counsellor Focus:</strong> {summary.counsellorFocus}</p>
+      </div>}
+     </div>
+    ))}
+   </div>}
+
+   {loadingEntries ? <div className="empty">Loading entries...</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to journal an activity - then refresh.</div> :
     entries.map(e=>{
      const childAge=ageFrom(e.childDob,e.date);
      const parentAge=ageFrom(e.parentDob,e.date);
-     const fmt=d=>{if(!d)return'—';const dt=new Date(d);return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});};
+     const fmt=d=>{if(!d)return'-';const dt=new Date(d);return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});};
      return <div className="entry-row" key={e.id} onClick={()=>setOpenId(e.id)}>
-      <div className="er-top">{e.parentId} &amp; {e.childId} · <span style={{fontWeight:400}}>{e.activity}</span></div>
+      <div className="er-top">{e.parentId} &amp; {e.childId} &middot; <span style={{fontWeight:400}}>{e.activity}</span></div>
       <div className="er-sub" style={{marginTop:4}}>
-       <span>📅 {fmt(e.date)}</span>
-       <span style={{margin:'0 8px'}}>·</span>
-       <span>👶 Child: {childAge||'—'} old</span>
-       <span style={{margin:'0 8px'}}>·</span>
-       <span>🧑 Parent: {parentAge||'—'} old</span>
+       <span>{fmt(e.date)}</span>
+       <span style={{margin:'0 8px'}}>&middot;</span>
+       <span>Child: {childAge||'-'} old</span>
+       <span style={{margin:'0 8px'}}>&middot;</span>
+       <span>Parent: {parentAge||'-'} old</span>
       </div>
-      <div className="er-sub" style={{marginTop:2,fontSize:12,color:'#999'}}>{PHASES[e.phase]} · {(e.autoWords||[]).length} trait words · {Object.values(e.markers||{}).filter(m=>m.claimed).length}/6 markers</div>
+      {flags[e.id] && <div style={{fontSize:12,color:'#8B6914',background:'#FFF8E7',borderRadius:4,padding:'3px 8px',marginTop:6,display:'inline-block'}}>{flags[e.id]}</div>}
+      <div className="er-sub" style={{marginTop:2,fontSize:12,color:'#999'}}>{PHASES[e.phase]} &middot; {(e.autoWords||[]).length} trait words &middot; {Object.values(e.markers||{}).filter(m=>m.claimed).length}/6 markers</div>
      </div>;
     })
    }
   </div>
  </div>;
 }
-
 function CounsellorReview({entry,back,user}){
- const TABS=['Review','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative'];
+ const TABS=['Review','AI Analysis','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative'];
  const [tab,setTab]=useState('Review');
+ const [aiAnalysis,setAiAnalysis]=useState(null);
+ const [aiLoading,setAiLoading]=useState(false);
+ const [aiError,setAiError]=useState('');
  const [rv,setRv]=useState({moments:[{cog:'',aff:'',beh:'',congruence:null,note:'',question:''}],satir:{instinct:'',congruent:'',cultural:''},stance:null,gap:'',narrative:''});
  useEffect(()=>{DB.getReview(user.id,entry.id).then(r=>{if(r)setRv(r);});},[]);
  const saveRv=async(next)=>{await DB.saveReview(user.id,entry.id,next);setRv(next);};
@@ -708,12 +789,13 @@ function CounsellorReview({entry,back,user}){
  const need=childNeed(childY);
  const discQ=(entry.disc||'').toUpperCase().replace(/[^DISC]/g,'');
  const dominant=[...new Set(discQ.split(''))];
+ const valueWords=entry.valueWords||entry.autoWords||[];
 
  // word analysis
- const wq=k=>entry.valueWords.filter(w=>WORD_Q[w]===k);
+ const wq=k=>valueWords.filter(w=>WORD_Q[w]===k);
  const warmN=wq('I').length, steadyN=wq('S').length;
- const dHarsh=entry.valueWords.filter(w=>D_HARSH.includes(w));
- const cHarsh=entry.valueWords.filter(w=>C_HARSH.includes(w));
+ const dHarsh=valueWords.filter(w=>D_HARSH.includes(w));
+ const cHarsh=valueWords.filter(w=>C_HARSH.includes(w));
  const claimed=Object.entries(entry.markers).filter(([k,v])=>v.claimed).map(([k])=>k);
  const nurtureMk=['collaborates','thoughtsBeneath','noManaging','present'].filter(k=>claimed.includes(k)).length;
  const criticalScore=dHarsh.length*2 + cHarsh.length*2;
@@ -731,6 +813,33 @@ function CounsellorReview({entry,back,user}){
   return 'Was there a moment where what you felt and what you did pulled in slightly different directions? What was that like?';
  };
 
+ async function loadAiAnalysis(){
+  if(aiAnalysis||aiLoading) return;
+  setAiLoading(true);
+  setAiError('');
+  try{
+   const childAge=entry.childDob
+    ? Math.floor((new Date(entry.date)-new Date(entry.childDob))/(1000*60*60*24*365.25))+' years'
+    : 'unknown';
+   const res=await fetch('/api/counsellor-analysis',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mode:'entry',entry:{...entry,childAge}})
+   });
+   const data=await res.json();
+   if(!res.ok) throw new Error(data.error||'AI analysis unavailable');
+   setAiAnalysis(data);
+  }catch(err){
+   setAiError(err.message);
+  }finally{
+   setAiLoading(false);
+  }
+ }
+ const selectTab=(t)=>{
+  if(t==='AI Analysis'){setTab('aiAnalysis');loadAiAnalysis();return;}
+  setTab(t);
+ };
+
  const buildNarrative=()=>{
   const childRef=childY!==null&&childY>0?'your child':'your child';
   const qs=rv.moments.filter(m=>m.congruence==='incongruent'&&m.question).map(m=>m.question.trim());
@@ -738,7 +847,7 @@ function CounsellorReview({entry,back,user}){
   if(nurtureScore>=3) p.push('There was a settledness in you this time — moments you could simply be with '+childRef+' rather than work at it. That groundedness is the soil everything grows from.');
   else p.push('This activity asked a lot of you. Being present without steering is unfamiliar, and your system worked hard. That effort is worth naming gently.');
   if(entry.cab.meaning) p.push('\nThe meaning you made — "'+entry.cab.meaning.trim()+'" — matters, because noticing your own meaning is where change begins.');
-  if(warmN+steadyN>0) p.push('\nThe warmth and steadiness you brought ('+entry.valueWords.filter(w=>['I','S'].includes(WORD_Q[w])).join(', ')+') is exactly what '+childRef+' can feel and borrow.');
+  if(warmN+steadyN>0) p.push('\nThe warmth and steadiness you brought ('+valueWords.filter(w=>['I','S'].includes(WORD_Q[w])).join(', ')+') is exactly what '+childRef+' can feel and borrow.');
   if(dHarsh.length+cHarsh.length>0) p.push('\nWhen pressure rose, the old protective grip showed ('+[...dHarsh,...cHarsh].join(', ')+'). Not a flaw — an old way of staying safe. The invitation is to let safety come from presence instead.');
   if(qs.length){p.push('\nA few things to simply sit with this week — nothing to answer in words:');qs.forEach(q=>p.push('  · '+q));}
   p.push('\nFor this week: nothing to perform. Just notice the moments where connection feels easier than effort.');
@@ -748,7 +857,7 @@ function CounsellorReview({entry,back,user}){
  return <div className="wrap">
   <Bar title={entry.parentId+' · '+entry.activity} back={back}/>
   <div className="card">
-   <div className="tab-row">{TABS.map(t=><div key={t} className={'tab'+(tab===t?' on':'')} onClick={()=>setTab(t)}>{t}</div>)}</div>
+   <div className="tab-row">{TABS.map(t=><div key={t} className={'tab'+((tab===t)||(t==='AI Analysis'&&tab==='aiAnalysis')?' on':'')} onClick={()=>selectTab(t)}>{t}</div>)}</div>
 
    {tab==='Review' && <>
     <h2>What the parent reflected</h2>
@@ -763,8 +872,21 @@ function CounsellorReview({entry,back,user}){
       <div className="readout" key={m.key}><h4>{m.label.toUpperCase()}</h4><div className="body">{entry.markers[m.key].evidence}</div></div>
      ))}
     <h3>Words they chose</h3>
-    <div>{entry.valueWords.map(w=><span key={w} className={'tagline tag-'+WORD_Q[w].toLowerCase()}>{w}</span>)}{!entry.valueWords.length&&<span className="sub">none selected</span>}</div>
+    <div>{valueWords.map(w=><span key={w} className={'tagline tag-'+WORD_Q[w].toLowerCase()}>{w}</span>)}{!valueWords.length&&<span className="sub">none selected</span>}</div>
    </>}
+
+   {tab==='aiAnalysis' && <div style={{marginTop:16}}>
+    {aiLoading && <p>Loading AI analysis...</p>}
+    {aiError && <div style={{background:'#FDECEC',color:'#8A1F1F',padding:10,borderRadius:6}}>{aiError}</div>}
+    {!aiLoading && !aiError && aiAnalysis && <div style={{display:'grid',gap:12}}>
+     <section><h4>CAB Congruence</h4><p>{aiAnalysis.cabCongruence}</p></section>
+     <section><h4>DISC Pattern</h4><p>{aiAnalysis.discPattern}</p></section>
+     <section><h4>Possible Coping Pattern</h4><p>{aiAnalysis.possibleCopingPattern}</p></section>
+     <section style={{background:'#FFF8E7',border:'1px solid #E8D9B5',borderRadius:8,padding:12}}><h4>Developmental Considerations</h4><p>{aiAnalysis.developmentalConsiderations}</p></section>
+     <section><h4>Protective Factors</h4><p>{aiAnalysis.protectiveFactors}</p></section>
+     <section><h4>Counsellor Reflection Focus</h4><p>{aiAnalysis.counsellorReflectionFocus}</p></section>
+    </div>}
+   </div>}
 
    {tab==='Congruence' && <>
     <h2>Noticing congruence</h2>
