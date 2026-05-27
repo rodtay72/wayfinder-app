@@ -242,7 +242,7 @@ function AuthScreen({onAuth, role}){
  return <div className="wrap">
   <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other'}</p></div>
   <div className="card" style={{padding:0,overflow:'hidden'}}>
-   <img src="login-hero.jpg" alt="A warm counselling team" style={{width:'100%',height:220,objectFit:'cover',objectPosition:'center top',display:'block'}}/>
+   <img src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'} style={{width:'100%',height:'auto',display:'block'}}/>
    <div style={{padding:24}}>
    <h2>{mode==='signin'?'Sign in':'Create account'}</h2>
    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
@@ -278,6 +278,17 @@ function App(){
  },[user]);
 
  const signOut=()=>{Auth.signOut();};
+
+ // Auto sign-out after 60 minutes of inactivity
+ useEffect(()=>{
+  if(!user) return;
+  const TIMEOUT=60*60*1000; // 60 minutes
+  let timer=setTimeout(()=>{Auth.signOut();},TIMEOUT);
+  const reset=()=>{clearTimeout(timer);timer=setTimeout(()=>{Auth.signOut();},TIMEOUT);};
+  const events=['mousemove','keydown','click','touchstart','scroll'];
+  events.forEach(e=>window.addEventListener(e,reset,{passive:true}));
+  return()=>{clearTimeout(timer);events.forEach(e=>window.removeEventListener(e,reset));};
+ },[user]);
 
  if(!authReady) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;
  if(!user) return <AuthScreen onAuth={setUser} role={APP_ROLE}/>;
@@ -324,7 +335,7 @@ function RoleGate({onPick,back,onSignOut,parentId}){
 }
 
 /* ---------- CLIENT ---------- */
-function ClientApp({back,user,parentId}){
+function ClientApp({back,user,parentId,onSignOut}){
  const [dyad,setDyad]=useState(null);
  const [stage,setStage]=useState('loading'); // loading | register | journal | done
 
@@ -340,7 +351,7 @@ function ClientApp({back,user,parentId}){
  if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);setStage('journal');}} back={()=>setStage('login')}/>;
 
  if(stage==='done') return <div className="wrap">
-  <Bar title="Entry saved" back={back}/>
+  <Bar title="Entry saved" back={back} onSignOut={onSignOut}/>
   <div className="card" style={{textAlign:'center'}}>
    <div className="thank-illus"><SpotSeedling/></div>
    <h2>Thank you for taking this step.</h2>
@@ -355,7 +366,7 @@ function ClientApp({back,user,parentId}){
   </div>
  </div>;
 
- return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={back} user={user}/>;
+ return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={back} user={user} onSignOut={onSignOut}/>;
 }
 
 function RegisterDyad({parentId,initial,onSave,back}){
@@ -385,7 +396,7 @@ function RegisterDyad({parentId,initial,onSave,back}){
  </div>;
 }
 
-function ClientJournal({parentId,dyad,onDone,back,user}){
+function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
  const [stage,setStage]=useState('entry'); // entry | review
  const [phase,setPhase]=useState('A');
  const [activity,setActivity]=useState('');
@@ -420,7 +431,7 @@ function ClientJournal({parentId,dyad,onDone,back,user}){
  const childAge=dyad.childDob?ageFrom(dyad.childDob,new Date().toISOString().split('T')[0]):null;
 
  if(stage==='entry') return <div className="wrap">
-  <Bar title={'Journalling · '+parentId} back={back}/>
+  <Bar title={'Journalling · '+parentId} back={back} onSignOut={onSignOut}/>
   
   <div className="card">
    <h2>What were we doing?</h2>
@@ -461,7 +472,7 @@ function ClientJournal({parentId,dyad,onDone,back,user}){
 
  // Stage: review (after CAB submitted)
  return <div className="wrap">
-  <Bar title={'Reflection · '+parentId} back={()=>setStage('entry')}/>
+  <Bar title={'Reflection · '+parentId} back={()=>setStage('entry')} onSignOut={onSignOut}/>
   
   {/* Section 2: Mirror - How I was */}
   <div className="card" style={{borderLeft:'4px solid var(--alert)'}}>
