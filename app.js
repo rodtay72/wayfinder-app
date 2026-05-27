@@ -274,8 +274,10 @@ function App(){
  },[]);
 
  useEffect(()=>{
-  if(user) Profile.getOrCreate(user.id, APP_ROLE).then(setProfile);
- },[user]);
+  if(!user){setProfile(null);return;}
+  setProfile(null);
+  Profile.getOrCreate(user.id, APP_ROLE).then(setProfile);
+ },[user, APP_ROLE]);
 
  const signOut=()=>{Auth.signOut();};
 
@@ -302,8 +304,8 @@ function App(){
   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
  </div></div>;
 
- if(!entered) return <Landing onEnter={()=>setEntered(true)}/>;
  if(APP_ROLE==='counsellor') return <CounsellorApp back={()=>setEntered(false)} user={user} onSignOut={signOut}/>;
+ if(!entered) return <Landing onEnter={()=>setEntered(true)}/>;
  return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} onSignOut={signOut}/>;
 }
 

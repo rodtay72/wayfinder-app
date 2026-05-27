@@ -32,7 +32,12 @@ const Profile = {
   },
   getOrCreate: async (userId, role) => {
     let profile = await Profile.get(userId);
-    if (!profile) profile = await Profile.create(userId, role);
+    if (!profile) {
+      profile = await Profile.create(userId, role);
+    } else if (profile.role !== role) {
+      await sb.from('profiles').update({ role }).eq('user_id', userId);
+      profile.role = role;
+    }
     return profile;
   },
 };
