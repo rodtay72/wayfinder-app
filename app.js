@@ -223,7 +223,7 @@ function Landing({onEnter}){
  </div>;
 }
 
-function AuthScreen({onAuth}){
+function AuthScreen({onAuth, role}){
  const [mode,setMode]=useState('signin');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
