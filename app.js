@@ -337,54 +337,162 @@ function RoleGate({onPick,back,onSignOut,parentId}){
 }
 
 /* ---------- CLIENT ---------- */
+function discDescriptor(discStr){
+ const s=(discStr||'').toUpperCase().replace(/[^DISC]/g,'');
+ const map=[
+  {blends:['D'],name:'Establisher',desc:'You lead with drive and confidence. Your child feels your strength - now let them also feel your warmth. Your growth edge: pausing before stepping in, so your child can find their own footing.'},
+  {blends:['I'],name:'Communicator',desc:'You bring energy, enthusiasm and connection. Your child loves your warmth. Your growth edge: slowing down to listen fully before responding, so they feel truly heard.'},
+  {blends:['S'],name:'Specialist',desc:'You offer your child a steady, safe presence. Your consistency is a gift. Your growth edge: voicing your feelings gently, so your child learns that emotions are safe to name.'},
+  {blends:['C'],name:'Logical Thinker',desc:'You bring high standards and careful thinking. Your child learns rigour from you. Your growth edge: separating analysis from affection - your child needs warmth alongside your precision.'},
+  {blends:['DI','ID'],name:'Influencer',desc:'You combine drive and people-warmth. Your child feels your energy and care. Your growth edge: making space for others\' pace - not every moment needs to be fast or forward.'},
+  {blends:['DS','SD'],name:'Attainer',desc:'You are steady and determined - a calm, reliable force. Your child trusts your consistency. Your growth edge: building closeness alongside achieving goals, so your child feels seen, not just supported.'},
+  {blends:['DC'],name:'Challenger',desc:'You are results-focused and precise. Your child learns determination from you. Your growth edge: softening correction with connection - your child needs to feel accepted, not just directed.'},
+  {blends:['CD'],name:'Designer',desc:'You are creative, analytical and determined. Your child benefits from your high standards and precision. Your growth edge: allowing some things to be "good enough" — your child needs your warmth to flow freely, not just when everything is correct.'},
+  {blends:['IS','SI'],name:'Counsellor',desc:'You lead with warmth and genuine care. Your child feels loved and listened to. Your growth edge: holding your own feelings with the same care you give others - your needs matter too.'},
+  {blends:['IC','CI'],name:'Assessor',desc:'You combine enthusiasm with thoughtfulness. Your child benefits from your encouragement. Your growth edge: trusting your instincts more - you already see people clearly.'},
+  {blends:['SC','CS'],name:'Precisionist',desc:'You are patient, detailed and people-centred. Your child feels both cared for and secure. Your growth edge: stepping forward with confidence - your calm voice deserves to be heard.'},
+  {blends:['DIS','DSI'],name:'Director',desc:'You are visionary, energetic and people-oriented. Your child is inspired by your drive. Your growth edge: attending to the small, quiet emotional moments - big picture and tender detail can coexist.'},
+  {blends:['ISD'],name:'Motivator',desc:'You motivate through warmth and encouragement. Your child thrives in your positive energy. Your growth edge: acknowledging your own needs openly - your child learns emotional honesty by watching you.'},
+  {blends:['DSC','DCS','SDI','SID'],name:'Attainer',desc:'You are determined, steady and analytical. Your child feels safe and supported. Your growth edge: letting relationships come before results - connection is its own achievement.'},
+  {blends:['ICS','ISC'],name:'Governor',desc:'You are caring, communicative and high-energy. Your child loves your warmth. Your growth edge: slowing to match your child\'s emotional pace - they need your presence more than your pace.'},
+  {blends:['CDI','CID','DCI','DIC'],name:'Chancellor',desc:'You balance precision with people-focus. Your child benefits from your high standards and care. Your growth edge: letting good enough be enough sometimes - your child needs ease alongside excellence.'},
+  {blends:['CSI'],name:'Practitioner',desc:'You are caring, thorough and friendly. Your child sees your effort and love. Your growth edge: releasing the need for perfection in emotional moments - being present matters more than being perfect.'},
+  {blends:['SCD','SDC'],name:'Inquirer',desc:'You are steady, analytical and service-oriented. Your child feels deeply supported. Your growth edge: expressing warmth more freely - your child wants to feel your heart, not just your helping hand.'},
+  {blends:['ICD','IDC'],name:'Leader',desc:'You lead with energy and people-skills. Your child is inspired by your vision. Your growth edge: listening before leading - your child needs to feel heard before they can follow.'},
+  {blends:['CSD','CDS'],name:'Contemplator',desc:'You bring quality, steadiness and care. Your child benefits from your high standards. Your growth edge: valuing warmth as much as correctness - emotional accuracy matters as much as factual accuracy.'},
+  {blends:['CIS'],name:'Mediator',desc:'You blend precision with genuine care. Your child sees your thoughtfulness. Your growth edge: allowing imperfect emotional moments - connection doesn\'t need to be perfectly worded.'},
+  {blends:['IDS'],name:'Reformer',desc:'You are social, caring and task-focused. Your child benefits from your drive and warmth. Your growth edge: resting in relationship without needing to improve or fix anything.'},
+  {blends:['SCI','SIC'],name:'Advocate',desc:'You are steady, sociable and relationship-focused. Your child feels unconditionally accepted. Your growth edge: asserting your own feelings with the same courage you show in supporting others.'},
+ ];
+ if(!s) return {name:'Your DISC blend',desc:'Complete the DISC blend field in your profile to unlock your parenting style descriptor.'};
+ for(const m of map){
+  if(m.blends.some(b=>b===s)) return m;
+ }
+ const primary=s[0];
+ const fallback=map.find(m=>m.blends.includes(primary));
+ return fallback||{name:'Your style',desc:'You bring a unique blend of strengths to your parenting. Every reflection you make here is a step toward deeper connection with your child.'};
+}
+
 function ClientApp({back,user,parentId,onSignOut}){
  const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
- const [stage,setStage]=useState('loading'); // loading | select | register | journal | done
+ const [entries,setEntries]=useState([]);
+ const [stage,setStage]=useState('loading'); // loading | dashboard | selectChild | register | journal | done
 
- const loadDyads=()=>DB.getAllDyads(user.id).then(all=>{
-  if(all.length===0){setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}
-  else{setDyads(all);setStage('select');}
- });
+ const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
+ const formatEntryDate=(value)=>{
+  const date=value?new Date(value):null;
+  if(!date||isNaN(date)) return 'Date not saved';
+  return date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+ };
+ const loadDashboard=async()=>{
+  const [all,allEntries]=await Promise.all([DB.getAllDyads(user.id),DB.getEntries(user.id)]);
+  setDyads(all);
+  setEntries(allEntries);
+  if(all.length===0){setDyad(blankDyad());setStage('register');}
+  else setStage('dashboard');
+ };
+ const startNewEntry=()=>{
+  if(dyads.length===1){setDyad(dyads[0]);setStage('journal');}
+  else setStage('selectChild');
+ };
+ const startNewChild=()=>{setDyad(blankDyad());setStage('register');};
 
- useEffect(()=>{loadDyads();},[]);
+ useEffect(()=>{loadDashboard();},[]);
 
- if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your space…</div></div>;
+ if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your space...</div></div>;
 
- if(stage==='select') return <div className="wrap">
-  <Bar title={'My children · '+parentId} back={back} onSignOut={onSignOut}/>
+ if(stage==='dashboard'){
+  const discDyad=dyads.find(d=>d.disc)||dyads[0]||{};
+  const descriptor=discDescriptor(discDyad.disc);
+  const shiftWords=SHIFT_WORDS.raiseIS||SHIFT_RAISE_IS||[];
+  return <div className="wrap">
+   <div className="card banner" style={{position:'relative'}}>
+    <h1>{parentId}</h1>
+    <p style={{opacity:.85,fontSize:14,marginTop:4}}>Your Way Finder space</p>
+    <div style={{position:'absolute',top:18,right:18,display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
+     <button className="switch" onClick={startNewChild}>+ New child</button>
+     <button className="switch" onClick={startNewEntry}>+ New entry</button>
+     <button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>Sign out</button>
+    </div>
+   </div>
+
+   <div className="card">
+    <div style={{background:'#f0f4f2',borderRadius:12,padding:20,marginBottom:16}}>
+     {discDyad.disc ? <>
+      <h2 style={{marginBottom:4}}>{descriptor.name}</h2>
+      <p className="sub" style={{marginBottom:12}}>{discDyad.disc.toUpperCase()} blend</p>
+      <p style={{lineHeight:1.65,color:'#40514b'}}>{descriptor.desc}</p>
+     </> : <>
+      <h2 style={{marginBottom:8}}>Your parenting style</h2>
+      <p className="sub">Add your DISC blend in your profile to unlock your parenting style.</p>
+     </>}
+    </div>
+
+    <h2 style={{marginBottom:14}}>Your children</h2>
+    <div style={{display:'grid',gap:14}}>
+     {dyads.map(child=>{
+      const childEntries=entries.filter(e=>e.childId===child.childId).slice(0,3);
+      return <div key={child.childId} style={{border:'1px solid #E8DCC8',borderRadius:8,padding:16,background:'#fff'}}>
+       <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',marginBottom:8}}>
+        <div>
+         <div style={{fontWeight:800,fontSize:16}}>Child ID: {child.childId}</div>
+         <div className="sub" style={{fontSize:13,marginTop:4}}>{child.childGender||'Gender not added'} &middot; {ageFrom(child.childDob,null)||'Age not added'}</div>
+        </div>
+        <button className="btn btn-secondary" onClick={()=>{setDyad(child);setStage('journal');}}>+ New entry</button>
+       </div>
+       {childEntries.length>0 ? <div style={{marginTop:12}}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:6,color:'#5d6c66'}}>Recent reflections</div>
+        <div style={{display:'grid',gap:6}}>
+         {childEntries.map(e=><div key={e.id||`${e.childId}-${e.date}-${e.activity}`} style={{fontSize:14,color:'#4b5a54'}}>{formatEntryDate(e.date||e.submittedAt)} &middot; {e.activity||'Reflection'}</div>)}
+        </div>
+       </div> : <p className="sub" style={{fontSize:13,marginTop:10}}>No reflections yet. Begin when you have a small moment you want to notice.</p>}
+      </div>;
+     })}
+    </div>
+   </div>
+
+   <div className="card" style={{background:'#fbf5ea'}}>
+    <h2 style={{marginBottom:10}}>This week, lean into:</h2>
+    <p style={{fontWeight:700,color:'#40514b',marginBottom:10}}>{shiftWords.join(' · ')}</p>
+    <p className="sub">What your child needs: {CHILD_NEEDS_WORDS.join(' · ')}</p>
+   </div>
+  </div>;
+ }
+
+ if(stage==='selectChild') return <div className="wrap">
+  <Bar title="Who are you journalling for?" back={()=>setStage('dashboard')} onSignOut={onSignOut}/>
   <div className="card">
-   <h2 style={{marginBottom:16}}>Select a child to journal</h2>
+   <h2 style={{marginBottom:16}}>Who are you journalling for?</h2>
    {dyads.map(d=>{
     const age=ageFrom(d.childDob,null);
-    const need=childNeed(age===null?null:parseFloat(d.childDob?(new Date()-new Date(d.childDob))/(1000*60*60*24*365.25):null));
     return <button key={d.childId} className="btn btn-secondary btn-block" style={{marginBottom:10,textAlign:'left',padding:'14px 18px'}} onClick={()=>{setDyad(d);setStage('journal');}}>
-     <div style={{fontWeight:700,fontSize:15}}>Child ID: {d.childId} <span style={{fontWeight:400,color:'#666'}}>· {d.childGender||'—'}</span></div>
-     <div style={{fontSize:13,color:'#555',marginTop:4}}>{age?<span>🎂 {age} old</span>:<span style={{color:'#aaa'}}>Age unknown</span>}</div>
+     <div style={{fontWeight:700,fontSize:15}}>Child ID: {d.childId} <span style={{fontWeight:400,color:'#666'}}>&middot; {d.childGender||'Not added'}</span></div>
+     <div style={{fontSize:13,color:'#555',marginTop:4}}>{age||'Age not added'}</div>
     </button>;
    })}
-   <button className="btn btn-primary btn-block" style={{marginTop:8}} onClick={()=>{setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}}>+ Add new child</button>
   </div>
  </div>;
 
- if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);loadDyads();setStage('journal');}} back={()=>dyads.length>0?setStage('select'):back()}/>;
+ if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()}/>;
 
  if(stage==='done') return <div className="wrap">
-  <Bar title="Entry saved" back={()=>setStage('select')} onSignOut={onSignOut}/>
+  <Bar title="Entry saved" back={()=>loadDashboard()} onSignOut={onSignOut}/>
   <div className="card" style={{textAlign:'center'}}>
    <div className="thank-illus"><SpotSeedling/></div>
    <h2>Thank you for taking this step.</h2>
-   <p className="sub" style={{marginTop:12,lineHeight:1.6}}>By attending to your own emotional patterns, you're becoming a steadier, warmer structure for your child to emulate. This is how change happens — one reflection at a time.</p>
+   <p className="sub" style={{marginTop:12,lineHeight:1.6}}>By attending to your own emotional patterns, you're becoming a steadier, warmer structure for your child to emulate. This is how change happens - one reflection at a time.</p>
    <div style={{marginTop:24,display:'flex',flexDirection:'column',gap:10}}>
     <button className="btn btn-primary" onClick={()=>setStage('journal')}>Journal another entry</button>
-    <button className="btn btn-secondary" onClick={()=>setStage('select')}>Switch child</button>
-    <button className="btn btn-secondary" onClick={()=>alert('Therapist contact feature coming soon — you can share your questions during your next session.')}>Ask the therapist for any clarifications</button>
+    <button className="btn btn-secondary" onClick={()=>loadDashboard()}>Back to dashboard</button>
+    {dyads.length>1&&<button className="btn btn-secondary" onClick={()=>setStage('selectChild')}>Switch child</button>}
+    <button className="btn btn-secondary" onClick={()=>alert('Therapist contact feature coming soon - you can share your questions during your next session.')}>Ask the therapist for any clarifications</button>
     <button className="btn btn-ghost" onClick={back}>Done for now</button>
    </div>
   </div>
  </div>;
 
- return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={()=>setStage('select')} user={user} onSignOut={onSignOut}/>;
+ return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={()=>setStage('dashboard')} user={user} onSignOut={onSignOut}/>;
 }
 
 function RegisterDyad({parentId,initial,onSave,back}){
