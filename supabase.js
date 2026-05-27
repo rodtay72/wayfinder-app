@@ -45,11 +45,20 @@ const Profile = {
 // ---- DATABASE ----
 const DB = {
   // Dyads
-  getDyad: async (userId, parentId) => {
+  getAllDyads: async (userId) => {
+    const { data, error } = await sb.from('dyads')
+      .select('child_id, data')
+      .eq('user_id', userId)
+      .order('id', { ascending: true });
+    if (error) console.error('getAllDyads error:', error);
+    return (data || []).map(r => r.data);
+  },
+
+  getDyad: async (userId, childId) => {
     const { data, error } = await sb.from('dyads')
       .select('data')
       .eq('user_id', userId)
-      .eq('parent_id', parentId)
+      .eq('child_id', childId)
       .maybeSingle();
     if (error) console.error('getDyad error:', error);
     return data ? data.data : null;
@@ -57,7 +66,7 @@ const DB = {
 
   saveDyad: async (userId, parentId, dyad) => {
     const { error } = await sb.from('dyads')
-      .upsert({ user_id: userId, parent_id: parentId, data: dyad }, { onConflict: 'user_id,parent_id' });
+      .upsert({ user_id: userId, parent_id: parentId, child_id: dyad.childId, data: dyad }, { onConflict: 'user_id,child_id' });
     if (error) console.error('saveDyad error:', error);
   },
 

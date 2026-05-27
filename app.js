@@ -338,37 +338,49 @@ function RoleGate({onPick,back,onSignOut,parentId}){
 
 /* ---------- CLIENT ---------- */
 function ClientApp({back,user,parentId,onSignOut}){
+ const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
- const [stage,setStage]=useState('loading'); // loading | register | journal | done
+ const [stage,setStage]=useState('loading'); // loading | select | register | journal | done
 
- useEffect(()=>{
-  DB.getDyad(user.id,parentId).then(dy=>{
-   if(!dy){setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}
-   else{setDyad(dy);setStage('journal');}
-  });
- },[]);
+ const loadDyads=()=>DB.getAllDyads(user.id).then(all=>{
+  if(all.length===0){setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}
+  else{setDyads(all);setStage('select');}
+ });
+
+ useEffect(()=>{loadDyads();},[]);
 
  if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your space…</div></div>;
 
- if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);setStage('journal');}} back={()=>setStage('login')}/>;
+ if(stage==='select') return <div className="wrap">
+  <Bar title={'My children · '+parentId} back={back} onSignOut={onSignOut}/>
+  <div className="card">
+   <h2 style={{marginBottom:16}}>Select a child to journal</h2>
+   {dyads.map(d=><button key={d.childId} className="btn btn-secondary btn-block" style={{marginBottom:10,textAlign:'left',padding:'14px 18px'}} onClick={()=>{setDyad(d);setStage('journal');}}>
+    <div style={{fontWeight:700,fontSize:15}}>Child ID: {d.childId}</div>
+    <div style={{fontSize:12,color:'#888',marginTop:2}}>Born: {d.childDob||'—'} · {d.childGender||'—'}</div>
+   </button>)}
+   <button className="btn btn-primary btn-block" style={{marginTop:8}} onClick={()=>{setDyad({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});setStage('register');}}>+ Add new child</button>
+  </div>
+ </div>;
+
+ if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);loadDyads();setStage('journal');}} back={()=>dyads.length>0?setStage('select'):back()}/>;
 
  if(stage==='done') return <div className="wrap">
-  <Bar title="Entry saved" back={back} onSignOut={onSignOut}/>
+  <Bar title="Entry saved" back={()=>setStage('select')} onSignOut={onSignOut}/>
   <div className="card" style={{textAlign:'center'}}>
    <div className="thank-illus"><SpotSeedling/></div>
    <h2>Thank you for taking this step.</h2>
    <p className="sub" style={{marginTop:12,lineHeight:1.6}}>By attending to your own emotional patterns, you're becoming a steadier, warmer structure for your child to emulate. This is how change happens — one reflection at a time.</p>
-   
    <div style={{marginTop:24,display:'flex',flexDirection:'column',gap:10}}>
     <button className="btn btn-primary" onClick={()=>setStage('journal')}>Journal another entry</button>
+    <button className="btn btn-secondary" onClick={()=>setStage('select')}>Switch child</button>
     <button className="btn btn-secondary" onClick={()=>alert('Therapist contact feature coming soon — you can share your questions during your next session.')}>Ask the therapist for any clarifications</button>
-    <button className="btn btn-secondary" onClick={()=>alert('Journal trail feature coming soon — your entries are being saved and will be viewable here.')}>Go to my journal entries trail and summary page</button>
     <button className="btn btn-ghost" onClick={back}>Done for now</button>
    </div>
   </div>
  </div>;
 
- return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={back} user={user} onSignOut={onSignOut}/>;
+ return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={()=>setStage('select')} user={user} onSignOut={onSignOut}/>;
 }
 
 function RegisterDyad({parentId,initial,onSave,back}){
