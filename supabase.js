@@ -80,6 +80,14 @@ const DB = {
     return (data || []).map(r => r.data);
   },
 
+  getAllEntries: async () => {
+    const { data, error } = await sb.from('journal_entries')
+      .select('data')
+      .order('id', { ascending: false });
+    if (error) console.error('getAllEntries error:', error);
+    return (data || []).map(r => r.data);
+  },
+
   saveEntry: async (userId, entry) => {
     const { error } = await sb.from('journal_entries')
       .insert({ id: entry.id, user_id: userId, parent_id: entry.parentId, data: entry });

@@ -562,23 +562,36 @@ function CounsellorApp({back,user,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [openId,setOpenId]=useState(null);
  const [loadingEntries,setLoadingEntries]=useState(true);
- const refresh=async()=>{setLoadingEntries(true);const data=await DB.getEntries(user.id);setEntries(data);setLoadingEntries(false);};
+ const [search,setSearch]=useState('');
+ const refresh=async()=>{setLoadingEntries(true);const data=await DB.getAllEntries();setEntries(data);setLoadingEntries(false);};
  useEffect(()=>{refresh();},[]);
  const open=entries.find(e=>e.id===openId);
 
  if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user}/>;
 
+ const filtered=search.trim()===''?entries:entries.filter(e=>(e.parentId||'').toLowerCase().includes(search.trim().toLowerCase())||(e.childId||'').toLowerCase().includes(search.trim().toLowerCase()));
+
  return <div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
   <div className="card">
    <div className="topbar"><h2>Client reflections</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
-   <p className="sub" style={{marginBottom:16}}>Self-journals submitted by parents. Open one to notice congruence and coach gently.</p>
-   {loadingEntries ? <div className="empty">Loading entries…</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to sign in and journal an activity — then refresh.</div> :
-    entries.map(e=>{
-     const cy=ageFrom(e.childDob,e.date);
+   <p className="sub" style={{marginBottom:12}}>Self-journals submitted by parents.</p>
+   <div className="field" style={{marginBottom:16}}><input placeholder="Search by Parent ID or Child ID…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%'}}/></div>
+   {loadingEntries ? <div className="empty">Loading entries…</div> : filtered.length===0 ? <div className="empty">{entries.length===0?'No reflections yet. Ask a parent to journal an activity — then refresh.':'No entries match your search.'}</div> :
+    filtered.map(e=>{
+     const childAge=ageFrom(e.childDob,e.date);
+     const parentAge=ageFrom(e.parentDob,e.date);
+     const fmt=d=>{if(!d)return'—';const dt=new Date(d);return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});};
      return <div className="entry-row" key={e.id} onClick={()=>setOpenId(e.id)}>
-      <div className="er-top">{e.parentId} &amp; {e.childId} · {e.activity}</div>
-      <div className="er-sub">{e.date} · {PHASES[e.phase]} · child {fmtAge(cy)} · {(e.autoWords||[]).length} trait words · {Object.values(e.markers).filter(m=>m.claimed).length}/6 markers</div>
+      <div className="er-top">{e.parentId} &amp; {e.childId} · <span style={{fontWeight:400}}>{e.activity}</span></div>
+      <div className="er-sub" style={{marginTop:4}}>
+       <span>📅 {fmt(e.date)}</span>
+       <span style={{margin:'0 8px'}}>·</span>
+       <span>👶 Child: {childAge||'—'} old</span>
+       <span style={{margin:'0 8px'}}>·</span>
+       <span>🧑 Parent: {parentAge||'—'} old</span>
+      </div>
+      <div className="er-sub" style={{marginTop:2,fontSize:12,color:'#999'}}>{PHASES[e.phase]} · {(e.autoWords||[]).length} trait words · {Object.values(e.markers||{}).filter(m=>m.claimed).length}/6 markers</div>
      </div>;
     })
    }
