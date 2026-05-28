@@ -268,27 +268,54 @@ function App(){
 
  useEffect(()=>{
   const role = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
-  const {data:{subscription}}=Auth.onAuthChange(async (_,session)=>{
+  const {data:{subscription}}=Auth.onAuthChange(async (event,session)=>{
+   const hasSession = !!session;
+   const hasAccessToken = !!session?.access_token;
+   const sessionUserId = session?.user?.id || null;
+   const profileEvents = ['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'];
+
+   console.info('[auth] state change:', {
+    event,
+    sessionExists: hasSession,
+    accessTokenExists: hasAccessToken,
+    sessionUserId
+   });
+
    if(session?.user){
+    setUser(session.user);
+   }
+
+   if(profileEvents.includes(event) && session?.user && hasAccessToken){
     // Clear any stale legacy localStorage keys from old app versions
     localStorage.removeItem('sj_v2_dyads');
     localStorage.removeItem('sj_v2_entries');
     localStorage.removeItem('sj_v2_reviews');
-    setUser(session.user);
     try{
      let profilePromise = profileLoadRef.current.promise;
 
      if(profileLoadRef.current.userId !== session.user.id || !profilePromise){
-      profilePromise = Profile.getOrCreate(session.user.id, role);
+      profilePromise = Profile.getOrCreate(session.user.id, role, session);
       profileLoadRef.current = { userId: session.user.id, promise: profilePromise };
      }
 
      const p = await profilePromise;
      setProfile(p);
     }catch(e){
-     console.error('Profile load failed, signing out:', e);
-     Auth.signOut();
+     profileLoadRef.current = { userId: null, promise: null };
+     const message = e?.message || '';
+     if(message.includes('Auth session not ready') || message.includes('No authenticated Supabase session')){
+      console.info('[profile] waiting for auth session:', { event, sessionUserId, message });
+     }else{
+      console.error('Profile load failed:', e);
+     }
     }
+   } else if(session?.user) {
+    console.info('[profile] waiting for auth session:', {
+     event,
+     sessionExists: hasSession,
+     accessTokenExists: hasAccessToken,
+     sessionUserId
+    });
    } else {
     setUser(null);
     setProfile(null);

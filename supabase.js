@@ -47,7 +47,25 @@ const Profile = {
     if (error) console.error('getExtended error:', error);
     return data && data.length > 0 ? data[0] : null;
   },
-  waitForSession: async (userId) => {
+  waitForSession: async (userId, providedSession) => {
+    const providedUserId = providedSession?.user?.id || null;
+    const providedHasAccessToken = !!providedSession?.access_token;
+
+    console.info('[profile] auth session source check:', {
+      source: 'callback session',
+      sessionExists: !!providedSession,
+      accessTokenExists: providedHasAccessToken,
+      sessionUserId: providedUserId,
+      requestedUserId: userId
+    });
+
+    if (providedSession && providedHasAccessToken) {
+      if (providedUserId !== userId) {
+        throw new Error(`Authenticated session user mismatch. requested=${userId} session=${providedUserId}`);
+      }
+      return providedSession;
+    }
+
     const maxAttempts = 5;
     const delayMs = 150;
 
@@ -59,7 +77,8 @@ const Profile = {
       const sessionUserId = session?.user?.id || null;
       const hasAccessToken = !!session?.access_token;
 
-      console.info('[profile] auth session check:', {
+      console.info('[profile] auth session source check:', {
+        source: 'getSession',
         attempt,
         sessionExists: !!session,
         accessTokenExists: hasAccessToken,
@@ -79,11 +98,11 @@ const Profile = {
       }
     }
 
-    throw new Error(`No authenticated Supabase session available for user ${userId}.`);
+    throw new Error(`Auth session not ready for user ${userId}.`);
   },
-  getOrCreate: async (userId, role) => {
+  getOrCreate: async (userId, role, session) => {
     const profileRole = role || 'parent';
-    await Profile.waitForSession(userId);
+    await Profile.waitForSession(userId, session);
     console.info('[profile] ensure_profile rpc attempt:', { userId, role: profileRole });
     const { data, error } = await sb.rpc('ensure_profile', { p_role: profileRole });
     if (error) {
