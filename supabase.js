@@ -18,8 +18,6 @@ const Auth = {
 };
 
 // ---- PROFILES ----
-const genParentId = () => 'P-' + Math.random().toString(36).substr(2,5).toUpperCase();
-
 const Profile = {
   get: async (userId) => {
     console.info('[profile] query existing:', { userId });
@@ -49,42 +47,27 @@ const Profile = {
     if (error) console.error('getExtended error:', error);
     return data && data.length > 0 ? data[0] : null;
   },
-  create: async (userId, role) => {
-    const parentId = genParentId();
-    const profileRole = role || 'parent';
-    console.info('[profile] insert attempt:', { userId, parentId, role: profileRole });
-    const { data, error } = await sb.from('profiles')
-      .insert({ user_id: userId, parent_id: parentId, role: profileRole })
-      .select('parent_id, role')
-      .single();
-    if (!error && data) return data;
-
-    if (error?.code === '23505') {
-      console.info('[profile] duplicate insert fallback:', { userId, errorMessage: error.message });
-      const existing = await Profile.get(userId);
-      if (existing) return existing;
-    }
-
-    console.error('[profile] insert failed:', {
-      userId,
-      parentId,
-      role: profileRole,
-      errorCode: error?.code || null,
-      errorMessage: error?.message || null
-    });
-    throw error || new Error('Profile insert returned no row.');
-  },
   getOrCreate: async (userId, role) => {
     const profileRole = role || 'parent';
-    console.info('[profile] get-or-create auth user:', { userId, role: profileRole });
-    let profile = await Profile.get(userId);
-    if (!profile) {
-      profile = await Profile.create(userId, profileRole);
-    } else if (profile.role !== profileRole) {
-      const { error } = await sb.from('profiles').update({ role: profileRole }).eq('user_id', userId);
-      if (error) throw error;
-      profile.role = profileRole;
+    console.info('[profile] ensure_profile rpc attempt:', { userId, role: profileRole });
+    const { data, error } = await sb.rpc('ensure_profile', { p_role: profileRole });
+    if (error) {
+      console.error('[profile] ensure_profile rpc failed:', {
+        userId,
+        role: profileRole,
+        errorCode: error.code || null,
+        errorMessage: error.message || null
+      });
+      throw error;
     }
+    const profile = Array.isArray(data) ? data[0] : data;
+    console.info('[profile] ensure_profile rpc result:', {
+      userId,
+      found: !!profile,
+      parentId: profile?.parent_id || null,
+      role: profile?.role || null
+    });
+    if (!profile) throw new Error('ensure_profile returned no row.');
     return profile;
   },
   saveDiscBars: async (userId, bars) => {
