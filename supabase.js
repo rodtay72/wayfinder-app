@@ -8,10 +8,24 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+const AuthDebug = {
+  enabled: () => {
+    try {
+      return localStorage.getItem('wayfinder_debug_auth') === '1';
+    } catch {
+      return false;
+    }
+  },
+  log: (...args) => {
+    if (AuthDebug.enabled()) console.info(...args);
+  }
+};
+
 // ---- AUTH ----
 const Auth = {
   signUp: (email, password) => sb.auth.signUp({ email, password }),
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
+  resendVerification: (email) => sb.auth.resend({ type: 'signup', email }),
   signOut: () => sb.auth.signOut(),
   getSession: () => sb.auth.getSession(),
   onAuthChange: (cb) => sb.auth.onAuthStateChange(cb),
@@ -20,14 +34,14 @@ const Auth = {
 // ---- PROFILES ----
 const Profile = {
   get: async (userId) => {
-    console.info('[profile] query existing:', { userId });
+    AuthDebug.log('[profile] query existing:', { userId });
     const { data, error, count } = await sb.from('profiles')
       .select('parent_id, role', { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(1);
     const profile = data && data.length > 0 ? data[0] : null;
-    console.info('[profile] query existing result:', {
+    AuthDebug.log('[profile] query existing result:', {
       userId,
       found: !!profile,
       rowCount: count || 0,
@@ -51,7 +65,7 @@ const Profile = {
     const providedUserId = providedSession?.user?.id || null;
     const providedHasAccessToken = !!providedSession?.access_token;
 
-    console.info('[profile] auth session source check:', {
+    AuthDebug.log('[profile] auth session source check:', {
       source: 'callback session',
       sessionExists: !!providedSession,
       accessTokenExists: providedHasAccessToken,
@@ -77,7 +91,7 @@ const Profile = {
       const sessionUserId = session?.user?.id || null;
       const hasAccessToken = !!session?.access_token;
 
-      console.info('[profile] auth session source check:', {
+      AuthDebug.log('[profile] auth session source check:', {
         source: 'getSession',
         attempt,
         sessionExists: !!session,
@@ -106,7 +120,7 @@ const Profile = {
     const confirmedAccessToken = authSession?.access_token || null;
     const confirmedUserId = authSession?.user?.id || null;
 
-    console.info('[profile] confirmed auth session:', {
+    AuthDebug.log('[profile] confirmed auth session:', {
       confirmedSessionExists: !!authSession,
       confirmedAccessTokenExists: !!confirmedAccessToken,
       confirmedUserId,
@@ -120,7 +134,7 @@ const Profile = {
       throw new Error(`Confirmed session user mismatch. requested=${userId} confirmed=${confirmedUserId}`);
     }
 
-    console.info('[profile] ensure_profile fetch attempt:', { userId, role: profileRole });
+    AuthDebug.log('[profile] ensure_profile fetch attempt:', { userId, role: profileRole });
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ensure_profile`, {
       method: 'POST',
       headers: {
@@ -151,7 +165,7 @@ const Profile = {
     }
 
     const profile = Array.isArray(data) ? data[0] : data;
-    console.info('[profile] ensure_profile fetch result:', {
+    AuthDebug.log('[profile] ensure_profile fetch result:', {
       userId,
       found: !!profile,
       parentId: profile?.parent_id || null,

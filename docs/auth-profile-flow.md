@@ -4,6 +4,18 @@ This document describes the current Wayfinder auth/profile flow. The key rule is
 
 Browser code must never directly insert or upsert rows in `profiles`.
 
+To enable verbose auth/profile logs in the browser console:
+
+```js
+localStorage.setItem('wayfinder_debug_auth', '1')
+```
+
+To turn them off:
+
+```js
+localStorage.removeItem('wayfinder_debug_auth')
+```
+
 ## Flow
 
 1. A user signs up with Supabase email/password auth.
@@ -20,7 +32,12 @@ Browser code must never directly insert or upsert rows in `profiles`.
 7. `supabase.js` calls `ensure_profile` via `fetch` with an explicit `Authorization: Bearer <JWT>` header.
 8. Supabase RPC `ensure_profile` uses `auth.uid()` as the source of truth.
 9. `ensure_profile` returns the existing profile first and inserts only if no row exists.
-10. Browser code must never directly insert/upsert `profiles`.
+10. Existing `parent_id` / Wayfinder ID must be reused for the same Supabase auth user.
+11. Browser code must never directly insert/upsert `profiles`.
+
+## Email Verification
+
+Signup requires email verification. Unverified users are blocked before profile creation and see a resend verification option. Profile creation must not run until email verification is true.
 
 ## Known Console Warnings To Ignore
 
@@ -39,3 +56,4 @@ These are unrelated to Wayfinder auth/profile setup.
 - Verified email is required before app access.
 - The same `parent_id` is reused for the same Supabase auth user.
 - No duplicate `profiles` rows are created.
+- Resend verification email works.
