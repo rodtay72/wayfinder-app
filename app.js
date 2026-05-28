@@ -265,9 +265,9 @@ function App(){
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
 
  useEffect(()=>{
-  Auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setAuthReady(true);});
   const {data:{subscription}}=Auth.onAuthChange((_,session)=>{
    setUser(session?.user||null);
+   setAuthReady(true);
    if(!session){setProfile(null);setEntered(false);}
   });
   return ()=>subscription.unsubscribe();
