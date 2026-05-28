@@ -426,25 +426,33 @@ function App(){
   return()=>{clearTimeout(timer);events.forEach(e=>window.removeEventListener(e,reset));};
  },[user]);
 
- if(!authReady) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;
- if(!user) return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;
- if(profileError) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40}}>
+ AuthDebug.log('[render] App branch state:', {
+  authReady,
+  userExists: !!user,
+  profileExists: !!profile,
+  entered,
+  profileError: !!profileError
+ });
+
+ if(!authReady){AuthDebug.log('[render] branch: auth loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;}
+ if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;}
+ if(profileError){AuthDebug.log('[render] branch: profile error');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40}}>
   <h2 style={{marginBottom:10}}>Profile loading issue</h2>
   <p className="sub">{profileError}</p>
   <button className="btn btn-primary" style={{marginTop:18}} onClick={()=>location.reload()}>Refresh</button>
- </div></div>;
- if(!profile) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;
+ </div></div>;}
+ if(!profile){AuthDebug.log('[render] branch: profile loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;}
 
  // Wrong portal check
- if(profile.role !== APP_ROLE) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
+ if(profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
   <h2 style={{marginBottom:12}}>Wrong portal</h2>
   <p className="sub">Your account is registered as a <b>{profile.role}</b>.</p>
   <p className="sub" style={{marginTop:8}}>{profile.role==='parent'?'Please go to the main app to sign in.':'Please go to the counsellor portal to sign in.'}</p>
   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
- </div></div>;
+ </div></div>;}
 
- if(APP_ROLE==='counsellor') return <CounsellorApp back={()=>setEntered(false)} user={user} onSignOut={signOut}/>;
- if(!entered) return <Landing onEnter={()=>setEntered(true)} user={user} profile={profile} onSignOut={signOut} authReady={authReady} role={APP_ROLE}/>;
+ if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} onSignOut={signOut}/>;}
+ AuthDebug.log('[render] branch: client dashboard');
  return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} onSignOut={signOut}/>;
 }
 
@@ -617,13 +625,28 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
  const loadDashboard=async()=>{
   setAiInsight('');
   setInsightLoading(false);
-  const allDyads=await DB.getAllDyads(user.id);
+  let allDyads=[];
+  let extProfile=null;
+  let allEntries=[];
+  try{
+   allDyads=await DB.getAllDyads(user.id);
+  }catch(err){
+   AuthDebug.log('[dashboard] failed to load dyads:', err);
+  }
   setDyads(allDyads);
 
-  const extProfile=await Profile.getExtended(user.id);
+  try{
+   extProfile=await Profile.getExtended(user.id);
+  }catch(err){
+   AuthDebug.log('[dashboard] failed to load extended profile:', err);
+  }
   setDiscBars(extProfile?.disc_bars||null);
 
-  const allEntries=await DB.getEntries(user.id);
+  try{
+   allEntries=await DB.getEntries(user.id);
+  }catch(err){
+   AuthDebug.log('[dashboard] failed to load past activities:', err);
+  }
   setEntries(allEntries);
 
   if(allDyads.length===0){setDyad(blankDyad());setStage('dashboard');return;}
