@@ -629,7 +629,7 @@ function ClientApp({back,user,parentId,onSignOut}){
 
  if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
- if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()}/>;
+ if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()} onSignOut={onSignOut}/>;
 
  if(stage==='done') return <div className="wrap">
   <Bar title="Entry saved" back={()=>loadDashboard()} onSignOut={onSignOut}/>
@@ -780,11 +780,11 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
  </div>;
 }
 
-function RegisterDyad({parentId,initial,onSave,back}){
+function RegisterDyad({parentId,initial,onSave,back,onSignOut}){
  const [f,setF]=useState({childId:initial.childId||genId('C'),parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
  const set=(k,v)=>setF(p=>({...p,[k]:v}));
  return <div className="wrap">
-  <Bar title="Set up your space" back={back}/>
+  <Bar title="Set up your space" back={back} onSignOut={onSignOut}/>
   <div className="card">
    <p className="sub" style={{marginBottom:16}}>A one-time setup for <b>{parentId}</b>. No names — codes only.</p>
    <div className="field"><label>Child ID</label>
