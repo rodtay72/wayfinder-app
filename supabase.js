@@ -102,20 +102,56 @@ const Profile = {
   },
   getOrCreate: async (userId, role, session) => {
     const profileRole = role || 'parent';
-    await Profile.waitForSession(userId, session);
-    console.info('[profile] ensure_profile rpc attempt:', { userId, role: profileRole });
-    const { data, error } = await sb.rpc('ensure_profile', { p_role: profileRole });
-    if (error) {
-      console.error('[profile] ensure_profile rpc failed:', {
+    const authSession = await Profile.waitForSession(userId, session);
+    const confirmedAccessToken = authSession?.access_token || null;
+    const confirmedUserId = authSession?.user?.id || null;
+
+    console.info('[profile] confirmed auth session:', {
+      confirmedSessionExists: !!authSession,
+      confirmedAccessTokenExists: !!confirmedAccessToken,
+      confirmedUserId,
+      requestedUserId: userId
+    });
+
+    if (!confirmedAccessToken) {
+      throw new Error(`Confirmed Supabase session missing access token for user ${userId}.`);
+    }
+    if (confirmedUserId !== userId) {
+      throw new Error(`Confirmed session user mismatch. requested=${userId} confirmed=${confirmedUserId}`);
+    }
+
+    console.info('[profile] ensure_profile fetch attempt:', { userId, role: profileRole });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ensure_profile`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${confirmedAccessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_role: profileRole })
+    });
+
+    const responseText = await response.text();
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch (parseError) {
+      data = responseText;
+    }
+
+    if (!response.ok) {
+      console.error('[profile] ensure_profile fetch failed:', {
         userId,
         role: profileRole,
-        errorCode: error.code || null,
-        errorMessage: error.message || null
+        status: response.status,
+        statusText: response.statusText,
+        errorBody: data
       });
-      throw error;
+      throw new Error(`ensure_profile failed with status ${response.status}: ${responseText || response.statusText}`);
     }
+
     const profile = Array.isArray(data) ? data[0] : data;
-    console.info('[profile] ensure_profile rpc result:', {
+    console.info('[profile] ensure_profile fetch result:', {
       userId,
       found: !!profile,
       parentId: profile?.parent_id || null,
