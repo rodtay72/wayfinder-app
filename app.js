@@ -265,19 +265,30 @@ function App(){
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
 
  useEffect(()=>{
-  const {data:{subscription}}=Auth.onAuthChange((_,session)=>{
-   setUser(session?.user||null);
+  const role = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
+  const {data:{subscription}}=Auth.onAuthChange(async (_,session)=>{
+   if(session?.user){
+    // Clear any stale legacy localStorage keys from old app versions
+    localStorage.removeItem('sj_v2_dyads');
+    localStorage.removeItem('sj_v2_entries');
+    localStorage.removeItem('sj_v2_reviews');
+    setUser(session.user);
+    try{
+     const p = await Profile.getOrCreate(session.user.id, role);
+     setProfile(p);
+    }catch(e){
+     console.error('Profile load failed, signing out:', e);
+     Auth.signOut();
+    }
+   } else {
+    setUser(null);
+    setProfile(null);
+    setEntered(false);
+   }
    setAuthReady(true);
-   if(!session){setProfile(null);setEntered(false);}
   });
   return ()=>subscription.unsubscribe();
  },[]);
-
- useEffect(()=>{
-  if(!user){setProfile(null);return;}
-  setProfile(null);
-  Profile.getOrCreate(user.id, APP_ROLE).then(setProfile);
- },[user, APP_ROLE]);
 
  const signOut=()=>{Auth.signOut();};
 
