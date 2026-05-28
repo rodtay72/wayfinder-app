@@ -35,7 +35,12 @@ const Profile = {
   },
   create: async (userId, role) => {
     const parentId = genParentId();
-    await sb.from('profiles').insert({ user_id: userId, parent_id: parentId, role: role || 'parent' });
+    const { error } = await sb.from('profiles').insert({ user_id: userId, parent_id: parentId, role: role || 'parent' });
+    if (error) {
+      // Insert failed (likely duplicate user_id) — fetch the existing row instead
+      const { data } = await sb.from('profiles').select('parent_id, role').eq('user_id', userId).limit(1);
+      if (data && data.length > 0) return data[0];
+    }
     return { parent_id: parentId, role: role || 'parent' };
   },
   getOrCreate: async (userId, role) => {
