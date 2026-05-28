@@ -207,7 +207,7 @@ const DB = {
       .eq('user_id', userId)
       .order('id', { ascending: true });
     if (error) console.error('getAllDyads error:', error);
-    return (data || []).map(r => r.data);
+    return (data || []).map(r => ({ ...(r.data || {}), childId: r.data?.childId || r.child_id }));
   },
 
   getDyad: async (userId, childId) => {
@@ -229,11 +229,11 @@ const DB = {
   // Journal entries
   getEntries: async (userId) => {
     const { data, error } = await sb.from('journal_entries')
-      .select('data')
+      .select('id, parent_id, data, created_at')
       .eq('user_id', userId)
       .order('id', { ascending: false });
     if (error) console.error('getEntries error:', error);
-    return (data || []).map(r => r.data);
+    return (data || []).map(r => ({ id: r.data?.id || r.id, parentId: r.data?.parentId || r.parent_id, created_at: r.created_at, ...(r.data || {}) }));
   },
 
   getAllEntries: async () => {
