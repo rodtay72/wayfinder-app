@@ -22,34 +22,68 @@ const genParentId = () => 'P-' + Math.random().toString(36).substr(2,5).toUpperC
 
 const Profile = {
   get: async (userId) => {
-    const { data } = await sb.from('profiles').select('parent_id, role').eq('user_id', userId).limit(1);
-    return (data && data.length > 0) ? data[0] : null;
+    console.info('[profile] query existing:', { userId });
+    const { data, error, count } = await sb.from('profiles')
+      .select('parent_id, role', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const profile = data && data.length > 0 ? data[0] : null;
+    console.info('[profile] query existing result:', {
+      userId,
+      found: !!profile,
+      rowCount: count || 0,
+      parentId: profile?.parent_id || null,
+      errorCode: error?.code || null,
+      errorMessage: error?.message || null
+    });
+    if (error) throw error;
+    return profile;
   },
   getExtended: async (userId) => {
     const { data, error } = await sb.from('profiles')
       .select('parent_id, role, disc_image_url, disc_bars, insight_text, insight_generated_at, insight_entry_count, insight_latest_entry_at')
       .eq('user_id', userId)
+      .order('created_at', { ascending: true })
       .limit(1);
     if (error) console.error('getExtended error:', error);
-    return (data && data.length > 0) ? data[0] : null;
+    return data && data.length > 0 ? data[0] : null;
   },
   create: async (userId, role) => {
     const parentId = genParentId();
-    const { error } = await sb.from('profiles').insert({ user_id: userId, parent_id: parentId, role: role || 'parent' });
-    if (error) {
-      // Insert failed (likely duplicate user_id) — fetch the existing row instead
-      const { data } = await sb.from('profiles').select('parent_id, role').eq('user_id', userId).limit(1);
-      if (data && data.length > 0) return data[0];
+    const profileRole = role || 'parent';
+    console.info('[profile] insert attempt:', { userId, parentId, role: profileRole });
+    const { data, error } = await sb.from('profiles')
+      .insert({ user_id: userId, parent_id: parentId, role: profileRole })
+      .select('parent_id, role')
+      .single();
+    if (!error && data) return data;
+
+    if (error?.code === '23505') {
+      console.info('[profile] duplicate insert fallback:', { userId, errorMessage: error.message });
+      const existing = await Profile.get(userId);
+      if (existing) return existing;
     }
-    return { parent_id: parentId, role: role || 'parent' };
+
+    console.error('[profile] insert failed:', {
+      userId,
+      parentId,
+      role: profileRole,
+      errorCode: error?.code || null,
+      errorMessage: error?.message || null
+    });
+    throw error || new Error('Profile insert returned no row.');
   },
   getOrCreate: async (userId, role) => {
+    const profileRole = role || 'parent';
+    console.info('[profile] get-or-create auth user:', { userId, role: profileRole });
     let profile = await Profile.get(userId);
     if (!profile) {
-      profile = await Profile.create(userId, role);
-    } else if (profile.role !== role) {
-      await sb.from('profiles').update({ role }).eq('user_id', userId);
-      profile.role = role;
+      profile = await Profile.create(userId, profileRole);
+    } else if (profile.role !== profileRole) {
+      const { error } = await sb.from('profiles').update({ role: profileRole }).eq('user_id', userId);
+      if (error) throw error;
+      profile.role = profileRole;
     }
     return profile;
   },
@@ -77,7 +111,6 @@ const Profile = {
     if (error) console.error('saveInsight error:', error);
   },
 };
-
 // ---- DATABASE ----
 const DB = {
   // Dyads

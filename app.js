@@ -8,7 +8,7 @@
 // Content constants (BRAND, ACTIVITIES, MARKERS, etc.) are loaded from content.js
 
 
-const {useState,useEffect,useMemo} = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
 /* ============ DATA ============ */
 // PHASES, ACTIVITIES, MARKERS, VALUE_GROUPS, CHILD_NEEDS_WORDS, CULTURE, SHIFT_WORDS
@@ -235,7 +235,8 @@ function AuthScreen({onAuth, role}){
    const {data,error:err}=mode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
    if(err)throw err;
    if(mode==='signup'&&!data.session){setError('Check your email to confirm your account, then sign in.');setLoading(false);return;}
-   onAuth(data.user||data.session?.user);
+   // onAuthStateChange is the single source of truth for authenticated user
+   // and profile setup. Updating user here can race ahead of getOrCreateProfile.
   }catch(e){setError(e.message||'Something went wrong.');}
   setLoading(false);
  };
@@ -262,6 +263,7 @@ function App(){
  const [user,setUser]=useState(null);
  const [authReady,setAuthReady]=useState(false);
  const [profile,setProfile]=useState(null);
+ const profileLoadRef = useRef({ userId: null, promise: null });
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
 
  useEffect(()=>{
@@ -274,7 +276,14 @@ function App(){
     localStorage.removeItem('sj_v2_reviews');
     setUser(session.user);
     try{
-     const p = await Profile.getOrCreate(session.user.id, role);
+     let profilePromise = profileLoadRef.current.promise;
+
+     if(profileLoadRef.current.userId !== session.user.id || !profilePromise){
+      profilePromise = Profile.getOrCreate(session.user.id, role);
+      profileLoadRef.current = { userId: session.user.id, promise: profilePromise };
+     }
+
+     const p = await profilePromise;
      setProfile(p);
     }catch(e){
      console.error('Profile load failed, signing out:', e);
@@ -283,6 +292,7 @@ function App(){
    } else {
     setUser(null);
     setProfile(null);
+    profileLoadRef.current = { userId: null, promise: null };
     setEntered(false);
    }
    setAuthReady(true);
