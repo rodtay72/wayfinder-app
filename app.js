@@ -223,7 +223,7 @@ function Landing({onEnter}){
  </div>;
 }
 
-function AuthScreen({onAuth, role}){
+function AuthScreen({onAuth, role, message}){
  const [mode,setMode]=useState('signin');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -248,6 +248,7 @@ function AuthScreen({onAuth, role}){
    <h2>{mode==='signin'?'Sign in':'Create account'}</h2>
    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
    <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   {message&&<div style={{color:'#8a5a00',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fff4d6',borderRadius:6}}>{message}</div>}
    {error&&<div style={{color:'#c0392b',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fdecea',borderRadius:6}}>{error}</div>}
    <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>{loading?'Please wait…':mode==='signin'?'Sign in':'Create account'}</button>
    <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
@@ -263,6 +264,7 @@ function App(){
  const [user,setUser]=useState(null);
  const [authReady,setAuthReady]=useState(false);
  const [profile,setProfile]=useState(null);
+ const [authMessage,setAuthMessage]=useState('');
  const profileLoadRef = useRef({ userId: null, promise: null });
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
 
@@ -280,12 +282,33 @@ function App(){
     accessTokenExists: hasAccessToken,
     sessionUserId
    });
-
-   if(session?.user){
-    setUser(session.user);
-   }
-
    if(profileEvents.includes(event) && session?.user && hasAccessToken){
+    const emailConfirmedAt = session.user.email_confirmed_at || null;
+    const confirmedAt = session.user.confirmed_at || null;
+    const emailVerified = !!(emailConfirmedAt || confirmedAt);
+
+    console.info('[auth] email verification:', {
+     emailVerified,
+     email_confirmed_at: emailConfirmedAt,
+     confirmed_at: confirmedAt,
+     sessionUserId
+    });
+
+    if(!emailVerified){
+     const message = 'Please verify your email before signing in. Check your inbox for the confirmation link.';
+     setAuthMessage(message);
+     setUser(null);
+     setProfile(null);
+     setEntered(false);
+     profileLoadRef.current = { userId: null, promise: null };
+     console.info('[auth] unverified email blocked profile setup:', { sessionUserId });
+     setAuthReady(true);
+     await Auth.signOut();
+     return;
+    }
+
+    setAuthMessage('');
+    setUser(session.user);
     // Clear any stale legacy localStorage keys from old app versions
     localStorage.removeItem('sj_v2_dyads');
     localStorage.removeItem('sj_v2_entries');
@@ -341,7 +364,7 @@ function App(){
  },[user]);
 
  if(!authReady) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;
- if(!user) return <AuthScreen onAuth={setUser} role={APP_ROLE}/>;
+ if(!user) return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage}/>;
  if(!profile) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Setting up your account…</div></div>;
 
  // Wrong portal check
