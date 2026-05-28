@@ -319,6 +319,7 @@ function App(){
  const [user,setUser]=useState(null);
  const [authReady,setAuthReady]=useState(false);
  const [profile,setProfile]=useState(null);
+ const [profileError,setProfileError]=useState('');
  const [authMessage,setAuthMessage]=useState('');
  const [authMessageEmail,setAuthMessageEmail]=useState('');
  const profileLoadRef = useRef({ userId: null, promise: null });
@@ -381,6 +382,8 @@ function App(){
 
      const p = await profilePromise;
      setProfile(p);
+     setProfileError('');
+     setEntered(true);
     }catch(e){
      profileLoadRef.current = { userId: null, promise: null };
      const message = e?.message || '';
@@ -388,6 +391,7 @@ function App(){
       AuthDebug.log('[profile] waiting for auth session:', { event, sessionUserId, message });
      }else{
       console.error('Profile load failed:', e);
+      setProfileError('We could not load your Wayfinder profile. Please refresh and try signing in again.');
      }
     }
    } else if(session?.user) {
@@ -400,6 +404,7 @@ function App(){
    } else {
     setUser(null);
     setProfile(null);
+    setProfileError('');
     profileLoadRef.current = { userId: null, promise: null };
     setEntered(false);
    }
@@ -423,7 +428,12 @@ function App(){
 
  if(!authReady) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;
  if(!user) return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;
- if(!profile) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Setting up your account…</div></div>;
+ if(profileError) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40}}>
+  <h2 style={{marginBottom:10}}>Profile loading issue</h2>
+  <p className="sub">{profileError}</p>
+  <button className="btn btn-primary" style={{marginTop:18}} onClick={()=>location.reload()}>Refresh</button>
+ </div></div>;
+ if(!profile) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;
 
  // Wrong portal check
  if(profile.role !== APP_ROLE) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
@@ -616,7 +626,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   const allEntries=await DB.getEntries(user.id);
   setEntries(allEntries);
 
-  if(allDyads.length===0){setDyad(blankDyad());setStage('register');return;}
+  if(allDyads.length===0){setDyad(blankDyad());setStage('dashboard');return;}
 
   const primaryDyad=allDyads[0];
   if(primaryDyad?.disc){
@@ -666,6 +676,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   setStage('dashboard');
  };
  const startNewEntry=()=>{
+  if(dyads.length===0){startNewChild();return;}
   if(dyads.length===1){setDyad(dyads[0]);setStage('journal');}
   else setStage('selectChild');
  };
@@ -678,18 +689,40 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
  if(stage==='dashboard'){
   const discDyad=dyads.find(d=>d.disc)||dyads[0]||{};
   const shiftWords=SHIFT_WORDS.raiseIS||SHIFT_RAISE_IS||[];
+  const recentEntries=[...entries]
+   .sort((a,b)=>new Date(b.timestamp||b.submittedAt||b.date)-new Date(a.timestamp||a.submittedAt||a.date))
+   .slice(0,5);
   return <div className="wrap">
    <div className="card banner" style={{position:'relative'}}>
-    <h1>{parentId}</h1>
-    <p style={{opacity:.85,fontSize:14,marginTop:4}}>Your Way Finder space</p>
+    <div style={{maxWidth:520}}>
+     <p style={{opacity:.8,fontSize:13,margin:0}}>Welcome back</p>
+     <h1>{user.email||'Wayfinder'}</h1>
+     <p style={{opacity:.85,fontSize:14,marginTop:4}}>Wayfinder ID: <b>{parentId}</b> &middot; Role: <b>{profile?.role||'parent'}</b></p>
+    </div>
     <div style={{position:'absolute',top:18,right:18,display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
      <button className="switch" onClick={startNewChild}>+ New child</button>
-     <button className="switch" onClick={startNewEntry}>+ New entry</button>
+     <button className="switch" onClick={startNewEntry}>Start new activity</button>
      <button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>Sign out</button>
    </div>
   </div>
   <ProfileSettings user={user} profile={profile} onSignOut={onSignOut}/>
   <AuthDebugPanel authReady={authReady} user={user} profile={profile} role={profile?.role}/>
+
+   <div className="card">
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:14}}>
+     <h2 style={{margin:0}}>Past activities</h2>
+     <button className="btn btn-primary" onClick={startNewEntry}>Start new activity</button>
+    </div>
+    {recentEntries.length>0 ? <div style={{display:'grid',gap:10}}>
+     {recentEntries.map(e=><div key={e.id||`${e.childId}-${e.date}-${e.activity}`} style={{border:'1px solid #E8DCC8',borderRadius:8,padding:14,background:'#fff'}}>
+      <div style={{fontWeight:800,color:'#40514b'}}>{e.activity||'Wayfinder activity'}</div>
+      <div className="sub" style={{fontSize:13,marginTop:4}}>{formatEntryDate(e.date||e.submittedAt)} &middot; Child ID: {e.childId||'Not saved'}</div>
+     </div>)}
+    </div> : <div style={{border:'1px dashed #D9C9AD',borderRadius:8,padding:18,background:'#fffaf2',textAlign:'center'}}>
+     <p className="sub" style={{marginBottom:14}}>No past activities yet. Start your first Wayfinder activity.</p>
+     <button className="btn btn-primary" onClick={startNewEntry}>Start new activity</button>
+    </div>}
+   </div>
 
    <div className="card">
     <div style={{background:'#f0f4f2',borderRadius:12,padding:20,marginBottom:16}}>
