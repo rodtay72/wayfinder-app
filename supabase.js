@@ -22,16 +22,16 @@ const genParentId = () => 'P-' + Math.random().toString(36).substr(2,5).toUpperC
 
 const Profile = {
   get: async (userId) => {
-    const { data } = await sb.from('profiles').select('parent_id, role').eq('user_id', userId).maybeSingle();
-    return data || null;
+    const { data } = await sb.from('profiles').select('parent_id, role').eq('user_id', userId).limit(1);
+    return (data && data.length > 0) ? data[0] : null;
   },
   getExtended: async (userId) => {
     const { data, error } = await sb.from('profiles')
       .select('parent_id, role, disc_image_url, disc_bars, insight_text, insight_generated_at, insight_entry_count, insight_latest_entry_at')
       .eq('user_id', userId)
-      .maybeSingle();
+      .limit(1);
     if (error) console.error('getExtended error:', error);
-    return data || null;
+    return (data && data.length > 0) ? data[0] : null;
   },
   create: async (userId, role) => {
     const parentId = genParentId();
