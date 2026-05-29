@@ -112,6 +112,13 @@ const toIsoTimestampOrNull=(value)=>{const date=parseStoredDate(value);return da
 const ageFrom=(dob,at)=>{if(!dob)return null;const b=new Date(dob),r=at?new Date(at):new Date();if(isNaN(b))return null;const totalMonths=Math.floor((r.getFullYear()-b.getFullYear())*12+(r.getMonth()-b.getMonth())-(r.getDate()<b.getDate()?1:0));if(totalMonths<0)return null;const y=Math.floor(totalMonths/12);const m=totalMonths%12;if(y===0)return m===1?'1 month':`${m} months`;if(m===0)return y===1?'1 year':`${y} years`;return y===1?(m===1?'1 year 1 month':`1 year ${m} months`):(m===1?`${y} years 1 month`:`${y} years ${m} months`);};
 const fmtAge=(y)=>y===null||y===undefined?'—':y;
 const genId=(p)=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=c[Math.floor(Math.random()*c.length)];return p+'-'+s;};
+const yearsFrom=(dob,at)=>{if(!dob)return null;const b=new Date(dob),r=at?new Date(at):new Date();if(isNaN(b)||isNaN(r))return null;let y=r.getFullYear()-b.getFullYear();const beforeBirthday=r.getMonth()<b.getMonth()||(r.getMonth()===b.getMonth()&&r.getDate()<b.getDate());if(beforeBirthday)y-=1;return y>=0?y:null;};
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const safeGeneratedId=(value,prefix,fallback)=>{const id=String(value||'').trim();if(!id||UUID_RE.test(id))return fallback;const re=new RegExp('^'+prefix+'-[A-Z0-9-]{3,}$','i');return re.test(id)?id.toUpperCase():fallback;};
+const safeParentId=(value)=>safeGeneratedId(value,'P','Parent ID unavailable');
+const safeChildId=(value)=>safeGeneratedId(value,'C','Child ID unavailable');
+const safeObject=(value)=>value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+const safeArray=(value)=>Array.isArray(value)?value:[];
 
 /* ============ ILLUSTRATIONS (original, flat + grain, warm palette) ============ */
 // A simple warm figure: head with hair-cap, gentle face, rounded torso
@@ -263,12 +270,14 @@ function AuthScreen({onAuth, role, message, messageEmail}){
  const [loading,setLoading]=useState(false);
  const [resendStatus,setResendStatus]=useState('');
  const [resendLoading,setResendLoading]=useState(false);
+ const allowSignup=role!=='counsellor';
+ const activeMode=allowSignup?mode:'signin';
  const submit=async()=>{
   setError('');setLoading(true);
   try{
-   const {data,error:err}=mode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
+   const {data,error:err}=activeMode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
    if(err)throw err;
-   if(mode==='signup'&&!data.session){setError('Check your email to confirm your account, then sign in.');setLoading(false);return;}
+   if(activeMode==='signup'&&!data.session){setError('Check your email to confirm your account, then sign in.');setLoading(false);return;}
    // onAuthStateChange is the single source of truth for authenticated user
    // and profile setup. Updating user here can race ahead of getOrCreateProfile.
   }catch(e){setError(e.message||'Something went wrong.');}
@@ -292,7 +301,7 @@ function AuthScreen({onAuth, role, message, messageEmail}){
   <div className="card" style={{padding:0,overflow:'hidden'}}>
    <img src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'} style={{width:'100%',height:'auto',display:'block'}}/>
    <div style={{padding:24}}>
-   <h2>{mode==='signin'?'Sign in':'Create account'}</h2>
+   <h2>{activeMode==='signin'?'Sign in':'Create account'}</h2>
    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
    <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
    {message&&<div style={{color:'#8a5a00',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fff4d6',borderRadius:6}}>
@@ -301,10 +310,10 @@ function AuthScreen({onAuth, role, message, messageEmail}){
     {resendStatus&&<div style={{marginTop:8,color:'#4f7a5e'}}>{resendStatus}</div>}
    </div>}
    {error&&<div style={{color:'#c0392b',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fdecea',borderRadius:6}}>{error}</div>}
-   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>{loading?'Please wait…':mode==='signin'?'Sign in':'Create account'}</button>
-   <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
-    {mode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signup');setError('');}}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signin');setError('');}}>Sign in</span></span>}
-   </p>
+   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>{loading?'Please wait…':activeMode==='signin'?'Sign in':'Create account'}</button>
+   {allowSignup ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
+    {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signup');setError('');}}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signin');setError('');}}>Sign in</span></span>}
+   </p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Counsellor accounts are provisioned by the Wayfinder administrator.</p>}
    </div>
   </div>
  </div>;
@@ -317,6 +326,7 @@ function App(){
  const [profile,setProfile]=useState(null);
  const [authSession,setAuthSession]=useState(null);
  const [profileError,setProfileError]=useState('');
+ const [accessDenied,setAccessDenied]=useState('');
  const [authMessage,setAuthMessage]=useState('');
  const [authMessageEmail,setAuthMessageEmail]=useState('');
  const profileLoadRef = useRef({ userId: null, promise: null });
@@ -356,6 +366,7 @@ function App(){
      setAuthMessageEmail(session.user.email||'');
      setUser(null);
      setProfile(null);
+     setAccessDenied('');
      setEntered(false);
      profileLoadRef.current = { userId: null, promise: null };
      AuthDebug.log('[auth] unverified email blocked profile setup:', { sessionUserId });
@@ -364,9 +375,10 @@ function App(){
      return;
     }
 
-    setAuthMessage('');
-    setAuthMessageEmail('');
-    setAuthSession(session);
+     setAuthMessage('');
+     setAuthMessageEmail('');
+     setAccessDenied('');
+     setAuthSession(session);
     Auth.setActiveSession(session);
     setUser(session.user);
     // Clear any stale legacy localStorage keys from old app versions
@@ -377,18 +389,28 @@ function App(){
      let profilePromise = profileLoadRef.current.promise;
 
      if(profileLoadRef.current.userId !== session.user.id || !profilePromise){
-      profilePromise = Profile.getOrCreate(session.user.id, role, session);
+      profilePromise = role==='counsellor' ? Profile.getExisting(session.user.id, session) : Profile.getOrCreate(session.user.id, role, session);
       profileLoadRef.current = { userId: session.user.id, promise: profilePromise };
      }
 
      const p = await profilePromise;
+     if(role==='counsellor' && (!p || p.role !== 'counsellor')){
+      throw new Error('Counsellor role required');
+     }
      setProfile(p);
      setProfileError('');
+     setAccessDenied('');
      setEntered(true);
     }catch(e){
      profileLoadRef.current = { userId: null, promise: null };
      const message = e?.message || '';
-     if(message.includes('Auth session not ready') || message.includes('No authenticated Supabase session')){
+     if(role==='counsellor'){
+      AuthDebug.log('[profile] counsellor access confirmation failed:', { event, sessionUserId, message });
+      setProfile(null);
+      setProfileError('');
+      setAccessDenied('Access denied: counsellor role required.');
+      setEntered(false);
+     }else if(message.includes('Auth session not ready') || message.includes('No authenticated Supabase session')){
       AuthDebug.log('[profile] waiting for auth session:', { event, sessionUserId, message });
      }else{
       console.error('Profile load failed:', e);
@@ -406,9 +428,10 @@ function App(){
     setAuthSession(null);
     Auth.setActiveSession(null);
     setUser(null);
-    setProfile(null);
-    setProfileError('');
-    profileLoadRef.current = { userId: null, promise: null };
+     setProfile(null);
+     setProfileError('');
+     setAccessDenied('');
+     profileLoadRef.current = { userId: null, promise: null };
     setEntered(false);
    }
    setAuthReady(true);
@@ -416,7 +439,7 @@ function App(){
   return ()=>subscription.unsubscribe();
  },[]);
 
- const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');setAuthSession(null);Auth.setActiveSession(null);Auth.signOut();};
+ const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');setAccessDenied('');setAuthSession(null);Auth.setActiveSession(null);Auth.signOut();};
 
  // Auto sign-out after 60 minutes of inactivity
  useEffect(()=>{
@@ -438,23 +461,28 @@ function App(){
  });
 
  if(!authReady){AuthDebug.log('[render] branch: auth loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;}
- if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;}
- if(profileError){AuthDebug.log('[render] branch: profile error');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40}}>
+  if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;}
+  if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
+   <h2 style={{marginBottom:12}}>{accessDenied}</h2>
+   <p className="sub">This portal is limited to verified counsellor accounts.</p>
+   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
+  </div></div>;}
+  if(profileError){AuthDebug.log('[render] branch: profile error');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40}}>
   <h2 style={{marginBottom:10}}>Profile loading issue</h2>
   <p className="sub">{profileError}</p>
   <button className="btn btn-primary" style={{marginTop:18}} onClick={()=>location.reload()}>Refresh</button>
  </div></div>;}
  if(!profile){AuthDebug.log('[render] branch: profile loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;}
 
- // Wrong portal check
- if(profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
-  <h2 style={{marginBottom:12}}>Wrong portal</h2>
-  <p className="sub">Your account is registered as a <b>{profile.role}</b>.</p>
+  // Wrong portal check
+  if(profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
+   <h2 style={{marginBottom:12}}>{APP_ROLE==='counsellor'?'Access denied: counsellor role required':'Wrong portal'}</h2>
+   <p className="sub">Your account is registered as a <b>{profile.role}</b>.</p>
   <p className="sub" style={{marginTop:8}}>{profile.role==='parent'?'Please go to the main app to sign in.':'Please go to the counsellor portal to sign in.'}</p>
   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
  </div></div>;}
 
- if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} onSignOut={signOut}/>;}
+ if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} profile={profile} authSession={authSession} onSignOut={signOut}/>;}
  AuthDebug.log('[render] branch: client dashboard');
  return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} authSession={authSession} onSignOut={signOut}/>;
 }
@@ -1177,10 +1205,39 @@ function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
 }
 
 /* ---------- COUNSELLOR ---------- */
-function CounsellorApp({back,user,onSignOut}){
+function toCounsellorEntry(raw){
+ const entry=safeObject(raw);
+ const cab=safeObject(entry.cab);
+ const markers=safeObject(entry.markers);
+ const parentId=safeParentId(entry.parentId||entry.parent_id);
+ const childId=safeChildId(entry.childId||entry.child_id||entry.dyadId||entry.dyad_id);
+ const date=firstStoredDateValue(entry.date,entry.submittedAt,entry.created_at)||'';
+ const activity=entry.activity||entry.activityTitle||entry.title||'Untitled activity';
+ return {
+  ...entry,
+  _key:String(entry.id||`${parentId}-${childId}-${date}-${activity}`),
+  id:entry.id,
+  parentId,
+  childId,
+  date,
+  activity,
+  phase:entry.phase||entry.phaseKey||'',
+  parentGender:entry.parentGender||entry.parent_gender||'',
+  childGender:entry.childGender||entry.child_gender||'',
+  parentDob:entry.parentDob||entry.parent_dob||'',
+  childDob:entry.childDob||entry.child_dob||'',
+  cab:{thoughts:cab.thoughts||'',feelings:cab.feelings||'',actions:cab.actions||'',meaning:cab.meaning||''},
+  markers,
+  autoWords:safeArray(entry.autoWords||entry.valueWords),
+  valueWords:safeArray(entry.valueWords||entry.autoWords)
+ };
+}
+
+function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [openId,setOpenId]=useState(null);
- const [loadingEntries,setLoadingEntries]=useState(true);
+  const [loadingEntries,setLoadingEntries]=useState(true);
+ const [loadError,setLoadError]=useState('');
  const [flags,setFlags]=useState({});
  const [longitudinalSummaries,setLongitudinalSummaries]=useState({});
  const [longitudinalOpen,setLongitudinalOpen]=useState({});
@@ -1192,57 +1249,65 @@ function CounsellorApp({back,user,onSignOut}){
  };
  const refresh=async()=>{
   setLoadingEntries(true);
+  setLoadError('');
   setFlags({});
   setLongitudinalSummaries({});
-  const data=await DB.getAllEntries();
-  const withChildAge=data.map(e=>({...e,childAge:entryChildAge(e)}));
-  setEntries(withChildAge);
+  try{
+   const data=await DB.getAllEntries(user.id,authSession);
+   const withChildAge=data.map(e=>toCounsellorEntry({...e,childAge:entryChildAge(e)}));
+   setEntries(withChildAge);
 
-  const flagResults=await Promise.all(
-   withChildAge.map(e=>
-    fetch('/api/counsellor-analysis',{
-     method:'POST',
-     headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({mode:'entry',entry:e})
-    })
-     .then(r=>r.json())
-     .then(d=>({id:e.id,flag:d.flag||''}))
-     .catch(()=>({id:e.id,flag:''}))
-   )
-  );
-  const flagMap={};
-  flagResults.forEach(f=>{flagMap[f.id]=f.flag;});
-  setFlags(flagMap);
-
-  const groupedByParent=withChildAge.reduce((acc,e)=>{
-   const key=e.parentId||'unknown-parent';
-   if(!acc[key]) acc[key]=[];
-   acc[key].push(e);
-   return acc;
-  },{});
-  const longitudinalResults=await Promise.all(
-   Object.entries(groupedByParent)
-    .filter(([,parentEntries])=>parentEntries.length>=2)
-    .map(([pid,parentEntries])=>
+   const flagResults=await Promise.all(
+    withChildAge.map(e=>
      fetch('/api/counsellor-analysis',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({mode:'longitudinal',parentId:pid,entries:parentEntries})
+      body:JSON.stringify({mode:'entry',entry:e})
      })
       .then(r=>r.json())
-      .then(d=>({parentId:pid,summary:d.recurringPatterns?d:null}))
-      .catch(()=>({parentId:pid,summary:null}))
+      .then(d=>({id:e._key,flag:d.flag||''}))
+      .catch(()=>({id:e._key,flag:''}))
     )
-  );
-  const longMap={};
-  longitudinalResults.forEach(r=>{if(r.summary) longMap[r.parentId]=r.summary;});
-  setLongitudinalSummaries(longMap);
-  setLoadingEntries(false);
- };
- useEffect(()=>{refresh();},[]);
- const open=entries.find(e=>e.id===openId);
+   );
+   const flagMap={};
+   flagResults.forEach(f=>{flagMap[f.id]=f.flag;});
+   setFlags(flagMap);
 
- if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user}/>;
+   const groupedByParent=withChildAge.reduce((acc,e)=>{
+    const key=e.parentId||'Parent ID unavailable';
+    if(!acc[key]) acc[key]=[];
+    acc[key].push(e);
+    return acc;
+   },{});
+   const longitudinalResults=await Promise.all(
+    Object.entries(groupedByParent)
+     .filter(([pid,parentEntries])=>pid!=='Parent ID unavailable'&&parentEntries.length>=2)
+     .map(([pid,parentEntries])=>
+      fetch('/api/counsellor-analysis',{
+       method:'POST',
+       headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({mode:'longitudinal',parentId:pid,entries:parentEntries})
+      })
+       .then(r=>r.json())
+       .then(d=>({parentId:pid,summary:d.recurringPatterns?d:null}))
+       .catch(()=>({parentId:pid,summary:null}))
+     )
+   );
+   const longMap={};
+   longitudinalResults.forEach(r=>{if(r.summary) longMap[r.parentId]=r.summary;});
+   setLongitudinalSummaries(longMap);
+  }catch(err){
+   setEntries([]);
+   setLoadError('We could not load counsellor records. Please refresh or contact the Wayfinder administrator.');
+   AuthDebug.log('[counsellor] load failed:', { message: err?.message || String(err) });
+  }finally{
+   setLoadingEntries(false);
+  }
+ };
+ useEffect(()=>{if(authSession?.access_token)refresh();},[user.id,authSession?.access_token]);
+ const open=entries.find(e=>e._key===openId);
+
+ if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession}/>;
 
  return <div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
@@ -1270,43 +1335,64 @@ function CounsellorApp({back,user,onSignOut}){
     ))}
    </div>}
 
-   {loadingEntries ? <div className="empty">Loading entries...</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to journal an activity - then refresh.</div> :
-    entries.map(e=>{
-     const childAge=ageFrom(e.childDob,e.date);
-     const parentAge=ageFrom(e.parentDob,e.date);
-     const fmt=d=>{if(!d)return'-';const dt=new Date(d);return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});};
-     return <div className="entry-row" key={e.id} onClick={()=>setOpenId(e.id)}>
-      <div className="er-top">{e.parentId} &amp; {e.childId} &middot; <span style={{fontWeight:400}}>{e.activity}</span></div>
-      <div className="er-sub" style={{marginTop:4}}>
-       <span>{fmt(e.date)}</span>
-       <span style={{margin:'0 8px'}}>&middot;</span>
-       <span>Child: {childAge||'-'} old</span>
-       <span style={{margin:'0 8px'}}>&middot;</span>
-       <span>Parent: {parentAge||'-'} old</span>
-      </div>
-      {flags[e.id] && <div style={{fontSize:12,color:'#8B6914',background:'#FFF8E7',borderRadius:4,padding:'3px 8px',marginTop:6,display:'inline-block'}}>{flags[e.id]}</div>}
-      <div className="er-sub" style={{marginTop:2,fontSize:12,color:'#999'}}>{PHASES[e.phase]} &middot; {(e.autoWords||[]).length} trait words &middot; {Object.values(e.markers||{}).filter(m=>m.claimed).length}/6 markers</div>
+    {loadError && !loadingEntries ? <div className="empty">{loadError}</div> : loadingEntries ? <div className="empty">Loading entries...</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to journal an activity - then refresh.</div> :
+     entries.map(e=>{
+      const childAge=ageFrom(e.childDob,e.date);
+      const parentAge=ageFrom(e.parentDob,e.date);
+      const fmt=d=>{const dt=parseStoredDate(d);return dt?dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'}):'-';};
+      const phaseLabel=PHASES[e.phase]||e.phase||'Phase not saved';
+      return <div className="entry-row" key={e._key} onClick={()=>setOpenId(e._key)}>
+       <div className="er-top">{e.parentId} &amp; {e.childId} &middot; <span style={{fontWeight:400}}>{e.activity}</span></div>
+       <div className="er-sub" style={{marginTop:4}}>
+        <span>{fmt(e.date)}</span>
+        <span style={{margin:'0 8px'}}>&middot;</span>
+       <span>Child: {childAge||'-'}{e.childGender?' / '+e.childGender:''}</span>
+        <span style={{margin:'0 8px'}}>&middot;</span>
+       <span>Parent: {parentAge||'-'}{e.parentGender?' / '+e.parentGender:''}</span>
+       </div>
+      {flags[e._key] && <div style={{fontSize:12,color:'#8B6914',background:'#FFF8E7',borderRadius:4,padding:'3px 8px',marginTop:6,display:'inline-block'}}>{flags[e._key]}</div>}
+      <div className="er-sub" style={{marginTop:2,fontSize:12,color:'#999'}}>{phaseLabel} &middot; {(e.autoWords||[]).length} trait words &middot; {Object.values(e.markers||{}).filter(m=>m&&m.claimed).length}/6 markers</div>
      </div>;
     })
    }
   </div>
  </div>;
 }
-function CounsellorReview({entry,back,user}){
+function CounsellorReview({entry,back,user,authSession}){
  const TABS=['Review','AI Analysis','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative'];
  const [tab,setTab]=useState('Review');
  const [aiAnalysis,setAiAnalysis]=useState(null);
  const [aiLoading,setAiLoading]=useState(false);
  const [aiError,setAiError]=useState('');
+ const [reviewError,setReviewError]=useState('');
  const [rv,setRv]=useState({moments:[{cog:'',aff:'',beh:'',congruence:null,note:'',question:''}],satir:{instinct:'',congruent:'',cultural:''},stance:null,gap:'',narrative:''});
- useEffect(()=>{DB.getReview(user.id,entry.id).then(r=>{if(r)setRv(r);});},[]);
- const saveRv=async(next)=>{await DB.saveReview(user.id,entry.id,next);setRv(next);};
+ const canSaveReview=entry.id!==undefined&&entry.id!==null&&entry.id!=='';
+ useEffect(()=>{
+  setReviewError('');
+  if(!canSaveReview)return;
+  DB.getReview(user.id,entry.id,authSession).then(r=>{if(r)setRv(r);}).catch(err=>{
+   setReviewError('Saved review notes could not be loaded.');
+   AuthDebug.log('[counsellor] review load failed:', { message: err?.message || String(err) });
+  });
+ },[user.id,entry.id,authSession?.access_token]);
+ const saveRv=async(next)=>{
+  setRv(next);
+  setReviewError('');
+  if(!canSaveReview){setReviewError('Review notes cannot be saved for this older record because no entry id is available.');return;}
+  try{
+   await DB.saveReview(user.id,entry.id,next,authSession);
+  }catch(err){
+   setReviewError('Review notes could not be saved. Please try again.');
+   AuthDebug.log('[counsellor] review save failed:', { message: err?.message || String(err) });
+  }
+ };
  const setM=(i,k,v)=>{const m=structuredClone(rv.moments);m[i][k]=v;saveRv({...rv,moments:m});};
  const addM=()=>saveRv({...rv,moments:[...rv.moments,{cog:'',aff:'',beh:'',congruence:null,note:'',question:''}]});
  const rmM=(i)=>saveRv({...rv,moments:rv.moments.filter((_,x)=>x!==i)});
 
  const childY=ageFrom(entry.childDob,entry.date);
- const need=childNeed(childY);
+ const childYears=yearsFrom(entry.childDob,entry.date);
+ const need=childNeed(childYears);
  const discQ=(entry.disc||'').toUpperCase().replace(/[^DISC]/g,'');
  const dominant=[...new Set(discQ.split(''))];
  const valueWords=entry.valueWords||entry.autoWords||[];
@@ -1316,7 +1402,7 @@ function CounsellorReview({entry,back,user}){
  const warmN=wq('I').length, steadyN=wq('S').length;
  const dHarsh=valueWords.filter(w=>D_HARSH.includes(w));
  const cHarsh=valueWords.filter(w=>C_HARSH.includes(w));
- const claimed=Object.entries(entry.markers).filter(([k,v])=>v.claimed).map(([k])=>k);
+ const claimed=Object.entries(entry.markers||{}).filter(([k,v])=>v&&v.claimed).map(([k])=>k);
  const nurtureMk=['collaborates','thoughtsBeneath','noManaging','present'].filter(k=>claimed.includes(k)).length;
  const criticalScore=dHarsh.length*2 + cHarsh.length*2;
  const nurtureScore=warmN+steadyN+nurtureMk;
@@ -1361,7 +1447,7 @@ function CounsellorReview({entry,back,user}){
  };
 
  const buildNarrative=()=>{
-  const childRef=childY!==null&&childY>0?'your child':'your child';
+  const childRef='your child';
   const qs=rv.moments.filter(m=>m.congruence==='incongruent'&&m.question).map(m=>m.question.trim());
   let p=['Dear [parent\'s name],',''];
   if(nurtureScore>=3) p.push('There was a settledness in you this time — moments you could simply be with '+childRef+' rather than work at it. That groundedness is the soil everything grows from.');
@@ -1374,25 +1460,29 @@ function CounsellorReview({entry,back,user}){
   return p.join('\n');
  };
 
+ const phaseLabel=PHASES[entry.phase]||entry.phase||'Phase not saved';
+ const claimedMarkers=MARKERS.filter(m=>entry.markers?.[m.key]?.claimed);
+
  return <div className="wrap">
   <Bar title={entry.parentId+' · '+entry.activity} back={back}/>
   <div className="card">
    <div className="tab-row">{TABS.map(t=><div key={t} className={'tab'+((tab===t)||(t==='AI Analysis'&&tab==='aiAnalysis')?' on':'')} onClick={()=>selectTab(t)}>{t}</div>)}</div>
+   {reviewError&&<div style={{background:'#FDECEC',color:'#8A1F1F',padding:10,borderRadius:6,marginTop:12}}>{reviewError}</div>}
 
    {tab==='Review' && <>
     <h2>What the parent reflected</h2>
-    <p className="sub" style={{marginBottom:16}}>{entry.date} · {PHASES[entry.phase]} · child {fmtAge(childY)}{entry.disc?' · DISC '+entry.disc:''}{entry.ethnicity?' · '+entry.ethnicity:''}</p>
+    <p className="sub" style={{marginBottom:16}}>{entry.date} · {phaseLabel} · child {fmtAge(childY)}{entry.childGender?' · '+entry.childGender:''}{entry.disc?' · DISC '+entry.disc:''}{entry.ethnicity?' · '+entry.ethnicity:''}</p>
     <div className="readout"><h4>THOUGHTS (COGNITIVE)</h4><div className="body">{entry.cab.thoughts||'—'}</div></div>
     <div className="readout"><h4>FEELINGS (AFFECT)</h4><div className="body">{entry.cab.feelings||'—'}</div></div>
     <div className="readout"><h4>ACTIONS (BEHAVIOUR)</h4><div className="body">{entry.cab.actions||'—'}</div></div>
     <div className="readout"><h4>MEANING THEY MADE</h4><div className="body">{entry.cab.meaning||'—'}</div></div>
     <h3>Self-declared markers (with their evidence)</h3>
-    {MARKERS.filter(m=>entry.markers[m.key].claimed).length===0?<p className="sub">None claimed this time.</p>:
-     MARKERS.filter(m=>entry.markers[m.key].claimed).map(m=>(
-      <div className="readout" key={m.key}><h4>{m.label.toUpperCase()}</h4><div className="body">{entry.markers[m.key].evidence}</div></div>
+    {claimedMarkers.length===0?<p className="sub">None claimed this time.</p>:
+     claimedMarkers.map(m=>(
+      <div className="readout" key={m.key}><h4>{m.label.toUpperCase()}</h4><div className="body">{entry.markers?.[m.key]?.evidence||'—'}</div></div>
      ))}
     <h3>Words they chose</h3>
-    <div>{valueWords.map(w=><span key={w} className={'tagline tag-'+WORD_Q[w].toLowerCase()}>{w}</span>)}{!valueWords.length&&<span className="sub">none selected</span>}</div>
+    <div>{valueWords.map(w=><span key={w} className={'tagline tag-'+String(WORD_Q[w]||'').toLowerCase()}>{w}</span>)}{!valueWords.length&&<span className="sub">none selected</span>}</div>
    </>}
 
    {tab==='aiAnalysis' && <div style={{marginTop:16}}>
@@ -1444,7 +1534,7 @@ function CounsellorReview({entry,back,user}){
      <div className="shift-box shift-to"><div className="sh-t">HEIGHTEN (I / S END)</div>{QUAD.I.high.slice(0,4).map(w=><span key={w} className="tagline tag-i">{w}</span>)}{QUAD.S.high.slice(0,4).map(w=><span key={w} className="tagline tag-s">{w}</span>)}<div style={{fontSize:11.5,marginTop:8,color:'var(--ink-soft)'}}>Warmth + steadiness the child can feel and borrow.</div></div>
     </div> : <div className="readout"><div className="body">No high-D/high-C words selected this time — warmth and steadiness already leading. Reinforce it.</div></div>}
     <h3>Age-fit note</h3>
-    <div className="readout"><div className="body"><b>{need.band}:</b> {childY!==null&&childY<7?'At this age, warmth and calm regulate the child far more than correction. Every softened "C" moment teaches that feelings are safe.':'Validation and collaboration matter more than directives now — the "I/S" stance builds the autonomy-with-safety this age needs.'}</div></div>
+    <div className="readout"><div className="body"><b>{need.band}:</b> {childYears!==null&&childYears<7?'At this age, warmth and calm regulate the child far more than correction. Every softened "C" moment teaches that feelings are safe.':'Validation and collaboration matter more than directives now — the "I/S" stance builds the autonomy-with-safety this age needs.'}</div></div>
    </>}
 
    {tab==='Congruent Response' && <>

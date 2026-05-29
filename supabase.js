@@ -28,6 +28,41 @@ const profileTimestampOrNull = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
+const normalizeObject = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+const normalizeArray = (value) => Array.isArray(value) ? value : [];
+const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== '') || null;
+
+const normalizeJournalEntryRow = (row, fallbackParentId = null) => {
+  const data = normalizeObject(row?.data);
+  const submittedAt = firstValue(data.submittedAt, data.created_at, row?.created_at);
+  const date = firstValue(data.date, submittedAt ? String(submittedAt).slice(0, 10) : null);
+  const cab = normalizeObject(data.cab);
+  const markers = normalizeObject(data.markers);
+  const parentId = firstValue(data.parentId, data.parent_id, row?.parent_id, fallbackParentId);
+  const childId = firstValue(data.childId, data.child_id, data.dyadId, data.dyad_id, row?.child_id);
+
+  return {
+    ...data,
+    id: firstValue(data.id, row?.id),
+    parentId,
+    childId,
+    date,
+    submittedAt,
+    created_at: row?.created_at || data.created_at || null,
+    activity: firstValue(data.activity, data.activityTitle, data.title, 'Untitled activity'),
+    phase: firstValue(data.phase, data.phaseKey, ''),
+    cab: {
+      thoughts: cab.thoughts || '',
+      feelings: cab.feelings || '',
+      actions: cab.actions || '',
+      meaning: cab.meaning || ''
+    },
+    markers,
+    autoWords: normalizeArray(data.autoWords || data.valueWords),
+    valueWords: normalizeArray(data.valueWords || data.autoWords)
+  };
+};
+
 const getAuthenticatedReadSession = async (userId, context, providedSession = null, parentId = null) => {
   const providedSessionUserId = providedSession?.user?.id || null;
   const providedHasAccessToken = !!providedSession?.access_token;
@@ -244,6 +279,21 @@ const Profile = {
 
     throw new Error(`Auth session not ready for user ${userId}.`);
   },
+  getExisting: async (userId, session) => {
+    const authSession = await Profile.waitForSession(userId, session);
+    const data = await authenticatedSelect({
+      table: 'profiles',
+      query: {
+        select: 'parent_id,role',
+        user_id: `eq.${userId}`,
+        limit: '1'
+      },
+      userId,
+      session: authSession,
+      context: 'getExisting profile'
+    });
+    return data.length > 0 ? data[0] : null;
+  },
   getOrCreate: async (userId, role, session) => {
     const profileRole = role || 'parent';
     const authSession = await Profile.waitForSession(userId, session);
@@ -424,12 +474,7 @@ const DB = {
 
   // Journal entries
   getEntries: async (userId, parentId, authSession = null) => {
-    const mapEntries = rows => (rows || []).map(r => ({
-      id: r.data?.id || r.id,
-      parentId: r.data?.parentId || r.parent_id || parentId,
-      created_at: r.created_at,
-      ...(r.data || {})
-    }));
+    const mapEntries = rows => (rows || []).map(r => normalizeJournalEntryRow(r, parentId));
 
     if (parentId) {
       try {
@@ -466,16 +511,18 @@ const DB = {
     return mapEntries(data);
   },
 
-  getAllEntries: async () => {
+  getAllEntries: async (userId, authSession = null) => {
     const data = await authenticatedSelect({
       table: 'journal_entries',
       query: {
-        select: 'data',
+        select: 'id,parent_id,data,created_at',
         order: 'id.desc'
       },
+      userId,
+      session: authSession,
       context: 'getAllEntries'
     });
-    return (data || []).map(r => r.data);
+    return (data || []).map(r => normalizeJournalEntryRow(r));
   },
 
   saveEntry: async (userId, entry) => {
@@ -485,19 +532,38 @@ const DB = {
   },
 
   // Reviews
-  getReview: async (userId, entryId) => {
-    const { data, error } = await sb.from('reviews')
-      .select('data')
-      .eq('user_id', userId)
-      .eq('entry_id', entryId)
-      .maybeSingle();
-    if (error) console.error('getReview error:', error);
-    return data ? data.data : null;
+  getReview: async (userId, entryId, authSession = null) => {
+    const data = await authenticatedSelect({
+      table: 'reviews',
+      query: {
+        select: 'data',
+        user_id: `eq.${userId}`,
+        entry_id: `eq.${entryId}`,
+        limit: '1'
+      },
+      userId,
+      session: authSession,
+      context: 'getReview'
+    });
+    return data.length > 0 ? data[0].data : null;
   },
 
-  saveReview: async (userId, entryId, review) => {
-    const { error } = await sb.from('reviews')
-      .upsert({ entry_id: entryId, user_id: userId, data: review }, { onConflict: 'entry_id' });
-    if (error) console.error('saveReview error:', error);
+  saveReview: async (userId, entryId, review, authSession = null) => {
+    const session = await getAuthenticatedReadSession(userId, 'saveReview', authSession);
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/reviews?on_conflict=entry_id`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ entry_id: entryId, user_id: userId, data: review })
+    });
+
+    if (!response.ok) {
+      const responseText = await response.text();
+      throw new Error(`Authenticated saveReview failed with status ${response.status}: ${responseText || response.statusText}`);
+    }
   },
 };
