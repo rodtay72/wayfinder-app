@@ -94,6 +94,21 @@ const LS={
 };
 
 /* ============ HELPERS ============ */
+const parseStoredDate=(value)=>{
+ if(!value)return null;
+ if(value instanceof Date)return isNaN(value)?null:value;
+ const raw=String(value).trim();
+ if(!raw)return null;
+ const direct=new Date(raw);
+ if(!isNaN(direct))return direct;
+ const legacy=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+ if(!legacy)return null;
+ const [,day,month,year,hour='0',minute='0',second='0']=legacy;
+ const parsed=new Date(Number(year),Number(month)-1,Number(day),Number(hour),Number(minute),Number(second));
+ return isNaN(parsed)?null:parsed;
+};
+const firstStoredDateValue=(...values)=>values.find(v=>parseStoredDate(v))||values.find(Boolean)||null;
+const toIsoTimestampOrNull=(value)=>{const date=parseStoredDate(value);return date?date.toISOString():null;};
 const ageFrom=(dob,at)=>{if(!dob)return null;const b=new Date(dob),r=at?new Date(at):new Date();if(isNaN(b))return null;const totalMonths=Math.floor((r.getFullYear()-b.getFullYear())*12+(r.getMonth()-b.getMonth())-(r.getDate()<b.getDate()?1:0));if(totalMonths<0)return null;const y=Math.floor(totalMonths/12);const m=totalMonths%12;if(y===0)return m===1?'1 month':`${m} months`;if(m===0)return y===1?'1 year':`${y} years`;return y===1?(m===1?'1 year 1 month':`1 year ${m} months`):(m===1?`${y} years 1 month`:`${y} years ${m} months`);};
 const fmtAge=(y)=>y===null||y===undefined?'—':y;
 const genId=(p)=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=c[Math.floor(Math.random()*c.length)];return p+'-'+s;};
@@ -183,24 +198,6 @@ function ProfileSettings({user,profile,dyads=[],entries=[]}){
  </div>;
 }
 
-function AuthDebugPanel({authReady,user,profile,role}){
- const show=AuthDebug.enabled();
- if(!show)return null;
- const emailVerified=!!(user?.email_confirmed_at||user?.confirmed_at);
- return <details className="card" style={{padding:14}}>
-  <summary style={{cursor:'pointer',fontWeight:800}}>Debug</summary>
-  <div style={{fontFamily:'monospace',fontSize:12,lineHeight:1.7,marginTop:10,wordBreak:'break-word'}}>
-   <div>authReady: {String(!!authReady)}</div>
-   <div>user exists: {String(!!user)}</div>
-   <div>user id: {user?.id||'-'}</div>
-   <div>email verified: {String(emailVerified)}</div>
-   <div>profile loaded: {String(!!profile)}</div>
-   <div>parent_id: {profile?.parent_id||'-'}</div>
-   <div>current role: {profile?.role||role||'-'}</div>
-  </div>
- </details>;
-}
-
 function Landing({onEnter,user,profile,onSignOut,authReady,role}){
  return <div className="wrap">
   <div className="lp-nav">
@@ -208,7 +205,6 @@ function Landing({onEnter,user,profile,onSignOut,authReady,role}){
    <div className="lp-tag">A space to find your way back to each other</div>
   </div>
   <ProfileSettings user={user} profile={profile} onSignOut={onSignOut}/>
-  <AuthDebugPanel authReady={authReady} user={user} profile={profile} role={role}/>
 
   {/* Hero — The Art of Connection */}
   <div className="card" style={{position:'relative',overflow:'hidden'}}>
@@ -617,10 +613,9 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
  const [stage,setStage]=useState('loading'); // loading | dashboard | selectChild | register | trail | journal | done
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
- const entryDateValue=(entry)=>entry?.timestamp||entry?.submittedAt||entry?.date||entry?.created_at||null;
+ const entryDateValue=(entry)=>firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at);
  const entryTime=(entry)=>{
-  const raw=entryDateValue(entry);
-  const date=raw?new Date(raw):null;
+  const date=parseStoredDate(entryDateValue(entry));
   return date&&!isNaN(date)?date.getTime():0;
  };
  const entryChildId=(entry)=>entry?.childId||entry?.child_id||entry?.dyadId||entry?.dyad_id||'';
@@ -632,7 +627,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   return childId&&id&&String(id)===String(childId);
  };
  const formatEntryDate=(value)=>{
-  const date=value?new Date(value):null;
+  const date=parseStoredDate(value);
   if(!date||isNaN(date)) return 'Date not saved';
   return date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
  };
@@ -670,10 +665,8 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
    const currentCount=allEntries.length;
    const sortedEntries=[...allEntries].sort((a,b)=>entryTime(b)-entryTime(a));
    const latestRaw=entryDateValue(sortedEntries[0]);
-   const latestDate=latestRaw?new Date(latestRaw):null;
-   const latestEntryAt=latestDate&&!isNaN(latestDate)?latestDate.toISOString():latestRaw;
-   const cachedDate=extProfile?.insight_latest_entry_at?new Date(extProfile.insight_latest_entry_at):null;
-   const cachedLatest=cachedDate&&!isNaN(cachedDate)?cachedDate.toISOString():extProfile?.insight_latest_entry_at;
+   const latestEntryAt=toIsoTimestampOrNull(latestRaw);
+   const cachedLatest=toIsoTimestampOrNull(extProfile?.insight_latest_entry_at);
 
    const cacheValid=extProfile?.insight_text&&
     extProfile.insight_entry_count===currentCount&&
@@ -729,40 +722,38 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   const recentEntries=[...entries]
    .sort((a,b)=>entryTime(b)-entryTime(a))
    .slice(0,5);
-  return <div className="wrap">
-   <div className="card banner" style={{position:'relative'}}>
-    <div style={{maxWidth:520}}>
+  return <div className="wrap dashboard-wrap">
+   <div className="card banner dashboard-hero">
+    <div className="dashboard-hero-copy">
      <p style={{opacity:.8,fontSize:13,margin:0}}>Welcome back</p>
      <h1>Parent {parentId}</h1>
      <p style={{opacity:.85,fontSize:14,marginTop:4}}>Wayfinder ID: <b>{parentId}</b> &middot; Role: <b>{profile?.role||'parent'}</b></p>
     </div>
-    <div style={{position:'absolute',top:18,right:18,display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
+    <div className="dashboard-actions">
      <button className="switch" onClick={startNewChild}>+ New child</button>
      <button className="switch" onClick={startNewEntry}>Start new activity</button>
      <button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>Sign out</button>
    </div>
   </div>
   <ProfileSettings user={user} profile={profile} dyads={dyads} entries={entries}/>
-  <AuthDebugPanel authReady={authReady} user={user} profile={profile} role={profile?.role}/>
 
-   <div className="card">
-    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:14}}>
+   <div className="card dashboard-section">
+    <div className="dashboard-section-head">
      <h2 style={{margin:0}}>Past activities</h2>
-     {recentEntries.length===0&&<button className="btn btn-primary" onClick={startNewEntry}>Start new activity</button>}
+     <span className="pill">{recentEntries.length} shown</span>
     </div>
-    {recentEntries.length>0 ? <div style={{display:'grid',gap:10}}>
-     {recentEntries.map(e=><div key={e.id||`${entryChildId(e)}-${entryDateValue(e)}-${entryTitle(e)}`} style={{border:'1px solid #E8DCC8',borderRadius:8,padding:14,background:'#fff'}}>
-      <div style={{fontWeight:800,color:'#40514b'}}>{entryTitle(e)}</div>
-      <div className="sub" style={{fontSize:13,marginTop:4}}>{formatEntryDate(entryDateValue(e))}{entryPhaseLabel(e)?' · '+entryPhaseLabel(e):''} &middot; Child ID: {entryChildId(e)||'Not saved'}</div>
+    {recentEntries.length>0 ? <div className="dashboard-list">
+     {recentEntries.map(e=><div key={e.id||`${entryChildId(e)}-${entryDateValue(e)}-${entryTitle(e)}`} className="dashboard-list-item">
+      <div className="dashboard-item-title">{entryTitle(e)}</div>
+      <div className="sub dashboard-item-meta">{formatEntryDate(entryDateValue(e))}{entryPhaseLabel(e)?' - '+entryPhaseLabel(e):''} &middot; Child ID: {entryChildId(e)||'Not saved'}</div>
      </div>)}
-    </div> : <div style={{border:'1px dashed #D9C9AD',borderRadius:8,padding:18,background:'#fffaf2',textAlign:'center'}}>
-     <p className="sub" style={{marginBottom:14}}>No past activities yet. Start your first Wayfinder activity.</p>
-     <button className="btn btn-primary" onClick={startNewEntry}>Start new activity</button>
+    </div> : <div className="dashboard-empty">
+     <p className="sub">No past activities yet. Start your first Wayfinder activity from the header when you are ready.</p>
     </div>}
    </div>
 
-   <div className="card">
-    <div style={{background:'#f0f4f2',borderRadius:12,padding:20,marginBottom:16}}>
+   <div className="card dashboard-section">
+    <div className="dashboard-insight">
      {discDyad.disc ? <>
       <h2 style={{marginBottom:4}}>{discDyad.disc.toUpperCase()} - {discDescriptor(discDyad.disc)?.name||discDyad.disc.toUpperCase()}</h2>
       <p style={{fontSize:13,color:'#888',marginBottom:8,marginTop:0}}>Your behavioural responses under pressure - what your child observes</p>
@@ -782,25 +773,27 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
      </>}
     </div>
 
-    <h2 style={{marginBottom:14}}>Your children</h2>
-    {dyads.length===0 ? <div style={{border:'1px dashed #D9C9AD',borderRadius:8,padding:18,background:'#fffaf2'}}>
-     <p className="sub" style={{marginBottom:12}}>No child profiles yet. Add a child to start your first Wayfinder activity.</p>
-     <button className="btn btn-secondary" onClick={startNewChild}>+ New child</button>
-    </div> : <div style={{display:'grid',gap:14}}>
+    <div className="dashboard-section-head">
+     <h2 style={{margin:0}}>Your children</h2>
+     <span className="pill">{dyads.length} saved</span>
+    </div>
+    {dyads.length===0 ? <div className="dashboard-empty">
+     <p className="sub">No child profiles yet. Add a child from the header to start your first Wayfinder activity.</p>
+    </div> : <div className="dashboard-list">
      {dyads.map(child=>{
       const childEntries=[...entries].filter(e=>childMatchesEntry(child,e)).sort((a,b)=>entryTime(b)-entryTime(a)).slice(0,3);
-      return <div key={child.childId} style={{border:'1px solid #E8DCC8',borderRadius:8,padding:16,background:'#fff'}}>
-       <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',marginBottom:8}}>
+      return <div key={child.childId} className="dashboard-list-item child-summary-card">
+       <div className="child-summary-top">
         <div>
          <div style={{fontWeight:800,fontSize:16}}>Child ID: {child.childId}</div>
          <div className="sub" style={{fontSize:13,marginTop:4}}>{child.childGender||'Gender not added'} &middot; {ageFrom(child.childDob,null)||'Age not added'}</div>
         </div>
-        <button className="btn btn-secondary" onClick={()=>{setDyad(child);setStage('journal');}}>+ New entry</button>
+        <button className="btn btn-secondary" onClick={()=>{setDyad(child);setStage('journal');}}>Journal for this Child ID</button>
        </div>
-       {childEntries.length>0 ? <div style={{marginTop:12}}>
-        <div style={{fontWeight:700,fontSize:13,marginBottom:6,color:'#5d6c66'}}>Recent reflections</div>
-        <div style={{display:'grid',gap:6}}>
-         {childEntries.map(e=><div key={e.id||`${entryChildId(e)}-${entryDateValue(e)}-${entryTitle(e)}`} style={{fontSize:14,color:'#4b5a54'}}>{formatEntryDate(entryDateValue(e))} &middot; {entryTitle(e)}</div>)}
+       {childEntries.length>0 ? <div className="child-reflections">
+        <div className="child-reflections-title">Recent reflections</div>
+        <div className="child-reflections-list">
+         {childEntries.map(e=><div key={e.id||`${entryChildId(e)}-${entryDateValue(e)}-${entryTitle(e)}`} className="child-reflection-row">{formatEntryDate(entryDateValue(e))} &middot; {entryTitle(e)}</div>)}
         </div>
        </div> : <p className="sub" style={{fontSize:13,marginTop:10}}>No reflections yet. Begin when you have a small moment you want to notice.</p>}
       </div>;
@@ -809,7 +802,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
     <button className="btn btn-secondary btn-block" style={{marginTop:8}} onClick={()=>setStage('trail')}>My journal trail</button>
    </div>
 
-   <div className="card" style={{background:'#fbf5ea'}}>
+   <div className="card dashboard-lean-card">
     <h2 style={{marginBottom:10}}>This week, lean into:</h2>
     <p style={{fontWeight:700,color:'#40514b',marginBottom:10}}>{shiftWords.join(' · ')}</p>
     <p className="sub">What your child needs: {CHILD_NEEDS_WORDS.join(' · ')}</p>
@@ -858,10 +851,24 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [loading,setLoading]=useState(true);
  const [openId,setOpenId]=useState(null);
+ const entryDateValue=(entry)=>firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at);
+ const entryTime=(entry)=>{
+  const date=parseStoredDate(entryDateValue(entry));
+  return date&&!isNaN(date)?date.getTime():0;
+ };
+ const entryChildId=(entry)=>entry?.childId||entry?.child_id||entry?.dyadId||entry?.dyad_id||'';
+ const entryTitle=(entry)=>entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
+ const entryPhaseLabel=(entry)=>entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
+ const dyadByChildId=Object.fromEntries((dyads||[]).map(d=>[String(d.childId||d.child_id||''),d]));
+ const entryChildAge=(entry)=>{
+  const childId=entryChildId(entry);
+  const childDob=entry?.childDob||entry?.child_dob||dyadByChildId[String(childId)]?.childDob||null;
+  return ageFrom(childDob,entryDateValue(entry));
+ };
 
  useEffect(()=>{
   DB.getEntries(user.id).then(data=>{
-   setEntries(data.sort((a,b)=>new Date(b.date)-new Date(a.date)));
+   setEntries(data.sort((a,b)=>entryTime(b)-entryTime(a)));
    setLoading(false);
   });
  },[]);
@@ -883,7 +890,9 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
 
  const fmt=d=>{
   if(!d) return '-';
-  return new Date(d).toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
+  const date=parseStoredDate(d);
+  if(!date||isNaN(date)) return '-';
+  return date.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
  };
 
  if(loading) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your journal trail...</div></div>;
@@ -910,7 +919,7 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
     Your I/S patterns: {[...patternGroups.I,...patternGroups.S].join(', ')}. These can support emotional safety when paced and bounded.
    </p> : null}
    {entries.length>=4 && (()=>{
-    const chronological=[...entries].sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const chronological=[...entries].sort((a,b)=>entryTime(a)-entryTime(b));
     const countWords=(list)=>{
      const counts={};
      list.forEach(e=>(e.autoWords||[]).forEach(w=>{counts[w]=(counts[w]||0)+1;}));
@@ -959,12 +968,14 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
    <h2 style={{marginBottom:14}}>Past entries <span style={{fontWeight:400,fontSize:14,color:'#888'}}>({totalEntries})</span></h2>
    {totalEntries===0 ? <p className="sub">No entries yet. Your journal trail will build here as you reflect.</p> : entries.map(e=>{
     const isOpen=openId===e.id;
-    const childAge=ageFrom(e.childDob,e.date);
+    const childAge=entryChildAge(e);
+    const childId=entryChildId(e);
+    const phaseLabel=entryPhaseLabel(e);
     return <div key={e.id} style={{borderBottom:'1px solid #eee',paddingBottom:12,marginBottom:12}}>
      <div style={{cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}} onClick={()=>setOpenId(isOpen?null:e.id)}>
       <div>
-       <div style={{fontWeight:700,fontSize:14}}>{e.activity}</div>
-       <div className="sub" style={{fontSize:12,marginTop:2}}>{fmt(e.date)} &middot; {PHASES[e.phase]} &middot; Child {e.childId} &middot; {childAge||'-'} old</div>
+       <div style={{fontWeight:700,fontSize:14}}>{entryTitle(e)}</div>
+       <div className="sub" style={{fontSize:12,marginTop:2}}>{fmt(entryDateValue(e))}{phaseLabel?' - '+phaseLabel:''} &middot; Child ID: {childId||'Not saved'} &middot; {childAge||'-'} old</div>
       </div>
       <span style={{fontSize:18,color:'#999',marginLeft:8}}>{isOpen?'^':'v'}</span>
      </div>
@@ -1037,8 +1048,9 @@ function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
  };
 
  const finalSubmit=async()=>{
-  const entry={id:Date.now(),parentId,childId:dyad.childId,date:new Date().toISOString().split('T')[0],phase,activity,
-    cab,autoWords,markers,disc:dyad.disc,ethnicity:dyad.ethnicity,childDob:dyad.childDob,parentDob:dyad.parentDob,parentGender:dyad.parentGender,childGender:dyad.childGender,submittedAt:new Date().toLocaleString()};
+  const submittedAt=new Date().toISOString();
+  const entry={id:Date.now(),parentId,childId:dyad.childId,date:submittedAt.split('T')[0],phase,activity,
+    cab,autoWords,markers,disc:dyad.disc,ethnicity:dyad.ethnicity,childDob:dyad.childDob,parentDob:dyad.parentDob,parentGender:dyad.parentGender,childGender:dyad.childGender,submittedAt};
   await DB.saveEntry(user.id, entry);
   onDone();
  };

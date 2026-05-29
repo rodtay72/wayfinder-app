@@ -21,6 +21,12 @@ const AuthDebug = {
   }
 };
 
+const profileTimestampOrNull = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
 // ---- AUTH ----
 const Auth = {
   signUp: (email, password) => sb.auth.signUp({ email, password }),
@@ -192,7 +198,7 @@ const Profile = {
         insight_text: text,
         insight_generated_at: new Date().toISOString(),
         insight_entry_count: entryCount,
-        insight_latest_entry_at: latestEntryAt || null
+        insight_latest_entry_at: profileTimestampOrNull(latestEntryAt)
       })
       .eq('user_id', userId);
     if (error) console.error('saveInsight error:', error);
