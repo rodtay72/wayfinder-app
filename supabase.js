@@ -27,6 +27,74 @@ const profileTimestampOrNull = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
+const getAuthenticatedReadSession = async (userId, context, parentId) => {
+  const { data: sessionData, error } = await sb.auth.getSession();
+  if (error) throw error;
+
+  const session = sessionData?.session || null;
+  const sessionUserId = session?.user?.id || null;
+  const hasAccessToken = !!session?.access_token;
+
+  AuthDebug.log('[db] authenticated read session:', {
+    context,
+    sessionExists: !!session,
+    accessTokenExists: hasAccessToken,
+    sessionUserId,
+    requestedUserId: userId || null,
+    parentId: parentId || null
+  });
+
+  if (!session || !hasAccessToken) {
+    throw new Error(`Authenticated read session not ready for ${context}.`);
+  }
+  if (userId && sessionUserId !== userId) {
+    throw new Error(`Authenticated read user mismatch. requested=${userId} session=${sessionUserId}`);
+  }
+
+  return session;
+};
+
+const authenticatedSelect = async ({ table, query, userId = null, parentId = null, context }) => {
+  const session = await getAuthenticatedReadSession(userId, context, parentId);
+  const params = new URLSearchParams(query);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session.access_token}`,
+      Accept: 'application/json'
+    }
+  });
+
+  const responseText = await response.text();
+  let data = null;
+  try {
+    data = responseText ? JSON.parse(responseText) : [];
+  } catch {
+    data = responseText;
+  }
+
+  if (!response.ok) {
+    AuthDebug.log('[db] authenticated read failed:', {
+      context,
+      status: response.status,
+      statusText: response.statusText,
+      requestedUserId: userId || null,
+      parentId: parentId || null
+    });
+    throw new Error(`Authenticated ${context} read failed with status ${response.status}: ${responseText || response.statusText}`);
+  }
+
+  AuthDebug.log('[db] authenticated read result:', {
+    context,
+    requestedUserId: userId || null,
+    parentId: parentId || null,
+    rowsReturned: Array.isArray(data) ? data.length : 0
+  });
+
+  return Array.isArray(data) ? data : [];
+};
+
 // ---- AUTH ----
 const Auth = {
   signUp: (email, password) => sb.auth.signUp({ email, password }),
@@ -215,46 +283,77 @@ const DB = {
     }));
 
     if (parentId) {
-      const { data, error } = await sb.from('dyads')
-        .select('child_id, parent_id, data')
-        .eq('parent_id', parentId)
-        .order('id', { ascending: true });
-      if (error) {
+      try {
+        const data = await authenticatedSelect({
+          table: 'dyads',
+          query: {
+            select: 'child_id,parent_id,data',
+            parent_id: `eq.${parentId}`,
+            order: 'id.asc'
+          },
+          userId,
+          parentId,
+          context: 'getAllDyads parent_id'
+        });
+        if (data.length > 0) return mapDyads(data);
+      } catch (error) {
         console.error('getAllDyads parent_id error:', error);
-      } else if ((data || []).length > 0) {
-        return mapDyads(data);
       }
     }
 
-    const { data, error } = await sb.from('dyads')
-      .select('child_id, parent_id, data')
-      .eq('user_id', userId)
-      .order('id', { ascending: true });
-    if (error) console.error('getAllDyads user_id error:', error);
+    const data = await authenticatedSelect({
+      table: 'dyads',
+      query: {
+        select: 'child_id,parent_id,data',
+        user_id: `eq.${userId}`,
+        order: 'id.asc'
+      },
+      userId,
+      parentId,
+      context: 'getAllDyads user_id'
+    });
     return mapDyads(data);
   },
 
   getDyad: async (userId, childId, parentId) => {
     if (parentId) {
-      const { data, error } = await sb.from('dyads')
-        .select('child_id, parent_id, data')
-        .eq('parent_id', parentId)
-        .eq('child_id', childId)
-        .maybeSingle();
-      if (error) {
+      try {
+        const data = await authenticatedSelect({
+          table: 'dyads',
+          query: {
+            select: 'child_id,parent_id,data',
+            parent_id: `eq.${parentId}`,
+            child_id: `eq.${childId}`,
+            limit: '1'
+          },
+          userId,
+          parentId,
+          context: 'getDyad parent_id'
+        });
+        if (data.length > 0) {
+          const row = data[0];
+          return { ...(row.data || {}), parentId: row.data?.parentId || row.parent_id, childId: row.data?.childId || row.child_id };
+        }
+      } catch (error) {
         console.error('getDyad parent_id error:', error);
-      } else if (data) {
-        return { ...(data.data || {}), parentId: data.data?.parentId || data.parent_id, childId: data.data?.childId || data.child_id };
       }
     }
 
-    const { data, error } = await sb.from('dyads')
-      .select('child_id, parent_id, data')
-      .eq('user_id', userId)
-      .eq('child_id', childId)
-      .maybeSingle();
-    if (error) console.error('getDyad user_id error:', error);
-    return data ? { ...(data.data || {}), parentId: data.data?.parentId || data.parent_id, childId: data.data?.childId || data.child_id } : null;
+    const data = await authenticatedSelect({
+      table: 'dyads',
+      query: {
+        select: 'child_id,parent_id,data',
+        user_id: `eq.${userId}`,
+        child_id: `eq.${childId}`,
+        limit: '1'
+      },
+      userId,
+      parentId,
+      context: 'getDyad user_id'
+    });
+    if (data.length === 0) return null;
+    const row = data[0];
+    return { ...(row.data || {}), parentId: row.data?.parentId || row.parent_id, childId: row.data?.childId || row.child_id };
   },
 
   saveDyad: async (userId, parentId, dyad) => {
@@ -273,30 +372,47 @@ const DB = {
     }));
 
     if (parentId) {
-      const { data, error } = await sb.from('journal_entries')
-        .select('id, parent_id, data, created_at')
-        .eq('parent_id', parentId)
-        .order('id', { ascending: false });
-      if (error) {
+      try {
+        const data = await authenticatedSelect({
+          table: 'journal_entries',
+          query: {
+            select: 'id,parent_id,data,created_at',
+            parent_id: `eq.${parentId}`,
+            order: 'id.desc'
+          },
+          userId,
+          parentId,
+          context: 'getEntries parent_id'
+        });
+        if (data.length > 0) return mapEntries(data);
+      } catch (error) {
         console.error('getEntries parent_id error:', error);
-      } else if ((data || []).length > 0) {
-        return mapEntries(data);
       }
     }
 
-    const { data, error } = await sb.from('journal_entries')
-      .select('id, parent_id, data, created_at')
-      .eq('user_id', userId)
-      .order('id', { ascending: false });
-    if (error) console.error('getEntries user_id error:', error);
+    const data = await authenticatedSelect({
+      table: 'journal_entries',
+      query: {
+        select: 'id,parent_id,data,created_at',
+        user_id: `eq.${userId}`,
+        order: 'id.desc'
+      },
+      userId,
+      parentId,
+      context: 'getEntries user_id'
+    });
     return mapEntries(data);
   },
 
   getAllEntries: async () => {
-    const { data, error } = await sb.from('journal_entries')
-      .select('data')
-      .order('id', { ascending: false });
-    if (error) console.error('getAllEntries error:', error);
+    const data = await authenticatedSelect({
+      table: 'journal_entries',
+      query: {
+        select: 'data',
+        order: 'id.desc'
+      },
+      context: 'getAllEntries'
+    });
     return (data || []).map(r => r.data);
   },
 
