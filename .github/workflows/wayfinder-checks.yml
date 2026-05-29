@@ -1,0 +1,40 @@
+name: Wayfinder Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Check supabase.js syntax
+        run: node --check supabase.js
+
+      - name: Reject browser-side profile writes
+        run: |
+          if grep -R "profiles\.insert\|profiles\.upsert" --include="*.js" .; then
+            echo "Forbidden browser-side profiles.insert/profiles.upsert found"
+            exit 1
+          fi
+
+      - name: Confirm ensure_profile and Bearer auth exist
+        run: |
+          grep -q "ensure_profile" supabase.js
+          grep -q "Authorization" supabase.js
+          grep -q "Bearer" supabase.js
+          grep -q "authenticated read" supabase.js
