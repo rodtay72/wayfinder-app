@@ -7,6 +7,7 @@ const SUPABASE_URL = 'https://mhvjmakraociizeqbvbz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1odmptYWtyYW9jaWl6ZXFidmJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODQ5ODgsImV4cCI6MjA5NTQ2MDk4OH0.WgUnHsG4SiiEO1pjBxHQkWe8eXgqVii0asbG9cNIeBQ';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let activeAuthSession = null;
 
 const AuthDebug = {
   enabled: () => {
@@ -28,6 +29,25 @@ const profileTimestampOrNull = (value) => {
 };
 
 const getAuthenticatedReadSession = async (userId, context, parentId) => {
+  const cachedSession = activeAuthSession || null;
+  const cachedSessionUserId = cachedSession?.user?.id || null;
+  const cachedHasAccessToken = !!cachedSession?.access_token;
+  const cachedMatchesUser = !userId || cachedSessionUserId === userId;
+
+  AuthDebug.log('[db] authenticated read cached session:', {
+    context,
+    sessionExists: !!cachedSession,
+    accessTokenExists: cachedHasAccessToken,
+    sessionUserId: cachedSessionUserId,
+    requestedUserId: userId || null,
+    parentId: parentId || null,
+    userMatches: cachedMatchesUser
+  });
+
+  if (cachedSession && cachedHasAccessToken && cachedMatchesUser) {
+    return cachedSession;
+  }
+
   const { data: sessionData, error } = await sb.auth.getSession();
   if (error) throw error;
 
@@ -37,6 +57,7 @@ const getAuthenticatedReadSession = async (userId, context, parentId) => {
 
   AuthDebug.log('[db] authenticated read session:', {
     context,
+    source: 'getSession',
     sessionExists: !!session,
     accessTokenExists: hasAccessToken,
     sessionUserId,
@@ -51,6 +72,7 @@ const getAuthenticatedReadSession = async (userId, context, parentId) => {
     throw new Error(`Authenticated read user mismatch. requested=${userId} session=${sessionUserId}`);
   }
 
+  activeAuthSession = session;
   return session;
 };
 
@@ -100,8 +122,20 @@ const Auth = {
   signUp: (email, password) => sb.auth.signUp({ email, password }),
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
   resendVerification: (email) => sb.auth.resend({ type: 'signup', email }),
-  signOut: () => sb.auth.signOut(),
+  signOut: () => {
+    activeAuthSession = null;
+    return sb.auth.signOut();
+  },
   getSession: () => sb.auth.getSession(),
+  setActiveSession: (session) => {
+    activeAuthSession = session || null;
+    AuthDebug.log('[auth] active session cache updated:', {
+      sessionExists: !!activeAuthSession,
+      accessTokenExists: !!activeAuthSession?.access_token,
+      sessionUserId: activeAuthSession?.user?.id || null
+    });
+  },
+  getActiveSession: () => activeAuthSession,
   onAuthChange: (cb) => sb.auth.onAuthStateChange(cb),
 };
 

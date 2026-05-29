@@ -349,6 +349,7 @@ function App(){
 
     if(!emailVerified){
      const message = 'Please verify your email before signing in. Check your inbox for the confirmation link.';
+     Auth.setActiveSession(null);
      setAuthMessage(message);
      setAuthMessageEmail(session.user.email||'');
      setUser(null);
@@ -363,6 +364,7 @@ function App(){
 
     setAuthMessage('');
     setAuthMessageEmail('');
+    Auth.setActiveSession(session);
     setUser(session.user);
     // Clear any stale legacy localStorage keys from old app versions
     localStorage.removeItem('sj_v2_dyads');
@@ -390,14 +392,15 @@ function App(){
       setProfileError('We could not load your Wayfinder profile. Please refresh and try signing in again.');
      }
     }
-   } else if(session?.user) {
+  } else if(session?.user) {
     AuthDebug.log('[profile] waiting for auth session:', {
      event,
      sessionExists: hasSession,
      accessTokenExists: hasAccessToken,
      sessionUserId
     });
-   } else {
+  } else {
+    Auth.setActiveSession(null);
     setUser(null);
     setProfile(null);
     setProfileError('');
@@ -409,14 +412,14 @@ function App(){
   return ()=>subscription.unsubscribe();
  },[]);
 
- const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');Auth.signOut();};
+ const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');Auth.setActiveSession(null);Auth.signOut();};
 
  // Auto sign-out after 60 minutes of inactivity
  useEffect(()=>{
   if(!user) return;
   const TIMEOUT=60*60*1000; // 60 minutes
-  let timer=setTimeout(()=>{Auth.signOut();},TIMEOUT);
-  const reset=()=>{clearTimeout(timer);timer=setTimeout(()=>{Auth.signOut();},TIMEOUT);};
+  let timer=setTimeout(signOut,TIMEOUT);
+  const reset=()=>{clearTimeout(timer);timer=setTimeout(signOut,TIMEOUT);};
   const events=['mousemove','keydown','click','touchstart','scroll'];
   events.forEach(e=>window.addEventListener(e,reset,{passive:true}));
   return()=>{clearTimeout(timer);events.forEach(e=>window.removeEventListener(e,reset));};
