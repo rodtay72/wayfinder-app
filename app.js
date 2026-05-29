@@ -638,7 +638,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   let extProfile=null;
   let allEntries=[];
   try{
-   allDyads=await DB.getAllDyads(user.id);
+   allDyads=await DB.getAllDyads(user.id,parentId);
   }catch(err){
    AuthDebug.log('[dashboard] failed to load dyads:', err);
   }
@@ -652,7 +652,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   setDiscBars(extProfile?.disc_bars||null);
 
   try{
-   allEntries=await DB.getEntries(user.id);
+   allEntries=await DB.getEntries(user.id,parentId);
   }catch(err){
    AuthDebug.log('[dashboard] failed to load past activities:', err);
   }
@@ -867,11 +867,11 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
  };
 
  useEffect(()=>{
-  DB.getEntries(user.id).then(data=>{
+  DB.getEntries(user.id,parentId).then(data=>{
    setEntries(data.sort((a,b)=>entryTime(b)-entryTime(a)));
    setLoading(false);
   });
- },[]);
+ },[user.id,parentId]);
 
  const wordCounts={};
  entries.forEach(e=>(e.autoWords||[]).forEach(w=>{wordCounts[w]=(wordCounts[w]||0)+1;}));

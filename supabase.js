@@ -207,23 +207,54 @@ const Profile = {
 // ---- DATABASE ----
 const DB = {
   // Dyads
-  getAllDyads: async (userId) => {
+  getAllDyads: async (userId, parentId) => {
+    const mapDyads = rows => (rows || []).map(r => ({
+      ...(r.data || {}),
+      parentId: r.data?.parentId || r.parent_id || parentId,
+      childId: r.data?.childId || r.child_id
+    }));
+
+    if (parentId) {
+      const { data, error } = await sb.from('dyads')
+        .select('child_id, parent_id, data')
+        .eq('parent_id', parentId)
+        .order('id', { ascending: true });
+      if (error) {
+        console.error('getAllDyads parent_id error:', error);
+      } else if ((data || []).length > 0) {
+        return mapDyads(data);
+      }
+    }
+
     const { data, error } = await sb.from('dyads')
-      .select('child_id, data')
+      .select('child_id, parent_id, data')
       .eq('user_id', userId)
       .order('id', { ascending: true });
-    if (error) console.error('getAllDyads error:', error);
-    return (data || []).map(r => ({ ...(r.data || {}), childId: r.data?.childId || r.child_id }));
+    if (error) console.error('getAllDyads user_id error:', error);
+    return mapDyads(data);
   },
 
-  getDyad: async (userId, childId) => {
+  getDyad: async (userId, childId, parentId) => {
+    if (parentId) {
+      const { data, error } = await sb.from('dyads')
+        .select('child_id, parent_id, data')
+        .eq('parent_id', parentId)
+        .eq('child_id', childId)
+        .maybeSingle();
+      if (error) {
+        console.error('getDyad parent_id error:', error);
+      } else if (data) {
+        return { ...(data.data || {}), parentId: data.data?.parentId || data.parent_id, childId: data.data?.childId || data.child_id };
+      }
+    }
+
     const { data, error } = await sb.from('dyads')
-      .select('data')
+      .select('child_id, parent_id, data')
       .eq('user_id', userId)
       .eq('child_id', childId)
       .maybeSingle();
-    if (error) console.error('getDyad error:', error);
-    return data ? data.data : null;
+    if (error) console.error('getDyad user_id error:', error);
+    return data ? { ...(data.data || {}), parentId: data.data?.parentId || data.parent_id, childId: data.data?.childId || data.child_id } : null;
   },
 
   saveDyad: async (userId, parentId, dyad) => {
@@ -233,13 +264,32 @@ const DB = {
   },
 
   // Journal entries
-  getEntries: async (userId) => {
+  getEntries: async (userId, parentId) => {
+    const mapEntries = rows => (rows || []).map(r => ({
+      id: r.data?.id || r.id,
+      parentId: r.data?.parentId || r.parent_id || parentId,
+      created_at: r.created_at,
+      ...(r.data || {})
+    }));
+
+    if (parentId) {
+      const { data, error } = await sb.from('journal_entries')
+        .select('id, parent_id, data, created_at')
+        .eq('parent_id', parentId)
+        .order('id', { ascending: false });
+      if (error) {
+        console.error('getEntries parent_id error:', error);
+      } else if ((data || []).length > 0) {
+        return mapEntries(data);
+      }
+    }
+
     const { data, error } = await sb.from('journal_entries')
       .select('id, parent_id, data, created_at')
       .eq('user_id', userId)
       .order('id', { ascending: false });
-    if (error) console.error('getEntries error:', error);
-    return (data || []).map(r => ({ id: r.data?.id || r.id, parentId: r.data?.parentId || r.parent_id, created_at: r.created_at, ...(r.data || {}) }));
+    if (error) console.error('getEntries user_id error:', error);
+    return mapEntries(data);
   },
 
   getAllEntries: async () => {
