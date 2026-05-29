@@ -28,7 +28,29 @@ const profileTimestampOrNull = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
-const getAuthenticatedReadSession = async (userId, context, parentId) => {
+const getAuthenticatedReadSession = async (userId, context, providedSession = null, parentId = null) => {
+  const providedSessionUserId = providedSession?.user?.id || null;
+  const providedHasAccessToken = !!providedSession?.access_token;
+  const providedMatchesUser = !userId || providedSessionUserId === userId;
+
+  AuthDebug.log('[db] authenticated read provided session:', {
+    context,
+    sessionExists: !!providedSession,
+    accessTokenExists: providedHasAccessToken,
+    sessionUserId: providedSessionUserId,
+    requestedUserId: userId || null,
+    parentId: parentId || null,
+    userMatches: providedMatchesUser
+  });
+
+  if (providedSession && providedHasAccessToken) {
+    if (!providedMatchesUser) {
+      throw new Error(`Provided authenticated read user mismatch. requested=${userId} session=${providedSessionUserId}`);
+    }
+    activeAuthSession = providedSession;
+    return providedSession;
+  }
+
   const cachedSession = activeAuthSession || null;
   const cachedSessionUserId = cachedSession?.user?.id || null;
   const cachedHasAccessToken = !!cachedSession?.access_token;
@@ -76,8 +98,8 @@ const getAuthenticatedReadSession = async (userId, context, parentId) => {
   return session;
 };
 
-const authenticatedSelect = async ({ table, query, userId = null, parentId = null, context }) => {
-  const session = await getAuthenticatedReadSession(userId, context, parentId);
+const authenticatedSelect = async ({ table, query, userId = null, parentId = null, context, session: providedSession = null }) => {
+  const session = await getAuthenticatedReadSession(userId, context, providedSession, parentId);
   const params = new URLSearchParams(query);
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`, {
     method: 'GET',
@@ -309,7 +331,7 @@ const Profile = {
 // ---- DATABASE ----
 const DB = {
   // Dyads
-  getAllDyads: async (userId, parentId) => {
+  getAllDyads: async (userId, parentId, authSession = null) => {
     const mapDyads = rows => (rows || []).map(r => ({
       ...(r.data || {}),
       parentId: r.data?.parentId || r.parent_id || parentId,
@@ -327,6 +349,7 @@ const DB = {
           },
           userId,
           parentId,
+          session: authSession,
           context: 'getAllDyads parent_id'
         });
         if (data.length > 0) return mapDyads(data);
@@ -344,12 +367,13 @@ const DB = {
       },
       userId,
       parentId,
+      session: authSession,
       context: 'getAllDyads user_id'
     });
     return mapDyads(data);
   },
 
-  getDyad: async (userId, childId, parentId) => {
+  getDyad: async (userId, childId, parentId, authSession = null) => {
     if (parentId) {
       try {
         const data = await authenticatedSelect({
@@ -362,6 +386,7 @@ const DB = {
           },
           userId,
           parentId,
+          session: authSession,
           context: 'getDyad parent_id'
         });
         if (data.length > 0) {
@@ -383,6 +408,7 @@ const DB = {
       },
       userId,
       parentId,
+      session: authSession,
       context: 'getDyad user_id'
     });
     if (data.length === 0) return null;
@@ -397,7 +423,7 @@ const DB = {
   },
 
   // Journal entries
-  getEntries: async (userId, parentId) => {
+  getEntries: async (userId, parentId, authSession = null) => {
     const mapEntries = rows => (rows || []).map(r => ({
       id: r.data?.id || r.id,
       parentId: r.data?.parentId || r.parent_id || parentId,
@@ -416,6 +442,7 @@ const DB = {
           },
           userId,
           parentId,
+          session: authSession,
           context: 'getEntries parent_id'
         });
         if (data.length > 0) return mapEntries(data);
@@ -433,6 +460,7 @@ const DB = {
       },
       userId,
       parentId,
+      session: authSession,
       context: 'getEntries user_id'
     });
     return mapEntries(data);

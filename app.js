@@ -315,6 +315,7 @@ function App(){
  const [user,setUser]=useState(null);
  const [authReady,setAuthReady]=useState(false);
  const [profile,setProfile]=useState(null);
+ const [authSession,setAuthSession]=useState(null);
  const [profileError,setProfileError]=useState('');
  const [authMessage,setAuthMessage]=useState('');
  const [authMessageEmail,setAuthMessageEmail]=useState('');
@@ -349,6 +350,7 @@ function App(){
 
     if(!emailVerified){
      const message = 'Please verify your email before signing in. Check your inbox for the confirmation link.';
+     setAuthSession(null);
      Auth.setActiveSession(null);
      setAuthMessage(message);
      setAuthMessageEmail(session.user.email||'');
@@ -364,6 +366,7 @@ function App(){
 
     setAuthMessage('');
     setAuthMessageEmail('');
+    setAuthSession(session);
     Auth.setActiveSession(session);
     setUser(session.user);
     // Clear any stale legacy localStorage keys from old app versions
@@ -400,6 +403,7 @@ function App(){
      sessionUserId
     });
   } else {
+    setAuthSession(null);
     Auth.setActiveSession(null);
     setUser(null);
     setProfile(null);
@@ -412,7 +416,7 @@ function App(){
   return ()=>subscription.unsubscribe();
  },[]);
 
- const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');Auth.setActiveSession(null);Auth.signOut();};
+ const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');setAuthSession(null);Auth.setActiveSession(null);Auth.signOut();};
 
  // Auto sign-out after 60 minutes of inactivity
  useEffect(()=>{
@@ -452,7 +456,7 @@ function App(){
 
  if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} onSignOut={signOut}/>;}
  AuthDebug.log('[render] branch: client dashboard');
- return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} onSignOut={signOut}/>;
+ return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} authSession={authSession} onSignOut={signOut}/>;
 }
 
 function RoleGate({onPick,back,onSignOut,parentId}){
@@ -606,7 +610,7 @@ function DISCImageUpload({userId,existingBars,onBarsUpdated}){
  </div>;
 }
 
-function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
+function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut}){
  const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
  const [entries,setEntries]=useState([]);
@@ -641,7 +645,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   let extProfile=null;
   let allEntries=[];
   try{
-   allDyads=await DB.getAllDyads(user.id,parentId);
+   allDyads=await DB.getAllDyads(user.id,parentId,authSession);
   }catch(err){
    AuthDebug.log('[dashboard] failed to load dyads:', err);
   }
@@ -655,7 +659,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   setDiscBars(extProfile?.disc_bars||null);
 
   try{
-   allEntries=await DB.getEntries(user.id,parentId);
+   allEntries=await DB.getEntries(user.id,parentId,authSession);
   }catch(err){
    AuthDebug.log('[dashboard] failed to load past activities:', err);
   }
@@ -715,7 +719,10 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
  };
  const startNewChild=()=>{setDyad(blankDyad());setStage('register');};
 
- useEffect(()=>{loadDashboard();},[]);
+ useEffect(()=>{
+  if(!authSession?.access_token) return;
+  if(stage==='loading') loadDashboard();
+ },[user.id,parentId,authSession?.access_token,stage]);
 
  if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your space...</div></div>;
 
@@ -827,7 +834,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
   </div>
  </div>;
 
- if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+ if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
  if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()} onSignOut={onSignOut}/>;
 
@@ -850,7 +857,7 @@ function ClientApp({back,user,parentId,profile,authReady,onSignOut}){
  return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={()=>setStage('dashboard')} user={user} onSignOut={onSignOut}/>;
 }
 
-function JournalTrail({user,parentId,dyads,back,onSignOut}){
+function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [loading,setLoading]=useState(true);
  const [openId,setOpenId]=useState(null);
@@ -870,11 +877,11 @@ function JournalTrail({user,parentId,dyads,back,onSignOut}){
  };
 
  useEffect(()=>{
-  DB.getEntries(user.id,parentId).then(data=>{
+  DB.getEntries(user.id,parentId,authSession).then(data=>{
    setEntries(data.sort((a,b)=>entryTime(b)-entryTime(a)));
    setLoading(false);
   });
- },[user.id,parentId]);
+ },[user.id,parentId,authSession?.access_token]);
 
  const wordCounts={};
  entries.forEach(e=>(e.autoWords||[]).forEach(w=>{wordCounts[w]=(wordCounts[w]||0)+1;}));
