@@ -1,5 +1,28 @@
 # Codex Task Template
 
+## Starter Prompt
+
+```text
+Read AGENTS.md first.
+
+Task:
+<describe task>
+
+Rules:
+- Keep the app working.
+- Preserve verified-email gate.
+- Preserve ensure_profile explicit Bearer fetch.
+- Preserve dashboard authenticated reads using verified session.
+- Do not add browser-side profiles.insert or profiles.upsert.
+- Preserve PDPA-safe UI.
+- Normal UI must not show parent email, Supabase UUID, child names, JWTs, or secrets.
+- Dashboard data should load by parent_id first.
+
+Before commit:
+- Run scripts/verify-wayfinder.ps1.
+- Report files changed, checks run, and whether auth/dashboard/privacy was touched.
+```
+
 Before editing, read:
 - AGENTS.md
 - docs/app-architecture-navigation-review.md
