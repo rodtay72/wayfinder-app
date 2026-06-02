@@ -323,40 +323,46 @@ function AuthScreen({onAuth, role, message, messageEmail}){
  </div>;
 }
 
-function VerificationRequiredScreen({authSession, profile, role, onSignOut}){
- const [status,setStatus]=useState(profile?.email_sent_at?'Check your inbox for your Wayfinder verification link.':'Preparing your verification email...');
+function VerificationRequiredScreen({authSession, role, onRefreshSession, onSignOut}){
+ const [status,setStatus]=useState('Check your inbox for your Wayfinder verification link.');
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(false);
- const autoSendRef=useRef(false);
+ const [refreshing,setRefreshing]=useState(false);
 
- const send=async(auto=false)=>{
-  if(!authSession?.access_token){
-   setError('Your sign-in session expired. Please sign in again.');
+ const send=async()=>{
+  if(!authSession?.user?.email){
+   setError('Your email address is unavailable. Please sign in again, then request a new verification email.');
    return;
   }
   setLoading(true);
   setError('');
-  if(!auto)setStatus('');
+  setStatus('');
   try{
    const {error:err}=await Auth.resendVerification(authSession);
    if(err)throw err;
    setStatus('If this account exists, a verification link has been sent. Please check your inbox.');
   }catch(e){
-   if(e?.status===429&&e.retryAfterSeconds){
-    setError(`Please wait ${e.retryAfterSeconds} seconds before requesting another verification email.`);
-   }else{
-    setError(e.message||'We could not send the verification email. Please try again later.');
-   }
+   setError(e.message||'We could not send the verification email. Please try again later.');
   }finally{
    setLoading(false);
   }
  };
 
- useEffect(()=>{
-  if(autoSendRef.current||profile?.email_sent_at||!authSession?.access_token)return;
-  autoSendRef.current=true;
-  send(true);
- },[authSession?.access_token,profile?.email_sent_at]);
+ const refresh=async()=>{
+  setRefreshing(true);
+  setError('');
+  setStatus('Checking your latest email confirmation status...');
+  try{
+   const verified=await onRefreshSession();
+   if(!verified){
+    setStatus('We still cannot see a confirmed email for this session. If you just clicked the link, wait a moment and try again.');
+   }
+  }catch(e){
+   setError(e.message||'We could not refresh your confirmation status. Please sign in again.');
+  }finally{
+   setRefreshing(false);
+  }
+ };
 
  return <div className="wrap">
   <div className="card banner"><h1>Verify your Wayfinder account</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other'}</p></div>
@@ -366,8 +372,8 @@ function VerificationRequiredScreen({authSession, profile, role, onSignOut}){
    {status&&<div style={{color:'#4f7a5e',fontSize:13,marginTop:16,padding:'10px 12px',background:'#edf7ef',borderRadius:6}}>{status}</div>}
    {error&&<div style={{color:'#8a5a00',fontSize:13,marginTop:16,padding:'10px 12px',background:'#fff4d6',borderRadius:6}}>{error}</div>}
    <div style={{marginTop:22,display:'flex',flexDirection:'column',gap:10}}>
-    <button className="btn btn-primary" onClick={()=>send(false)} disabled={loading}>{loading?'Sending...':'Resend verification email'}</button>
-    <button className="btn btn-secondary" onClick={()=>location.reload()}>I have verified - refresh</button>
+    <button className="btn btn-primary" onClick={send} disabled={loading||refreshing}>{loading?'Sending...':'Resend verification email'}</button>
+    <button className="btn btn-secondary" onClick={refresh} disabled={loading||refreshing}>{refreshing?'Checking...':'I have verified - refresh'}</button>
     <button className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
    </div>
    <p className="hint" style={{marginTop:18}}>Need help? Contact ask.anything@psytec.com.sg.</p>
@@ -381,6 +387,7 @@ function App(){
  const [authReady,setAuthReady]=useState(false);
  const [profile,setProfile]=useState(null);
  const [authSession,setAuthSession]=useState(null);
+ const [emailVerified,setEmailVerified]=useState(false);
  const [profileError,setProfileError]=useState('');
  const [accessDenied,setAccessDenied]=useState('');
  const [authMessage,setAuthMessage]=useState('');
@@ -388,86 +395,156 @@ function App(){
  const profileLoadRef = useRef({ userId: null, promise: null });
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
 
- useEffect(()=>{
-  const role = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
-  const {data:{subscription}}=Auth.onAuthChange(async (event,session)=>{
-   const hasSession = !!session;
-   const hasAccessToken = !!session?.access_token;
-   const sessionUserId = session?.user?.id || null;
-   const profileEvents = ['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'];
+ const handleAuthSession=async(event,rawSession,source='auth-state')=>{
+  let session=rawSession||null;
+  const profileEvents=['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED','USER_UPDATED','URL_HASH_SESSION','MANUAL_SESSION_REFRESH'];
 
-   AuthDebug.log('[auth] state change:', {
-    event,
-    sessionExists: hasSession,
-    accessTokenExists: hasAccessToken,
-    sessionUserId
-   });
-   if(profileEvents.includes(event) && session?.user && hasAccessToken){
-     setAuthMessage('');
-     setAuthMessageEmail('');
-     setAccessDenied('');
-     setAuthSession(session);
-    Auth.setActiveSession(session);
-    setUser(session.user);
-    // Clear any stale legacy localStorage keys from old app versions
-    localStorage.removeItem('sj_v2_dyads');
-    localStorage.removeItem('sj_v2_entries');
-    localStorage.removeItem('sj_v2_reviews');
-    try{
-     let profilePromise = profileLoadRef.current.promise;
+  if(session?.access_token){
+   Auth.setActiveSession(session);
+   const fresh=await Auth.getFreshSession();
+   if(fresh.error)throw fresh.error;
+   if(fresh.data?.session?.user?.id===session.user?.id){
+    session=fresh.data.session;
+   }
+  }
 
-     if(profileLoadRef.current.userId !== session.user.id || !profilePromise){
-      profilePromise = role==='counsellor' ? Profile.getExisting(session.user.id, session) : Profile.getOrCreate(session.user.id, role, session);
-      profileLoadRef.current = { userId: session.user.id, promise: profilePromise };
-     }
+  const hasSession=!!session;
+  const hasAccessToken=!!session?.access_token;
+  const sessionUserId=session?.user?.id||null;
+  const confirmed=Auth.isEmailConfirmed(session?.user);
 
-     const p = await profilePromise;
-     if(role==='counsellor' && (!p || p.role !== 'counsellor')){
-      throw new Error('Counsellor role required');
-     }
-     setProfile(p);
-     setProfileError('');
-     setAccessDenied('');
-     setEntered(!!p?.email_verified);
-    }catch(e){
-     profileLoadRef.current = { userId: null, promise: null };
-     const message = e?.message || '';
-     if(role==='counsellor'){
-      AuthDebug.log('[profile] counsellor access confirmation failed:', { event, sessionUserId, message });
-      setProfile(null);
-      setProfileError('');
-      setAccessDenied('Access denied: counsellor role required.');
-      setEntered(false);
-     }else if(message.includes('Auth session not ready') || message.includes('No authenticated Supabase session')){
-      AuthDebug.log('[profile] waiting for auth session:', { event, sessionUserId, message });
-     }else{
-      console.error('Profile load failed:', e);
-      setProfileError('We could not load your Wayfinder profile. Please refresh and try signing in again.');
-     }
+  AuthDebug.log('[auth] session check:', {
+   event,
+   source,
+   sessionExists: hasSession,
+   accessTokenExists: hasAccessToken,
+   sessionUserId,
+   emailConfirmedFieldsPresent: confirmed
+  });
+
+  if(profileEvents.includes(event)&&session?.user&&hasAccessToken){
+   setAuthMessage('');
+   setAuthMessageEmail('');
+   setAccessDenied('');
+   setAuthSession(session);
+   Auth.setActiveSession(session);
+   setUser(session.user);
+   setEmailVerified(confirmed);
+
+   if(!confirmed){
+    setProfile(null);
+    setProfileError('');
+    profileLoadRef.current={userId:null,promise:null};
+    setEntered(false);
+    setAuthReady(true);
+    return false;
+   }
+
+   localStorage.removeItem('sj_v2_dyads');
+   localStorage.removeItem('sj_v2_entries');
+   localStorage.removeItem('sj_v2_reviews');
+   try{
+    let profilePromise=profileLoadRef.current.promise;
+
+    if(profileLoadRef.current.userId!==session.user.id||!profilePromise){
+     profilePromise=APP_ROLE==='counsellor'?Profile.getExisting(session.user.id,session):Profile.getOrCreate(session.user.id,APP_ROLE,session);
+     profileLoadRef.current={userId:session.user.id,promise:profilePromise};
     }
-  } else if(session?.user) {
-    AuthDebug.log('[profile] waiting for auth session:', {
-     event,
-     sessionExists: hasSession,
-     accessTokenExists: hasAccessToken,
-     sessionUserId
-    });
-  } else {
-    setAuthSession(null);
-    Auth.setActiveSession(null);
-    setUser(null);
+
+    const p=await profilePromise;
+    if(APP_ROLE==='counsellor'&&(!p||p.role!=='counsellor')){
+     throw new Error('Counsellor role required');
+    }
+    setProfile(p);
+    setProfileError('');
+    setAccessDenied('');
+    setEntered(true);
+    setAuthReady(true);
+    return true;
+   }catch(e){
+    profileLoadRef.current={userId:null,promise:null};
+    const message=e?.message||'';
+    if(APP_ROLE==='counsellor'){
+     AuthDebug.log('[profile] counsellor access confirmation failed:', { event, sessionUserId, message });
      setProfile(null);
      setProfileError('');
-     setAccessDenied('');
-     profileLoadRef.current = { userId: null, promise: null };
-    setEntered(false);
+     setAccessDenied('Access denied: counsellor role required.');
+     setEntered(false);
+    }else if(message.includes('Auth session not ready')||message.includes('No authenticated Supabase session')){
+     AuthDebug.log('[profile] waiting for auth session:', { event, sessionUserId, message });
+    }else{
+     console.error('Profile load failed:', e);
+     setProfileError('We could not load your Wayfinder profile. Please refresh and try signing in again.');
+    }
+    setAuthReady(true);
+    return false;
    }
+  }
+
+  if(session?.user){
+   AuthDebug.log('[profile] waiting for auth session:', {
+    event,
+    source,
+    sessionExists: hasSession,
+    accessTokenExists: hasAccessToken,
+    sessionUserId,
+    emailConfirmedFieldsPresent: confirmed
+   });
+   setAuthSession(session);
+   setUser(session.user);
+   setEmailVerified(confirmed);
+   setAuthReady(true);
+   return false;
+  }
+
+  setAuthSession(null);
+  Auth.setActiveSession(null);
+  setUser(null);
+  setEmailVerified(false);
+  setProfile(null);
+  setProfileError('');
+  setAccessDenied('');
+  profileLoadRef.current={userId:null,promise:null};
+  setEntered(false);
+  setAuthReady(true);
+  return false;
+ };
+
+ useEffect(()=>{
+  const {data:{subscription}}=Auth.onAuthChange(async (event,session)=>{
+   try{
+    await handleAuthSession(event,session,'auth-state');
+   }catch(e){
+    console.error('Auth session handling failed:', e);
+    setProfileError('We could not refresh your sign-in session. Please sign in again.');
+    setAuthReady(true);
+   }
+  });
+
+  Auth.consumeAuthRedirect().then(result=>{
+   if(result.error){
+    AuthDebug.log('[auth] callback/hash processing failed:', { message: result.error.message || String(result.error) });
+   }
+   if(result.hashDetected||result.session){
+    return handleAuthSession(result.hashDetected?'URL_HASH_SESSION':'INITIAL_SESSION',result.session,result.hashDetected?'url-hash':'startup');
+   }
+   return null;
+  }).catch(e=>{
+   console.error('Auth redirect handling failed:', e);
+   setProfileError('We could not process your email confirmation. Please sign in again.');
    setAuthReady(true);
   });
+
   return ()=>subscription.unsubscribe();
  },[]);
 
- const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');setAccessDenied('');setAuthSession(null);Auth.setActiveSession(null);Auth.signOut();};
+ const refreshAuthSession=async()=>{
+  const {data,error}=await Auth.getFreshSession();
+  if(error)throw error;
+  return handleAuthSession('MANUAL_SESSION_REFRESH',data?.session||null,'manual-refresh');
+ };
+
+ const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');setAccessDenied('');setAuthSession(null);setEmailVerified(false);Auth.setActiveSession(null);Auth.signOut();};
 
  // Auto sign-out after 60 minutes of inactivity
  useEffect(()=>{
@@ -485,11 +562,13 @@ function App(){
   userExists: !!user,
   profileExists: !!profile,
   entered,
+  emailVerified,
   profileError: !!profileError
  });
 
  if(!authReady){AuthDebug.log('[render] branch: auth loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;}
   if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;}
+  if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
   if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
    <h2 style={{marginBottom:12}}>{accessDenied}</h2>
    <p className="sub">This portal is limited to verified counsellor accounts.</p>
@@ -501,8 +580,6 @@ function App(){
   <button className="btn btn-primary" style={{marginTop:18}} onClick={()=>location.reload()}>Refresh</button>
  </div></div>;}
  if(!profile){AuthDebug.log('[render] branch: profile loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;}
-
- if(profile.email_verified!==true){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} profile={profile} role={APP_ROLE} onSignOut={signOut}/>;}
 
   // Wrong portal check
   if(profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>

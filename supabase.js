@@ -6,7 +6,13 @@
 const SUPABASE_URL = 'https://mhvjmakraociizeqbvbz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1odmptYWtyYW9jaWl6ZXFidmJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODQ5ODgsImV4cCI6MjA5NTQ2MDk4OH0.WgUnHsG4SiiEO1pjBxHQkWe8eXgqVii0asbG9cNIeBQ';
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
 let activeAuthSession = null;
 
 const AuthDebug = {
@@ -20,6 +26,41 @@ const AuthDebug = {
   log: (...args) => {
     if (AuthDebug.enabled()) console.info(...args);
   }
+};
+
+const authHashParams = () => {
+  if (typeof window === 'undefined' || !window.location?.hash) return null;
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const hasAuthHash = params.has('access_token') || params.has('refresh_token') || params.has('type');
+  return hasAuthHash ? params : null;
+};
+
+const clearAuthHashFromUrl = () => {
+  if (typeof window === 'undefined' || !authHashParams()) return;
+  const cleanUrl = `${window.location.pathname}${window.location.search}`;
+  window.history.replaceState({}, document.title, cleanUrl);
+};
+
+const isEmailConfirmedUser = (user) => !!(user?.email_confirmed_at || user?.confirmed_at);
+
+const withFreshSessionUser = async (session) => {
+  if (!session?.access_token) return session || null;
+
+  const { data, error } = await sb.auth.getUser();
+  if (error || !data?.user) {
+    AuthDebug.log('[auth] fresh user check failed:', {
+      sessionExists: !!session,
+      accessTokenExists: !!session?.access_token,
+      sessionUserId: session?.user?.id || null,
+      errorMessage: error?.message || null
+    });
+    return session;
+  }
+
+  return {
+    ...session,
+    user: data.user
+  };
 };
 
 const profileTimestampOrNull = (value) => {
@@ -190,33 +231,78 @@ const Auth = {
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
   resendVerification: async (target) => {
     const session = target && typeof target === 'object' ? target : null;
-    const email = typeof target === 'string' ? target.trim() : '';
-    const headers = { 'Content-Type': 'application/json' };
-    const body = email ? { email } : {};
-
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`;
+    const email = (typeof target === 'string' ? target : session?.user?.email || '').trim();
+    if (!email) {
+      return {
+        data: null,
+        error: new Error('Email address is unavailable. Please sign in again.')
+      };
     }
 
-    const response = await fetch('/api/resend-verification', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body)
-    });
-    const data = await parseApiJson(response);
-    if (!response.ok) {
-      const error = new Error(data.message || data.error || 'Could not send verification email. Please try again.');
-      error.status = response.status;
-      error.retryAfterSeconds = data.retryAfterSeconds || null;
-      return { data: null, error };
-    }
-    return { data, error: null };
+    const redirectTo = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : undefined;
+    const resendRequest = {
+      type: 'signup',
+      email
+    };
+    if (redirectTo) resendRequest.options = { emailRedirectTo: redirectTo };
+    const { data, error } = await sb.auth.resend(resendRequest);
+    return { data, error };
   },
   signOut: () => {
     activeAuthSession = null;
     return sb.auth.signOut();
   },
   getSession: () => sb.auth.getSession(),
+  getFreshSession: async () => {
+    const { data, error } = await sb.auth.getSession();
+    if (error) return { data: { session: null }, error };
+    const session = await withFreshSessionUser(data?.session || null);
+    activeAuthSession = session || null;
+    return { data: { session }, error: null };
+  },
+  consumeAuthRedirect: async () => {
+    const params = authHashParams();
+    const hashDetected = !!params;
+    let session = null;
+    let error = null;
+
+    AuthDebug.log('[auth] callback/hash detected:', { hashDetected });
+
+    try {
+      const current = await Auth.getFreshSession();
+      if (current.error) throw current.error;
+      session = current.data?.session || null;
+
+      if (!session?.access_token && params?.has('access_token') && params?.has('refresh_token') && sb.auth.setSession) {
+        const result = await sb.auth.setSession({
+          access_token: params.get('access_token'),
+          refresh_token: params.get('refresh_token')
+        });
+        if (result.error) throw result.error;
+        session = await withFreshSessionUser(result.data?.session || null);
+        activeAuthSession = session || null;
+      }
+    } catch (err) {
+      error = err;
+    } finally {
+      if (hashDetected) clearAuthHashFromUrl();
+    }
+
+    AuthDebug.log('[auth] callback/hash session result:', {
+      hashDetected,
+      sessionExists: !!session,
+      accessTokenExists: !!session?.access_token,
+      sessionUserId: session?.user?.id || null,
+      emailConfirmedFieldsPresent: isEmailConfirmedUser(session?.user),
+      errorMessage: error?.message || null
+    });
+
+    return { hashDetected, session, error };
+  },
+  isEmailConfirmed: isEmailConfirmedUser,
+  clearAuthHashFromUrl,
   setActiveSession: (session) => {
     activeAuthSession = session || null;
     AuthDebug.log('[auth] active session cache updated:', {
@@ -234,7 +320,7 @@ const Profile = {
   get: async (userId) => {
     AuthDebug.log('[profile] query existing:', { userId });
     const { data, error, count } = await sb.from('profiles')
-      .select('parent_id, role, email_verified, email_sent_at', { count: 'exact' })
+      .select('parent_id, role', { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(1);
@@ -317,7 +403,7 @@ const Profile = {
     const data = await authenticatedSelect({
       table: 'profiles',
       query: {
-        select: 'parent_id,role,email_verified,email_sent_at',
+        select: 'parent_id,role',
         user_id: `eq.${userId}`,
         limit: '1'
       },

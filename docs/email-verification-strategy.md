@@ -2,23 +2,37 @@
 
 ## Status
 
-This document describes the current staged rollout state after the custom verification implementation commits `e69241d` and `800abb4`. It is not a pre-implementation plan.
+This document records both the deferred custom verification strategy and the current Option A rollout state.
 
-Wayfinder still uses Supabase Auth for email/password signup and login. Wayfinder app-level access is now gated by the `profiles.email_verified` column.
+Wayfinder still uses Supabase Auth for email/password signup and login.
 
-Supabase Confirm Email may remain enabled temporarily during the staged rollout. While it remains enabled, Supabase can still act as an upstream confirmation control before a user receives a usable auth session. Once a session exists, the Wayfinder application gate is `profiles.email_verified`.
+Current Option A update: live Wayfinder is keeping Supabase Confirm Email enabled and is not using `profiles.email_verified` as the active gate, because that column does not exist in the live database. Runtime access is gated by the refreshed Supabase user confirmation fields: `session.user.email_confirmed_at` or `session.user.confirmed_at`.
 
-Recommendation: keep Supabase Confirm Email enabled until the custom verification flow is fully configured and smoke-tested in the deployed environment. After the custom flow is verified end to end, Supabase Dashboard -> Authentication -> Providers -> Email -> Confirm Email can be disabled.
+Supabase Confirm Email remains enabled for Option A. The custom `profiles.email_verified` flow below is deferred unless its SQL migration and sender flow are explicitly approved and applied.
 
-## Current Source Of Truth
+Recommendation: keep Supabase Confirm Email enabled. Do not disable it for the branded Supabase email rollout.
 
-The current app-level verification source of truth is:
+## Current Option A Source Of Truth
+
+The current live app-level verification source of truth is:
+
+```text
+session.user.email_confirmed_at || session.user.confirmed_at
+```
+
+Normal parent and counsellor workspace access is blocked unless the refreshed Supabase session user has one of those confirmation fields.
+
+After the Supabase confirmation link redirects back with URL hash tokens, the browser should establish the session, refresh the user, check those confirmation fields, and clear auth tokens from the URL.
+
+## Deferred Custom Source Of Truth
+
+The deferred custom verification design would use:
 
 ```sql
 profiles.email_verified
 ```
 
-Normal parent and counsellor workspace access is blocked unless `profiles.email_verified` is `true`.
+That design is not active for the current Option A rollout unless the custom SQL and sender setup are explicitly applied.
 
 New or unverified profiles should have:
 
@@ -34,17 +48,18 @@ After a successful verification link:
 - `verification_token` is cleared
 - `verification_token_expires_at` is cleared
 
-## Supabase Confirmation Timestamp Audit
+## Option A Confirmation Timestamp Audit
 
-Current app code no longer gates Wayfinder access on:
+Current app code gates Wayfinder access on the refreshed Supabase session user:
 
-- `auth.users.email_confirmed_at`
 - `session.user.email_confirmed_at`
 - `session.user.confirmed_at`
 
-Those Supabase confirmation timestamps are legacy/previous behavior for Wayfinder's app access gate. They may still exist in Supabase Auth records, and Supabase may still use them while Confirm Email remains enabled during rollout, but the Wayfinder application workspace gate is `profiles.email_verified`.
+The corresponding Supabase Auth record field is `auth.users.email_confirmed_at`. Browser code does not query `auth.users` directly; it uses the confirmed fields returned on the current Supabase user/session.
 
-## Current Implementation Summary
+After a Supabase confirmation redirect, the browser must process URL hash tokens, establish or refresh the session, fetch the latest user, and then remove hash tokens from the URL without logging token values.
+
+## Deferred Custom Implementation Summary
 
 The staged implementation does the following:
 
@@ -146,7 +161,7 @@ https://developers.google.com/apps-script/guides/services/quotas
 
 For production volume, abuse resistance, analytics, and deliverability controls, Wayfinder may eventually need a transactional email provider or custom SMTP setup. The current abstraction intentionally keeps the sender configurable through environment variables so the provider can be changed later without browser-code changes.
 
-## Smoke-Test Checklist Before Cutover
+## Smoke-Test Checklist Before Custom Cutover
 
 Run these before disabling Supabase Confirm Email:
 
@@ -191,7 +206,7 @@ Git history for `e69241d` and `800abb4` shows the custom verification implementa
 - `docs/custom-email-verification-impact-report.md`
 - `docs/gmail-verification-apps-script.md`
 
-Current net verification behavior is carried by:
+Deferred custom verification behavior is carried by:
 
 - `api/_supabase-admin.js`
 - `api/_verification-email.js`
@@ -206,7 +221,7 @@ Current net verification behavior is carried by:
 - `docs/custom-email-verification-impact-report.md`
 - `docs/gmail-verification-apps-script.md`
 
-`supabase-counsellor-rls.sql` was touched during the implementation history, then scoped back so the current custom verification behavior does not depend on counsellor RLS changes.
+`supabase-counsellor-rls.sql` was touched during the implementation history, then scoped back so the deferred custom verification behavior does not depend on counsellor RLS changes.
 
 ## Rollback Plan
 
