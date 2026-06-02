@@ -1,8 +1,5 @@
-const DEFAULT_SUPABASE_URL = 'https://mhvjmakraociizeqbvbz.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1odmptYWtyYW9jaWl6ZXFidmJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODQ5ODgsImV4cCI6MjA5NTQ2MDk4OH0.WgUnHsG4SiiEO1pjBxHQkWe8eXgqVii0asbG9cNIeBQ';
-
-export const SUPABASE_URL = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+export const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mhvjmakraociizeqbvbz.supabase.co';
+export const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
 const jsonHeaders = (key) => ({
   apikey: key,
@@ -67,6 +64,7 @@ export async function supabaseAdminFetch(path, options = {}) {
 
 export async function getAuthUserFromAccessToken(accessToken) {
   if (!accessToken) return null;
+  if (!SUPABASE_ANON_KEY) return null;
   const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     method: 'GET',
     headers: {

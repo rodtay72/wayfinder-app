@@ -278,8 +278,7 @@ function AuthScreen({onAuth, role, message, messageEmail}){
    const {data,error:err}=activeMode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
    if(err)throw err;
    if(activeMode==='signup'&&!data.session){
-    await Auth.resendVerification(email);
-    setError('If this email exists, a verification link has been sent. Please sign in after checking your inbox.');
+    setError('Check your email for the current confirmation link, then sign in. Wayfinder verification will run after login.');
     setLoading(false);
     return;
    }

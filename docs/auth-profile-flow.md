@@ -49,7 +49,7 @@ Wayfinder verification is enforced by `profiles.email_verified`.
 - Resend is handled by `/api/resend-verification` with a 60-second server-side rate limit.
 - Browser code must never update `email_verified`, verification tokens, expiry, or email delivery logs.
 
-Setup note: run `supabase-email-verification.sql` in Supabase SQL Editor, then go to Supabase Dashboard -> Authentication -> Providers -> Email and disable "Confirm email". Keep password reset settings unchanged unless they are separately being changed.
+Setup note: run `supabase-email-verification.sql` in Supabase SQL Editor, deploy/configure the email endpoint, and complete the smoke tests in `docs/custom-email-verification-impact-report.md` before changing Supabase email confirmation. Only after the replacement flow is working should Supabase Dashboard -> Authentication -> Providers -> Email -> "Confirm email" be disabled. Keep password reset settings unchanged unless they are separately being changed.
 
 ## Known Console Warnings To Ignore
 

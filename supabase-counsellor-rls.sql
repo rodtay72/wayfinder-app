@@ -4,8 +4,7 @@
 --
 -- Run this in the Supabase SQL Editor after supabase-profiles.sql and
 -- supabase-schema.sql. It grants verified authenticated users whose
--- profile role is counsellor and email_verified is true read-only access
--- to parent journal entries.
+-- profile role is counsellor read-only access to parent journal entries.
 --
 -- This does not make journal_entries public, does not expose service-role
 -- keys, and does not grant counsellors write/delete access to parent data.
@@ -22,7 +21,6 @@ as $$
     from public.profiles p
     where p.user_id = auth.uid()
       and p.role = 'counsellor'
-      and p.email_verified is true
   );
 $$;
 

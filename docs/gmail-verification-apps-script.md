@@ -26,7 +26,7 @@ EMAIL_FROM_NAME=Wayfinder by PsyTec
 
 Do not put Gmail credentials, Apps Script secrets, or Supabase service-role keys in frontend files.
 
-Supabase setup: Supabase Dashboard -> Authentication -> Providers -> Email -> disable "Confirm email". Keep password reset settings unchanged unless you are intentionally changing that flow.
+Supabase setup: keep Supabase "Confirm email" enabled until this replacement flow is deployed, configured, and smoke-tested. After the replacement verification flow passes, Supabase Dashboard -> Authentication -> Providers -> Email -> disable "Confirm email". Keep password reset settings unchanged unless you are intentionally changing that flow.
 
 Database setup: run `supabase-email-verification.sql` in the Supabase SQL Editor after the existing profile/schema SQL files.
 
