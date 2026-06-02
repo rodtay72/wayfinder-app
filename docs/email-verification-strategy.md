@@ -24,6 +24,8 @@ Normal parent and counsellor workspace access is blocked unless the refreshed Su
 
 After the Supabase confirmation link redirects back with URL hash tokens, the browser should establish the session, refresh the user, check those confirmation fields, and clear auth tokens from the URL.
 
+Supabase password recovery remains part of Supabase Auth. Recovery callbacks are handled before normal email-verification and portal-routing gates so reset links can show the Set New Password screen even when the account belongs to the counsellor portal.
+
 ## Deferred Custom Source Of Truth
 
 The deferred custom verification design would use:

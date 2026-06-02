@@ -35,6 +35,8 @@ const authHashParams = () => {
   return hasAuthHash ? params : null;
 };
 
+const authHashType = () => authHashParams()?.get('type') || '';
+
 const clearAuthHashFromUrl = () => {
   if (typeof window === 'undefined' || !authHashParams()) return;
   const cleanUrl = `${window.location.pathname}${window.location.search}`;
@@ -229,6 +231,7 @@ const parseApiJson = async (response) => {
 const Auth = {
   signUp: (email, password) => sb.auth.signUp({ email, password }),
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
+  updatePassword: (password) => sb.auth.updateUser({ password }),
   resendVerification: async (target) => {
     const session = target && typeof target === 'object' ? target : null;
     const email = (typeof target === 'string' ? target : session?.user?.email || '').trim();
@@ -265,10 +268,11 @@ const Auth = {
   consumeAuthRedirect: async () => {
     const params = authHashParams();
     const hashDetected = !!params;
+    const hashType = params?.get('type') || '';
     let session = null;
     let error = null;
 
-    AuthDebug.log('[auth] callback/hash detected:', { hashDetected });
+    AuthDebug.log('[auth] callback/hash detected:', { hashDetected, hashType });
 
     try {
       const current = await Auth.getFreshSession();
@@ -292,6 +296,7 @@ const Auth = {
 
     AuthDebug.log('[auth] callback/hash session result:', {
       hashDetected,
+      hashType,
       sessionExists: !!session,
       accessTokenExists: !!session?.access_token,
       sessionUserId: session?.user?.id || null,
@@ -299,8 +304,9 @@ const Auth = {
       errorMessage: error?.message || null
     });
 
-    return { hashDetected, session, error };
+    return { hashDetected, hashType, session, error };
   },
+  getAuthHashType: authHashType,
   isEmailConfirmed: isEmailConfirmedUser,
   clearAuthHashFromUrl,
   setActiveSession: (session) => {

@@ -7,7 +7,7 @@ Wayfinder is proceeding with Option A first:
 - Keep Supabase Confirm Email enabled.
 - Do not disable Supabase confirmation.
 - Do not use the custom verification flow as the rollout path yet.
-- Keep the existing app-level verified-email gate in place.
+- Keep the existing Supabase-confirmed-session gate in place.
 - Do not change app auth logic.
 - Do not add secrets to the repo.
 
@@ -17,7 +17,7 @@ For Option A, Supabase Auth remains responsible for sending the signup confirmat
 Wayfinder by PsyTec <ask.anything@psytec.com.sg>
 ```
 
-Important interaction: branded Supabase confirmation emails confirm the Supabase Auth email flow. They do not automatically set `profiles.email_verified`. Current Wayfinder app access still depends on `profiles.email_verified`, so do not treat template branding as a full app-verification cutover by itself.
+Important interaction: branded Supabase confirmation emails confirm the Supabase Auth email flow. Current Option A Wayfinder app access is gated by the refreshed Supabase session user confirmation fields, `session.user.email_confirmed_at` or `session.user.confirmed_at`. Do not treat template branding as a custom `profiles.email_verified` cutover.
 
 ## Supabase Configuration Checklist
 
@@ -253,6 +253,8 @@ Run this with Supabase Confirm Email still enabled. The branded email verificati
 - Verification link works and confirms the Supabase Auth email flow.
 - Resend verification works if currently available in the tested flow.
 - Reset password email works if the reset password template was changed.
+- Reset password link opens the Set New Password screen before email-verification, wrong-portal, dashboard, or counsellor routing.
+- Password update works without exposing tokens or secrets in normal UI.
 - Test messages pass SPF, DKIM, and DMARC alignment.
 - Test messages do not land in spam/junk for Gmail and Outlook test inboxes.
 
@@ -278,10 +280,11 @@ Run this with Supabase Confirm Email still enabled. The branded email verificati
 - Unverified counsellor is blocked.
 - Verified parent user is denied from `counsellor.html`.
 - Verified counsellor with `profiles.role = counsellor` can access `counsellor.html`.
+- Counsellor reset-password flow lets the counsellor update their password, then continue to `counsellor.html`.
 - Counsellor UI remains PDPA-safe.
 - Counsellor UI does not show JWTs, refresh tokens, anon keys, service-role keys, or secrets.
 
-Known gate check: because app access is gated by `profiles.email_verified`, confirm the operational process for that field before considering the rollout complete. Supabase Confirm Email alone does not set the Wayfinder profile gate.
+Known gate check: app access is currently gated by Supabase confirmation fields returned on the refreshed session user. If the deferred custom verification flow is later activated, confirm the operational process for `profiles.email_verified` before considering that separate cutover complete.
 
 ## Rollback Plan
 
@@ -313,4 +316,4 @@ Because Option A does not change app code, rollback should not require a code de
 - Do not put the Supabase service-role key in browser code.
 - Do not expose JWTs, refresh tokens, auth links, OTPs, or secrets in logs.
 - Do not weaken RLS or counsellor/parent data policies.
-- Do not claim that Supabase branded emails alone satisfy the `profiles.email_verified` app gate.
+- Do not claim that Supabase branded emails activate the deferred custom `profiles.email_verified` flow.

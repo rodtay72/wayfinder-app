@@ -381,6 +381,79 @@ function VerificationRequiredScreen({authSession, role, onRefreshSession, onSign
  </div>;
 }
 
+function PasswordRecoveryScreen({status, role, onSubmit, onSignOut}){
+ const [password,setPassword]=useState('');
+ const [confirmPassword,setConfirmPassword]=useState('');
+ const [error,setError]=useState(status?.error||'');
+ const [loading,setLoading]=useState(false);
+ const completedRole=status?.completedRole||'';
+ const hasSession=!!status?.session?.access_token;
+
+ const submit=async()=>{
+  setError('');
+  const nextPassword=password.trim();
+  if(!nextPassword){setError('Enter a new password.');return;}
+  if(nextPassword.length<8){setError('Use at least 8 characters.');return;}
+  if(nextPassword!==confirmPassword){setError('Passwords do not match.');return;}
+  setLoading(true);
+  try{
+   await onSubmit(nextPassword);
+  }catch(e){
+   setError(e.message||'We could not update your password. Please request a new reset link and try again.');
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ if(status?.completed&&completedRole==='counsellor'&&role!=='counsellor'){
+  return <div className="wrap">
+   <div className="card banner"><h1>Password updated</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>Wayfinder by PsyTec</p></div>
+   <div className="card" style={{textAlign:'center',padding:32}}>
+    <h2 style={{marginBottom:10}}>Continue to the counsellor portal</h2>
+    <p className="sub" style={{lineHeight:1.6}}>Your password has been updated. This account is registered for the counsellor portal.</p>
+    <div style={{marginTop:22,display:'flex',flexDirection:'column',gap:10}}>
+     <a className="btn btn-primary" href="counsellor.html" style={{textDecoration:'none'}}>Go to counsellor portal</a>
+     <button className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
+    </div>
+   </div>
+  </div>;
+ }
+
+ if(status?.pending){
+  return <div className="wrap">
+   <div className="card banner"><h1>Preparing password reset</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>Wayfinder by PsyTec</p></div>
+   <div className="card" style={{textAlign:'center',padding:32}}>
+    <h2 style={{marginBottom:10}}>Checking your reset link...</h2>
+    <p className="sub" style={{lineHeight:1.6}}>Please wait while Wayfinder prepares your password reset session.</p>
+   </div>
+  </div>;
+ }
+
+ if(!hasSession){
+  return <div className="wrap">
+   <div className="card banner"><h1>Reset link expired</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>Wayfinder by PsyTec</p></div>
+   <div className="card" style={{textAlign:'center',padding:32}}>
+    <h2 style={{marginBottom:10}}>Request a new reset link</h2>
+    <p className="sub" style={{lineHeight:1.6}}>This password reset link is missing or has expired. Please return to sign in and request a new reset email.</p>
+    <button className="btn btn-primary" style={{marginTop:22}} onClick={onSignOut}>Return to sign in</button>
+   </div>
+  </div>;
+ }
+
+ return <div className="wrap">
+  <div className="card banner"><h1>Set a new password</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>Wayfinder by PsyTec</p></div>
+  <div className="card" style={{padding:24}}>
+   <h2>Set New Password</h2>
+   <p className="sub" style={{lineHeight:1.6,marginBottom:16}}>Choose a new password before continuing to your Wayfinder workspace.</p>
+   <div className="field"><label>New password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   <div className="field"><label>Confirm new password</label><input type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Re-enter password" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   {error&&<div style={{color:'#8a5a00',fontSize:13,marginBottom:12,padding:'10px 12px',background:'#fff4d6',borderRadius:6}}>{error}</div>}
+   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>{loading?'Updating...':'Update password'}</button>
+   <button className="btn btn-ghost btn-block" style={{marginTop:10}} onClick={onSignOut} disabled={loading}>Cancel</button>
+  </div>
+ </div>;
+}
+
 function App(){
  const [entered,setEntered]=useState(false);
  const [user,setUser]=useState(null);
@@ -388,12 +461,107 @@ function App(){
  const [profile,setProfile]=useState(null);
  const [authSession,setAuthSession]=useState(null);
  const [emailVerified,setEmailVerified]=useState(false);
+ const [passwordRecovery,setPasswordRecovery]=useState({active:false,session:null,error:'',completed:false,completedRole:'',pending:false});
  const [profileError,setProfileError]=useState('');
  const [accessDenied,setAccessDenied]=useState('');
  const [authMessage,setAuthMessage]=useState('');
  const [authMessageEmail,setAuthMessageEmail]=useState('');
  const profileLoadRef = useRef({ userId: null, promise: null });
+ const passwordRecoveryRef = useRef(false);
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
+
+ const startPasswordRecovery=async(rawSession,source='auth-state')=>{
+  let session=rawSession||null;
+  if(session?.access_token){
+   Auth.setActiveSession(session);
+   const fresh=await Auth.getFreshSession();
+   if(fresh.error)throw fresh.error;
+   if(fresh.data?.session?.user?.id===session.user?.id){
+    session=fresh.data.session;
+   }
+  }
+
+  const hasSession=!!session;
+  const hasAccessToken=!!session?.access_token;
+  const sessionUserId=session?.user?.id||null;
+  passwordRecoveryRef.current=true;
+  Auth.clearAuthHashFromUrl();
+
+  AuthDebug.log('[auth] PASSWORD_RECOVERY detected:', {
+   source,
+   sessionExists: hasSession,
+   accessTokenExists: hasAccessToken,
+   sessionUserId
+  });
+
+  setAuthMessage('');
+  setAuthMessageEmail('');
+  setAccessDenied('');
+  setProfile(null);
+  setProfileError('');
+  setAuthSession(session);
+  setUser(session?.user||null);
+  setEmailVerified(Auth.isEmailConfirmed(session?.user));
+  profileLoadRef.current={userId:null,promise:null};
+  setPasswordRecovery({
+   active:true,
+   session,
+   error: hasAccessToken?'':'This reset link is missing or has expired. Please request a new reset email.',
+   completed:false,
+   completedRole:'',
+   pending:false
+  });
+  setAuthReady(true);
+  return hasAccessToken;
+ };
+
+ const completePasswordRecovery=async(newPassword)=>{
+  const recoverySession=passwordRecovery.session||authSession;
+  if(!recoverySession?.access_token){
+   throw new Error('This reset session is missing or expired. Please request a new reset link.');
+  }
+
+  Auth.setActiveSession(recoverySession);
+  const {error:updateError}=await Auth.updatePassword(newPassword);
+  if(updateError)throw updateError;
+  Auth.clearAuthHashFromUrl();
+
+  const fresh=await Auth.getFreshSession();
+  if(fresh.error)throw fresh.error;
+  const session=fresh.data?.session||recoverySession;
+  if(!session?.access_token||!session?.user){
+   throw new Error('Your password was updated, but the session could not be refreshed. Please sign in again.');
+  }
+
+  setAuthSession(session);
+  setUser(session.user);
+  setEmailVerified(Auth.isEmailConfirmed(session.user));
+  profileLoadRef.current={userId:null,promise:null};
+
+  const existingProfile=await Profile.getExisting(session.user.id,session).catch(error=>{
+   AuthDebug.log('[profile] recovery role lookup failed:', { message:error?.message||String(error) });
+   return null;
+  });
+
+  if(existingProfile?.role==='counsellor'&&APP_ROLE!=='counsellor'){
+   passwordRecoveryRef.current=true;
+   setProfile(existingProfile);
+   setPasswordRecovery({
+    active:true,
+    session,
+    error:'',
+    completed:true,
+    completedRole:'counsellor',
+    pending:false
+   });
+   setAuthReady(true);
+   return true;
+  }
+
+  passwordRecoveryRef.current=false;
+  setPasswordRecovery({active:false,session:null,error:'',completed:false,completedRole:'',pending:false});
+  return handleAuthSession('USER_UPDATED',session,'password-recovery-complete');
+ };
 
  const handleAuthSession=async(event,rawSession,source='auth-state')=>{
   let session=rawSession||null;
@@ -511,8 +679,31 @@ function App(){
  };
 
  useEffect(()=>{
+  if(Auth.getAuthHashType()==='recovery'){
+   passwordRecoveryRef.current=true;
+   setPasswordRecovery({active:true,session:null,error:'',completed:false,completedRole:'',pending:true});
+  }
+
   const {data:{subscription}}=Auth.onAuthChange(async (event,session)=>{
    try{
+    if(event==='PASSWORD_RECOVERY'){
+     await startPasswordRecovery(session,'auth-state');
+     return;
+    }
+    if(passwordRecoveryRef.current){
+     AuthDebug.log('[auth] password recovery active; normal routing paused:', {
+      event,
+      sessionExists: !!session,
+      accessTokenExists: !!session?.access_token,
+      sessionUserId: session?.user?.id||null
+     });
+     if(session?.user){
+      setAuthSession(session);
+      setUser(session.user);
+     }
+     setAuthReady(true);
+     return;
+    }
     await handleAuthSession(event,session,'auth-state');
    }catch(e){
     console.error('Auth session handling failed:', e);
@@ -524,6 +715,12 @@ function App(){
   Auth.consumeAuthRedirect().then(result=>{
    if(result.error){
     AuthDebug.log('[auth] callback/hash processing failed:', { message: result.error.message || String(result.error) });
+   }
+   if(result.hashType==='recovery'){
+    return startPasswordRecovery(result.session,'url-hash');
+   }
+   if(passwordRecoveryRef.current){
+    return null;
    }
    if(result.hashDetected||result.session){
     return handleAuthSession(result.hashDetected?'URL_HASH_SESSION':'INITIAL_SESSION',result.session,result.hashDetected?'url-hash':'startup');
@@ -544,7 +741,17 @@ function App(){
   return handleAuthSession('MANUAL_SESSION_REFRESH',data?.session||null,'manual-refresh');
  };
 
- const signOut=()=>{setAuthMessage('');setAuthMessageEmail('');setAccessDenied('');setAuthSession(null);setEmailVerified(false);Auth.setActiveSession(null);Auth.signOut();};
+ const signOut=()=>{
+  passwordRecoveryRef.current=false;
+  setPasswordRecovery({active:false,session:null,error:'',completed:false,completedRole:'',pending:false});
+  setAuthMessage('');
+  setAuthMessageEmail('');
+  setAccessDenied('');
+  setAuthSession(null);
+  setEmailVerified(false);
+  Auth.setActiveSession(null);
+  Auth.signOut();
+ };
 
  // Auto sign-out after 60 minutes of inactivity
  useEffect(()=>{
@@ -563,10 +770,12 @@ function App(){
   profileExists: !!profile,
   entered,
   emailVerified,
+  passwordRecoveryActive: !!passwordRecovery.active,
   profileError: !!profileError
  });
 
  if(!authReady){AuthDebug.log('[render] branch: auth loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;}
+  if(passwordRecovery.active){AuthDebug.log('[render] branch: password recovery');return <PasswordRecoveryScreen status={passwordRecovery} role={APP_ROLE} onSubmit={completePasswordRecovery} onSignOut={signOut}/>;}
   if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;}
   if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
   if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
