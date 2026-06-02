@@ -194,7 +194,7 @@ These are treated as non-negotiable product and clinical boundaries:
 | Feature | Status | Notes |
 |---|---|---|
 | Auth | Working | Supabase email/password helpers exist and app gates on auth state. Not live-smoke-tested in this inspection. |
-| Verified email | Working | `App` blocks profile setup if `email_confirmed_at` or `confirmed_at` is missing, then signs out. |
+| Verified email | Working / staged rollout | Wayfinder app-level access is gated by `profiles.email_verified`. Supabase Confirm Email may remain temporarily enabled during rollout; after custom verification is configured and smoke-tested, Supabase Confirm Email can be disabled. Legacy behavior used `email_confirmed_at` / `confirmed_at`. |
 | Profile/Parent ID reuse | Working | Parent profile creation uses `ensure_profile`; existing profile is returned before insert. |
 | Dashboard | Working | Loads dyads, extended profile, entries with independent try/catch blocks and friendly empty states. |
 | Dyads/children | Partially implemented | UI and DB methods support multi-child. Code expects `dyads.child_id` and `user_id,child_id` conflict target; checked-in `supabase-schema.sql` does not define `child_id`. |
@@ -720,7 +720,8 @@ Current conclusion:
 - `App` uses the same Supabase auth flow as parent portal.
 - Counsellor signup is disabled in `AuthScreen` because `allowSignup = role !== 'counsellor'`.
 - Counsellor accounts must be provisioned by an administrator.
-- Verified email is required before profile/portal access.
+- Wayfinder app-level access is gated by `profiles.email_verified` before parent/counsellor workspace access.
+- During staged rollout, Supabase Confirm Email may remain temporarily enabled as an upstream control until the custom verification endpoint is configured and smoke-tested; after that, Supabase Confirm Email can be disabled.
 
 ### How counsellor role is checked
 
@@ -877,8 +878,9 @@ Confirm manually:
 - dashboard reads still use verified callback session / Bearer token
 - normal UI does not show parent email, Supabase UUID, child names, or tokens
 - dashboard loads by `parent_id` first and `user_id` fallback
-- verified login reaches Dashboard
-- unverified email is blocked
+- `profiles.email_verified = true` login reaches Dashboard
+- `profiles.email_verified = false` login is blocked by the verification-required screen
+- during staged rollout, Supabase Confirm Email may still prevent sessions before the Wayfinder profile gate runs
 - sign out works
 
 ### Branch workflow

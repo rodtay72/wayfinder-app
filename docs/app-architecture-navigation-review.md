@@ -201,35 +201,32 @@ Recommended boundary rules:
 
 1. User opens `index.html`.
 2. `App` waits for Supabase auth state readiness.
-3. If no verified authenticated user exists, `AuthScreen` renders.
+3. If no authenticated user exists, `AuthScreen` renders.
 4. User signs up or signs in.
-5. Signup without an immediate session shows: "Check your email to confirm your account, then sign in."
+5. During staged rollout, signup without an immediate session may still show the current Supabase confirmation message while Supabase Confirm Email remains enabled.
 6. Auth state change receives `SIGNED_IN`, `INITIAL_SESSION`, or `TOKEN_REFRESHED`.
 7. `App` requires:
    - `session`
    - `session.access_token`
    - `session.user`
-   - verified email via `email_confirmed_at` or `confirmed_at`
-8. If email is unverified:
-   - profile setup is blocked
-   - user/profile state is cleared
-   - a verification message is shown
-   - `Auth.signOut()` is called
-9. If email is verified:
-   - `Profile.getOrCreate(session.user.id, role, session)` runs
-   - the returned profile provides `parent_id` and `role`
-10. Wrong portal role shows a wrong-portal screen.
-11. Parent role renders `ClientApp`.
-12. `ClientApp` loads:
+8. `Profile.getOrCreate(session.user.id, role, session)` runs for parent users and returns `parent_id`, `role`, and `email_verified`.
+9. Wayfinder app-level access is gated by `profiles.email_verified`.
+10. If `profiles.email_verified` is not true:
+   - the normal parent/counsellor workspace is blocked
+   - the verification-required screen renders
+   - the user can request a custom Wayfinder verification email
+11. If `profiles.email_verified` is true, wrong portal role shows a wrong-portal screen.
+12. Parent role renders `ClientApp`.
+13. `ClientApp` loads:
    - all dyads/children
    - extended profile fields
    - journal entries
-13. Dashboard renders.
-14. From Dashboard:
+14. Dashboard renders.
+15. From Dashboard:
    - `+ New child` goes to `RegisterDyad`
    - `Start new activity` goes to `ClientJournal` directly if one child exists, or `selectChild` if multiple children exist
    - `My journal trail` goes to `JournalTrail`
-15. Saving a journal entry goes to `done`, then the user can return to Dashboard or journal another entry.
+16. Saving a journal entry goes to `done`, then the user can return to Dashboard or journal another entry.
 
 ### Counsellor Portal
 
@@ -247,7 +244,7 @@ Auth is centralized in `supabase.js` under `Auth`:
 
 - `signUp(email, password)`: Supabase email/password signup.
 - `signIn(email, password)`: Supabase password login.
-- `resendVerification(email)`: Supabase signup verification resend.
+- `resendVerification(...)`: calls the custom Wayfinder verification resend endpoint.
 - `signOut()`: Supabase sign out.
 - `getSession()`: Supabase session read.
 - `onAuthChange(cb)`: Supabase `onAuthStateChange` subscription.
@@ -257,7 +254,7 @@ Profile setup is intentionally not driven by browser localStorage. The intended 
 Profile flow:
 
 1. `App` receives a valid auth callback session.
-2. `App` verifies event type, session, access token, user, and email verification.
+2. `App` verifies event type, session, access token, and user.
 3. `App` uses `profileLoadRef` to avoid duplicate `Profile.getOrCreate` calls for the same user.
 4. `Profile.getOrCreate(userId, role, session)` validates the provided session.
 5. `Profile.waitForSession` confirms:
@@ -268,16 +265,21 @@ Profile flow:
    - `POST ${SUPABASE_URL}/rest/v1/rpc/ensure_profile`
    - headers include `apikey` and explicit `Authorization: Bearer <JWT>`
 7. SQL function `ensure_profile(p_role text)` uses `auth.uid()` as the source of truth.
-8. If a profile exists for `auth.uid()`, it returns existing `parent_id` and `role`.
+8. If a profile exists for `auth.uid()`, it returns existing `parent_id`, `role`, and `email_verified`.
 9. If missing, it inserts a new profile row.
 10. On unique conflicts, it re-fetches the existing row.
+11. `App` gates normal Wayfinder access on `profiles.email_verified`, not on `auth.users.email_confirmed_at`.
+
+Legacy note: before the custom verification flow, `App` used Supabase confirmation timestamps (`email_confirmed_at` / `confirmed_at`) as the verification gate and `Auth.resendVerification` used Supabase signup resend. That is now previous behavior. During staged rollout, Supabase Confirm Email may remain enabled as an upstream control until the custom verification endpoint is configured and smoke-tested; after that, Supabase Confirm Email can be disabled.
 
 `supabase-profiles.sql` defines:
 
 - `profiles.user_id uuid primary key references auth.users(id)`
 - `profiles.parent_id text unique not null`
 - `profiles.role text not null default 'parent'`
+- `profiles.email_verified boolean not null default false`
 - unique indexes on `user_id` and `parent_id`
+- unique index on `verification_token` where not null
 - RLS policy for users managing their own profile
 - `ensure_profile` as `security definer`
 - execute grant to `authenticated`
@@ -447,7 +449,7 @@ Risk: counsellor users saving a review against a parent's entry may not match th
 
 - `signUp`: Supabase signup.
 - `signIn`: Supabase email/password login.
-- `resendVerification`: sends Supabase signup verification email.
+- `resendVerification`: calls `/api/resend-verification` for the custom Wayfinder verification email.
 - `signOut`: signs out.
 - `getSession`: reads current Supabase session.
 - `onAuthChange`: subscribes to auth state changes.
@@ -634,7 +636,8 @@ Do not change unless a specific bug requires it:
 - Keep `ensure_profile`.
 - Keep explicit `Authorization: Bearer <JWT>` fetch.
 - Do not reintroduce browser-side `profiles.insert` or `profiles.upsert`.
-- Keep email verification gate before profile creation.
+- Keep the `profiles.email_verified` app-access gate before normal parent/counsellor workspace access.
+- Keep Supabase Confirm Email enabled only as a staged-rollout upstream control until custom verification is configured and smoke-tested; after that, it can be disabled.
 - Keep `profileLoadRef` guard.
 
 ## Partner Collaboration Guidance
@@ -686,7 +689,7 @@ Do not change these working invariants:
 
 - Auth/profile RPC flow.
 - `ensure_profile`.
-- Email verification gate before app/profile access.
+- `profiles.email_verified` gate before normal app access.
 - Explicit `Authorization: Bearer <JWT>` fetch for `ensure_profile`.
 - PDPA privacy masking rules.
 - Generated Parent ID / Wayfinder ID rule.
