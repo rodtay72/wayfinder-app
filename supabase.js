@@ -174,11 +174,44 @@ const authenticatedSelect = async ({ table, query, userId = null, parentId = nul
   return Array.isArray(data) ? data : [];
 };
 
+const parseApiJson = async (response) => {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+};
+
 // ---- AUTH ----
 const Auth = {
   signUp: (email, password) => sb.auth.signUp({ email, password }),
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
-  resendVerification: (email) => sb.auth.resend({ type: 'signup', email }),
+  resendVerification: async (target) => {
+    const session = target && typeof target === 'object' ? target : null;
+    const email = typeof target === 'string' ? target.trim() : '';
+    const headers = { 'Content-Type': 'application/json' };
+    const body = email ? { email } : {};
+
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+
+    const response = await fetch('/api/resend-verification', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+    const data = await parseApiJson(response);
+    if (!response.ok) {
+      const error = new Error(data.message || data.error || 'Could not send verification email. Please try again.');
+      error.status = response.status;
+      error.retryAfterSeconds = data.retryAfterSeconds || null;
+      return { data: null, error };
+    }
+    return { data, error: null };
+  },
   signOut: () => {
     activeAuthSession = null;
     return sb.auth.signOut();
@@ -201,7 +234,7 @@ const Profile = {
   get: async (userId) => {
     AuthDebug.log('[profile] query existing:', { userId });
     const { data, error, count } = await sb.from('profiles')
-      .select('parent_id, role', { count: 'exact' })
+      .select('parent_id, role, email_verified, email_sent_at', { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(1);
@@ -284,7 +317,7 @@ const Profile = {
     const data = await authenticatedSelect({
       table: 'profiles',
       query: {
-        select: 'parent_id,role',
+        select: 'parent_id,role,email_verified,email_sent_at',
         user_id: `eq.${userId}`,
         limit: '1'
       },

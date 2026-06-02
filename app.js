@@ -277,7 +277,12 @@ function AuthScreen({onAuth, role, message, messageEmail}){
   try{
    const {data,error:err}=activeMode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
    if(err)throw err;
-   if(activeMode==='signup'&&!data.session){setError('Check your email to confirm your account, then sign in.');setLoading(false);return;}
+   if(activeMode==='signup'&&!data.session){
+    await Auth.resendVerification(email);
+    setError('If this email exists, a verification link has been sent. Please sign in after checking your inbox.');
+    setLoading(false);
+    return;
+   }
    // onAuthStateChange is the single source of truth for authenticated user
    // and profile setup. Updating user here can race ahead of getOrCreateProfile.
   }catch(e){setError(e.message||'Something went wrong.');}
@@ -292,7 +297,7 @@ function AuthScreen({onAuth, role, message, messageEmail}){
   try{
    const {error:err}=await Auth.resendVerification(target);
    if(err)throw err;
-   setResendStatus('Verification email sent. Please check your inbox.');
+   setResendStatus('If this email exists, a verification link has been sent.');
   }catch(e){setError(e.message||'Could not send verification email. Please try again.');}
   setResendLoading(false);
  };
@@ -315,6 +320,58 @@ function AuthScreen({onAuth, role, message, messageEmail}){
     {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signup');setError('');}}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signin');setError('');}}>Sign in</span></span>}
    </p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Counsellor accounts are provisioned by the Wayfinder administrator.</p>}
    </div>
+  </div>
+ </div>;
+}
+
+function VerificationRequiredScreen({authSession, profile, role, onSignOut}){
+ const [status,setStatus]=useState(profile?.email_sent_at?'Check your inbox for your Wayfinder verification link.':'Preparing your verification email...');
+ const [error,setError]=useState('');
+ const [loading,setLoading]=useState(false);
+ const autoSendRef=useRef(false);
+
+ const send=async(auto=false)=>{
+  if(!authSession?.access_token){
+   setError('Your sign-in session expired. Please sign in again.');
+   return;
+  }
+  setLoading(true);
+  setError('');
+  if(!auto)setStatus('');
+  try{
+   const {error:err}=await Auth.resendVerification(authSession);
+   if(err)throw err;
+   setStatus('If this account exists, a verification link has been sent. Please check your inbox.');
+  }catch(e){
+   if(e?.status===429&&e.retryAfterSeconds){
+    setError(`Please wait ${e.retryAfterSeconds} seconds before requesting another verification email.`);
+   }else{
+    setError(e.message||'We could not send the verification email. Please try again later.');
+   }
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ useEffect(()=>{
+  if(autoSendRef.current||profile?.email_sent_at||!authSession?.access_token)return;
+  autoSendRef.current=true;
+  send(true);
+ },[authSession?.access_token,profile?.email_sent_at]);
+
+ return <div className="wrap">
+  <div className="card banner"><h1>Verify your Wayfinder account</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other'}</p></div>
+  <div className="card" style={{textAlign:'center',padding:32}}>
+   <h2 style={{marginBottom:10}}>Email verification required</h2>
+   <p className="sub" style={{lineHeight:1.6}}>Please use the verification link sent to your inbox before opening your Wayfinder workspace. This keeps parent and counsellor records protected.</p>
+   {status&&<div style={{color:'#4f7a5e',fontSize:13,marginTop:16,padding:'10px 12px',background:'#edf7ef',borderRadius:6}}>{status}</div>}
+   {error&&<div style={{color:'#8a5a00',fontSize:13,marginTop:16,padding:'10px 12px',background:'#fff4d6',borderRadius:6}}>{error}</div>}
+   <div style={{marginTop:22,display:'flex',flexDirection:'column',gap:10}}>
+    <button className="btn btn-primary" onClick={()=>send(false)} disabled={loading}>{loading?'Sending...':'Resend verification email'}</button>
+    <button className="btn btn-secondary" onClick={()=>location.reload()}>I have verified - refresh</button>
+    <button className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
+   </div>
+   <p className="hint" style={{marginTop:18}}>Need help? Contact ask.anything@psytec.com.sg.</p>
   </div>
  </div>;
 }
@@ -347,34 +404,6 @@ function App(){
     sessionUserId
    });
    if(profileEvents.includes(event) && session?.user && hasAccessToken){
-    const emailConfirmedAt = session.user.email_confirmed_at || null;
-    const confirmedAt = session.user.confirmed_at || null;
-    const emailVerified = !!(emailConfirmedAt || confirmedAt);
-
-    AuthDebug.log('[auth] email verification:', {
-     emailVerified,
-     email_confirmed_at: emailConfirmedAt,
-     confirmed_at: confirmedAt,
-     sessionUserId
-    });
-
-    if(!emailVerified){
-     const message = 'Please verify your email before signing in. Check your inbox for the confirmation link.';
-     setAuthSession(null);
-     Auth.setActiveSession(null);
-     setAuthMessage(message);
-     setAuthMessageEmail(session.user.email||'');
-     setUser(null);
-     setProfile(null);
-     setAccessDenied('');
-     setEntered(false);
-     profileLoadRef.current = { userId: null, promise: null };
-     AuthDebug.log('[auth] unverified email blocked profile setup:', { sessionUserId });
-     setAuthReady(true);
-     await Auth.signOut();
-     return;
-    }
-
      setAuthMessage('');
      setAuthMessageEmail('');
      setAccessDenied('');
@@ -400,7 +429,7 @@ function App(){
      setProfile(p);
      setProfileError('');
      setAccessDenied('');
-     setEntered(true);
+     setEntered(!!p?.email_verified);
     }catch(e){
      profileLoadRef.current = { userId: null, promise: null };
      const message = e?.message || '';
@@ -473,6 +502,8 @@ function App(){
   <button className="btn btn-primary" style={{marginTop:18}} onClick={()=>location.reload()}>Refresh</button>
  </div></div>;}
  if(!profile){AuthDebug.log('[render] branch: profile loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;}
+
+ if(profile.email_verified!==true){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} profile={profile} role={APP_ROLE} onSignOut={signOut}/>;}
 
   // Wrong portal check
   if(profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Verify Wayfinder Account</title>
+ <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+ <div class="wrap">
+  <div class="card banner">
+   <h1>Wayfinder</h1>
+   <p style="opacity:.85;font-size:14px;margin-top:4px;">Account verification</p>
+  </div>
+  <div class="card" style="text-align:center;padding:32px;">
+   <h2 id="verify-title" style="margin-bottom:10px;">Verifying your account...</h2>
+   <p id="verify-message" class="sub" style="line-height:1.6;">Please wait while we check your verification link.</p>
+   <div id="verify-actions" style="margin-top:22px;display:none;flex-direction:column;gap:10px;">
+    <a class="btn btn-primary" href="index.html" style="text-decoration:none;">Go to Wayfinder</a>
+    <a class="btn btn-secondary" href="counsellor.html" style="text-decoration:none;">Go to counsellor portal</a>
+   </div>
+  </div>
+ </div>
+ <script>
+  (async function verifyAccount(){
+   const title = document.getElementById('verify-title');
+   const message = document.getElementById('verify-message');
+   const actions = document.getElementById('verify-actions');
+   const token = new URLSearchParams(window.location.search).get('token');
+
+   if(!token){
+    title.textContent = 'Verification link missing';
+    message.textContent = 'This verification link is missing its token. Please request a new verification email.';
+    actions.style.display = 'flex';
+    return;
+   }
+
+   try{
+    const response = await fetch('/api/verify-email',{
+     method:'POST',
+     headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({token})
+    });
+    const data = await response.json().catch(function(){return {};});
+
+    if(response.ok){
+     title.textContent = 'Your account is verified';
+     message.textContent = data.message || 'You can now sign in and continue to Wayfinder.';
+    }else{
+     title.textContent = 'Verification link not accepted';
+     message.textContent = data.message || 'This verification link is invalid, expired, or already used. Please request a new verification email.';
+    }
+   }catch(error){
+    title.textContent = 'Verification unavailable';
+    message.textContent = 'We could not verify this link right now. Please try again later or request a new verification email.';
+   }finally{
+    actions.style.display = 'flex';
+   }
+  })();
+ </script>
+</body>
+</html>
