@@ -79,6 +79,15 @@
   .marker-self .top{display:flex;align-items:flex-start;gap:11px;cursor:pointer;}
   .marker-self input[type=checkbox]{width:18px;height:18px;margin-top:2px;accent-color:var(--sage-deep);flex-shrink:0;}
   .marker-self .mt{font-size:14px;font-weight:600;}
+  .awareness-row{display:grid;grid-template-columns:28px minmax(0,1fr) 160px;column-gap:12px;row-gap:8px;align-items:start;width:100%;height:auto;min-height:0;box-sizing:border-box;border:1px solid #E8DCC8;border-radius:8px;padding:14px;margin-bottom:12px;background:transparent;transition:.15s;}
+  .awareness-row.on{background:#FBF5EA;}
+  .awareness-checkline{display:contents;margin:0;cursor:pointer;}
+  .awareness-checkline input[type=checkbox]{grid-column:1;grid-row:1;width:18px;height:18px;margin:2px 0 0;accent-color:var(--sage-deep);flex-shrink:0;}
+  .awareness-statement{grid-column:2;grid-row:1;min-width:0;font-size:15px;font-weight:600;line-height:1.4;color:var(--ink);}
+  .awareness-input-wrap{grid-column:2;grid-row:2;min-width:0;width:100%;height:auto;min-height:0;box-sizing:border-box;}
+  .awareness-input-label{font-size:13px;font-weight:600;margin-bottom:4px;color:var(--ink-soft);}
+  .awareness-textarea{display:block;min-width:0;width:100%;height:auto;min-height:0;box-sizing:border-box;font-size:14px;}
+  .awareness-helper{grid-column:3;grid-row:1 / span 2;min-width:0;max-width:160px;width:100%;height:auto;min-height:0;margin:0;font-size:12.5px;line-height:1.45;color:var(--ink-soft);white-space:normal;overflow-wrap:normal;word-break:normal;align-self:start;}
   .ev-req{margin-top:11px;}
   .ev-req label{font-size:12px;color:var(--alert);font-weight:600;}
   .ev-missing{border-color:var(--alert)!important;box-shadow:0 0 0 3px rgba(181,101,74,.12);}
@@ -176,4 +185,14 @@
     .dashboard-actions .switch{flex:1 1 auto;min-width:130px;}
     .dashboard-section{padding:20px;}
     .child-summary-top .btn{width:100%;}
+  }
+  @media(max-width:640px){
+    .awareness-row{display:flex;flex-direction:column;gap:8px;height:auto;min-height:0;}
+    .awareness-checkline{display:flex;align-items:flex-start;gap:8px;width:100%;margin:0;}
+    .awareness-checkline input[type=checkbox],
+    .awareness-statement,
+    .awareness-input-wrap,
+    .awareness-helper{grid-column:auto;grid-row:auto;}
+    .awareness-input-wrap{width:100%;min-width:0;height:auto;min-height:0;}
+    .awareness-helper{max-width:none;width:100%;align-self:auto;}
   }

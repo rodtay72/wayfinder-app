@@ -1476,15 +1476,18 @@ function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
    
    {MARKERS.map(m=>{
     const st=markers[m.key];
-    return <div key={m.key} style={{marginBottom:12,padding:14,border:'1px solid #E8DCC8',borderRadius:8,background:st.claimed?'#FBF5EA':'transparent'}}>
-     <label style={{display:'flex',alignItems:'flex-start',gap:10,cursor:'pointer'}}>
-      <input type="checkbox" checked={st.claimed} onChange={()=>toggleMarker(m.key)} style={{marginTop:2,flexShrink:0}}/>
-      <span style={{fontSize:15,lineHeight:1.4}}>{m.label}</span>
+    return <div key={m.key} className={'awareness-row'+(st.claimed?' on':'')}>
+     <label className="awareness-checkline">
+      <input type="checkbox" checked={st.claimed} onChange={()=>toggleMarker(m.key)}/>
+      <span className="awareness-statement">{m.label}</span>
      </label>
-     {st.claimed && <div style={{marginTop:10,marginLeft:24}}>
-      <div style={{fontSize:13,fontWeight:600,marginBottom:4,color:'var(--text-secondary)'}}>What I will do:</div>
-      <textarea placeholder={m.guide} value={st.evidence} onChange={e=>setEv(m.key,e.target.value)} rows={3} style={{fontSize:14,width:'100%'}}/>
-     </div>}
+     {st.claimed && <>
+      <div className="awareness-input-wrap">
+       <div className="awareness-input-label">What I will do:</div>
+       <textarea className="awareness-textarea" placeholder="Write the concrete next step you want to remember." value={st.evidence} onChange={e=>setEv(m.key,e.target.value)} rows={3}/>
+      </div>
+      <p className="awareness-helper">{m.guide}</p>
+     </>}
     </div>;
    })}
    
