@@ -954,6 +954,223 @@ function DISCImageUpload({userId,existingBars,onBarsUpdated}){
  </div>;
 }
 
+const DECODE_CONTEXT_OPTIONS=['Morning','School transition','Mealtime','Bedtime','Screen time','Social situation','Leaving / transition','Other'];
+const DECODE_NOTICE_OPTIONS=['Refusal','Meltdown','Withdrawal','Repeating questions','Deflecting','Restlessness','Clinging','Arguing','Physical complaint','Other'];
+const DECODE_NEED_OPTIONS=['Safety','Connection','Control / agency','Predictability','Emotional regulation','Sensory regulation','Avoidance of overwhelm','Help expressing something','I am not sure yet'];
+const DECODE_PARENT_AFFECT_OPTIONS=['Frustrated','Worried','Rushed','Angry','Helpless','Embarrassed','Confused','Tired','Disappointed','Other'];
+const DECODE_INTENSITY_OPTIONS=['Frustration','Anxiety','Helplessness','Embarrassment','Anger'];
+const DECODE_PARENT_BEHAVIOUR_OPTIONS=['Raised my voice','Corrected quickly','Explained too much','Threatened consequence','Withdrew','Gave in','Rushed the child','Tried to fix immediately','Stayed calm','Paused','Connected first','Other'];
+const DECODE_GROWTH_OPTIONS=['Pause before responding','Stay curious','Name the feeling','Offer predictability','Connect before correcting','Reduce urgency','Give choice','Co-regulate first','Repair after rupture','Ask instead of assume'];
+const DECODE_AWARENESS_MARKERS=['I was here in the moment','I watched without racing ahead to fix','I let go of managing how everyone was doing','I named what I expected','I found the thought beneath my feeling','We worked it out together'];
+const DECODE_NEXT_OPTIONS=['Pause for 10 seconds','Lower my voice','Name what I see','Offer two choices','Say what is happening next','Move closer instead of shouting','Ask what feels hard','Repair afterwards'];
+const DECODE_REPAIR_OPTIONS=['No repair needed','I may need to reconnect','I may need to apologise','I may need to explain calmly','I may need to try again later'];
+const DECODE_STEPS=[
+ {label:'Intro',title:'Decode a Moment'},
+ {label:'A',title:'Awareness'},
+ {label:'L',title:'Locate'},
+ {label:'I',title:'Integrate'},
+ {label:'G',title:'Growth'},
+ {label:'N',title:'Navigate'},
+ {label:'Summary',title:'Summary'}
+];
+
+const emptyDecodeMoment=()=>({
+ awareness:{observedBehaviour:'',context:'',initialObservation:''},
+ locate:{possibleNeeds:[],parentAffects:[]},
+ integrate:{parentCognition:'',affectIntensity:{},parentBehaviours:[]},
+ growth:{capacities:[],awarenessMarkers:[]},
+ navigate:{nextOption:'',nextAction:'',repairIntention:''}
+});
+
+function DecodeMomentFlow({back,onSignOut}){
+ const [step,setStep]=useState(0);
+ const [decode,setDecode]=useState(emptyDecodeMoment);
+ const update=(section,key,value)=>setDecode(p=>({...p,[section]:{...p[section],[key]:value}}));
+ const toggle=(section,key,value)=>setDecode(p=>{
+  const current=p[section][key]||[];
+  const next=current.includes(value)?current.filter(v=>v!==value):[...current,value];
+  return {...p,[section]:{...p[section],[key]:next}};
+ });
+ const setAffectIntensity=(emotion,value)=>setDecode(p=>({
+  ...p,
+  integrate:{...p.integrate,affectIntensity:{...p.integrate.affectIntensity,[emotion]:value}}
+ }));
+ const goNext=()=>setStep(s=>Math.min(s+1,DECODE_STEPS.length-1));
+ const goBack=()=>setStep(s=>Math.max(s-1,0));
+ const textOrEmpty=(value)=>String(value||'').trim()||'Not written yet';
+ const listOrEmpty=(value)=>value&&value.length?value.join(', '):'Not selected yet';
+ const affectSummary=()=>{
+  const rated=Object.entries(decode.integrate.affectIntensity||{})
+   .filter(([,v])=>v!==undefined&&v!==null)
+   .map(([k,v])=>`${k} ${v}/5`);
+  if(rated.length)return rated.join(', ');
+  if(decode.locate.parentAffects.length)return decode.locate.parentAffects.join(', ');
+  return 'Not selected yet';
+ };
+ const needPhrase=decode.locate.possibleNeeds.length?decode.locate.possibleNeeds.join(', '):'an emerging need';
+ const cabPattern=decode.integrate.parentBehaviours.length
+  ? decode.integrate.parentBehaviours.join(', ').toLowerCase()
+  : decode.locate.parentAffects.length
+   ? decode.locate.parentAffects.join(', ').toLowerCase()
+   : 'a protective response';
+ const nextAction=[decode.navigate.nextOption,decode.navigate.nextAction.trim()].filter(Boolean).join(' - ')||'Not written yet';
+
+ const Chip=({active,onClick,children})=><button type="button" className={'chip decode-chip'+(active?' selected':'')} onClick={onClick}>{children}</button>;
+ const StepButtons=({primary})=><div className="decode-actions">
+  <button type="button" className="btn btn-secondary" onClick={goBack}>Back</button>
+  <button type="button" className="btn btn-primary" onClick={goNext}>{primary}</button>
+ </div>;
+ const Stepper=()=>step>0?<div className="decode-stepper" aria-label="Decode a Moment progress">
+  {DECODE_STEPS.slice(1).map((s,i)=><div key={s.label} className={'align-step'+(step===i+1?' active':'')+(step>i+1?' done':'')}>
+   <span>{s.label}</span>
+   <small>{s.title}</small>
+  </div>)}
+ </div>:null;
+
+ const screen=()=>{
+  if(step===0)return <div className="card decode-step-card">
+   <p className="pill">UI prototype</p>
+   <h1>Decode a Moment</h1>
+   <p className="decode-lead">Sometimes a child’s behaviour is the visible part of something they cannot yet explain. This is not about finding what is wrong with your child. It is about slowing the moment down, noticing what may have been happening for them, and noticing what happened in your thinking, feelings, and behaviour.</p>
+   <div className="decode-teach">
+    <h2>Why realignment matters</h2>
+    <p>Stress can spill into relationships. The way we handle pressure, conflict, or urgency elsewhere can sometimes follow us home. Your child may not yet think through big emotions like an adult. Their emotional stability can strongly shape how they react in the moment. Wayfinder helps you notice where your thinking, feelings, and behaviour may need to realign with what your child was experiencing.</p>
+   </div>
+   <div className="decode-actions">
+    <button type="button" className="btn btn-primary" onClick={goNext}>Begin</button>
+    <button type="button" className="btn btn-secondary" onClick={back}>Back to Dashboard</button>
+   </div>
+  </div>;
+
+  if(step===1)return <div className="card decode-step-card">
+   <div className="align-kicker">A: Awareness</div>
+   <h1>Awareness</h1>
+   <h2>What did you notice?</h2>
+   <p className="sub">Describe what happened without judging the child.</p>
+   <div className="field">
+    <label>What did your child do?</label>
+    <textarea value={decode.awareness.observedBehaviour} onChange={e=>update('awareness','observedBehaviour',e.target.value)} />
+   </div>
+   <div className="field">
+    <label>When did this happen?</label>
+    <div className="chips decode-grid">{DECODE_CONTEXT_OPTIONS.map(option=><Chip key={option} active={decode.awareness.context===option} onClick={()=>update('awareness','context',option)}>{option}</Chip>)}</div>
+   </div>
+   <div className="field">
+    <label>What did you first notice?</label>
+    <div className="chips decode-grid">{DECODE_NOTICE_OPTIONS.map(option=><Chip key={option} active={decode.awareness.initialObservation===option} onClick={()=>update('awareness','initialObservation',option)}>{option}</Chip>)}</div>
+   </div>
+   <StepButtons primary="Continue to Locate"/>
+  </div>;
+
+  if(step===2)return <div className="card decode-step-card">
+   <div className="align-kicker">L: Locate</div>
+   <h1>Locate</h1>
+   <h2>What might this behaviour have been trying to solve for your child?</h2>
+   <p className="sub">Choose what feels possible. This is a hypothesis, not a diagnosis.</p>
+   <div className="field">
+    <label>Possible need underneath the behaviour</label>
+    <div className="chips decode-grid">{DECODE_NEED_OPTIONS.map(option=><Chip key={option} active={decode.locate.possibleNeeds.includes(option)} onClick={()=>toggle('locate','possibleNeeds',option)}>{option}</Chip>)}</div>
+   </div>
+   <div className="field">
+    <label>What was happening in you at the same time?</label>
+    <div className="chips decode-grid">{DECODE_PARENT_AFFECT_OPTIONS.map(option=><Chip key={option} active={decode.locate.parentAffects.includes(option)} onClick={()=>toggle('locate','parentAffects',option)}>{option}</Chip>)}</div>
+   </div>
+   <StepButtons primary="Continue to Integrate"/>
+  </div>;
+
+  if(step===3)return <div className="card decode-step-card">
+   <div className="align-kicker">I: Integrate</div>
+   <h1>Integrate</h1>
+   <h2>What happened in your response?</h2>
+   <p className="sub">Now connect the child's possible need with your thinking, feelings, and behaviour.</p>
+   <div className="decode-grid cab-panel-grid">
+    <div className="cab-panel c-cog">
+     <h3>My thinking</h3>
+     <label>What thought appeared in your mind?</label>
+     <p className="hint">Examples: "They should know better." "We are going to be late." "This always happens." "I need to stop this now." "I am failing as a parent."</p>
+     <textarea value={decode.integrate.parentCognition} onChange={e=>update('integrate','parentCognition',e.target.value)} />
+    </div>
+    <div className="cab-panel c-aff">
+     <h3>My feelings</h3>
+     <label>What did you feel emotionally or in your body?</label>
+     <div className="decode-scale-list">{DECODE_INTENSITY_OPTIONS.map(emotion=><div key={emotion} className="decode-scale-row">
+      <div className="decode-scale-label">{emotion}</div>
+      <div className="decode-scale-options">{[0,1,2,3,4,5].map(value=><button key={value} type="button" className={'decode-scale-dot'+(decode.integrate.affectIntensity[emotion]===value?' selected':'')} onClick={()=>setAffectIntensity(emotion,value)}>{value}</button>)}</div>
+     </div>)}</div>
+    </div>
+    <div className="cab-panel c-beh">
+     <h3>My behaviour / what I did</h3>
+     <label>What did you do next?</label>
+     <div className="chips">{DECODE_PARENT_BEHAVIOUR_OPTIONS.map(option=><Chip key={option} active={decode.integrate.parentBehaviours.includes(option)} onClick={()=>toggle('integrate','parentBehaviours',option)}>{option}</Chip>)}</div>
+    </div>
+   </div>
+   <StepButtons primary="Continue to Growth"/>
+  </div>;
+
+  if(step===4)return <div className="card decode-step-card">
+   <div className="align-kicker">G: Growth</div>
+   <h1>Growth</h1>
+   <h2>What capacity might help you meet this need next time?</h2>
+   <p className="sub">Growth is not about blaming yourself. It is about building alignment capacity.</p>
+   <div className="field">
+    <label>Capacity to practise</label>
+    <div className="chips decode-grid">{DECODE_GROWTH_OPTIONS.map(option=><Chip key={option} active={decode.growth.capacities.includes(option)} onClick={()=>toggle('growth','capacities',option)}>{option}</Chip>)}</div>
+   </div>
+   <div className="field">
+    <label>What are you becoming aware of?</label>
+    <div className="chips decode-grid">{DECODE_AWARENESS_MARKERS.map(option=><Chip key={option} active={decode.growth.awarenessMarkers.includes(option)} onClick={()=>toggle('growth','awarenessMarkers',option)}>{option}</Chip>)}</div>
+   </div>
+   <StepButtons primary="Continue to Navigate"/>
+  </div>;
+
+  if(step===5)return <div className="card decode-step-card">
+   <div className="align-kicker">N: Navigate</div>
+   <h1>Navigate</h1>
+   <h2>What will you try next time?</h2>
+   <p className="sub">Choose one small next action. Keep it realistic.</p>
+   <div className="field">
+    <label>Possible next action</label>
+    <div className="chips decode-grid">{DECODE_NEXT_OPTIONS.map(option=><Chip key={option} active={decode.navigate.nextOption===option} onClick={()=>update('navigate','nextOption',option)}>{option}</Chip>)}</div>
+   </div>
+   <div className="field">
+    <label>My next action</label>
+    <textarea value={decode.navigate.nextAction} onChange={e=>update('navigate','nextAction',e.target.value)} />
+   </div>
+   <div className="field">
+    <label>Is there anything to repair with your child?</label>
+    <div className="chips decode-grid">{DECODE_REPAIR_OPTIONS.map(option=><Chip key={option} active={decode.navigate.repairIntention===option} onClick={()=>update('navigate','repairIntention',option)}>{option}</Chip>)}</div>
+   </div>
+   <StepButtons primary="Show Summary"/>
+  </div>;
+
+  return <div className="card decode-step-card">
+   <div className="align-kicker">Summary</div>
+   <h1>My Alignment Reminder</h1>
+   <p className="sub">Let's explore this as a reflection, not a conclusion.</p>
+   <div className="decode-summary">
+    <div><span>Observed behaviour</span><p>{textOrEmpty(decode.awareness.observedBehaviour)}</p></div>
+    <div><span>Possible child need</span><p>{listOrEmpty(decode.locate.possibleNeeds)}</p></div>
+    <div><span>What happened in me</span><p><b>Thinking:</b> {textOrEmpty(decode.integrate.parentCognition)}<br/><b>Feelings:</b> {affectSummary()}<br/><b>Behaviour / what I did:</b> {listOrEmpty(decode.integrate.parentBehaviours)}</p></div>
+    <div><span>Possible misalignment</span><p>Your child may have needed {needPhrase}, while your response may have moved toward {cabPattern}.</p></div>
+    <div><span>Growth capacity</span><p>{listOrEmpty(decode.growth.capacities)}</p></div>
+    <div><span>Next action</span><p>{nextAction}</p></div>
+    <div><span>Repair intention</span><p>{decode.navigate.repairIntention||'Not selected yet'}</p></div>
+   </div>
+   <p className="decode-note">This summary is not a diagnosis. It is a reflection to help you practise alignment.</p>
+   <div className="decode-actions">
+    <button type="button" className="btn btn-secondary" onClick={goBack}>Back</button>
+    <button type="button" className="btn btn-primary" onClick={back}>Return to Dashboard</button>
+   </div>
+  </div>;
+ };
+
+ return <div className="wrap decode-shell">
+  <Bar title="Decode a Moment" back={back} onSignOut={onSignOut}/>
+  <Stepper/>
+  {screen()}
+ </div>;
+}
+
 function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut}){
  const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
@@ -961,7 +1178,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [aiInsight,setAiInsight]=useState('');
  const [insightLoading,setInsightLoading]=useState(false);
  const [discBars,setDiscBars]=useState(null);
- const [stage,setStage]=useState('loading'); // loading | dashboard | selectChild | register | trail | journal | done
+ const [stage,setStage]=useState('loading'); // loading | dashboard | decode | selectChild | register | trail | journal | done
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
  const entryDateValue=(entry)=>firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at);
@@ -1062,6 +1279,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   else setStage('selectChild');
  };
  const startNewChild=()=>{setDyad(blankDyad());setStage('register');};
+ const startDecode=()=>setStage('decode');
 
  useEffect(()=>{
   if(!authSession?.access_token) return;
@@ -1090,6 +1308,16 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
    </div>
   </div>
   <ProfileSettings user={user} profile={profile} dyads={dyads} entries={entries}/>
+
+   <div className="card decode-card">
+    <div>
+     <p className="pill">Guided reflection</p>
+     <h2>Decode a Moment</h2>
+     <p className="decode-card-subtitle">"My child did something and I don't know why."</p>
+     <p className="sub">Explore what the behaviour may have been signalling, what happened in you, and how to respond with more alignment.</p>
+    </div>
+    <button className="btn btn-primary" onClick={startDecode}>Start Decode</button>
+   </div>
 
    <div className="card dashboard-section">
     <div className="dashboard-section-head">
@@ -1161,8 +1389,10 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
     <p style={{fontWeight:700,color:'#40514b',marginBottom:10}}>{shiftWords.join(' · ')}</p>
     <p className="sub">What your child needs: {CHILD_NEEDS_WORDS.join(' · ')}</p>
    </div>
-  </div>;
+ </div>;
  }
+
+ if(stage==='decode') return <DecodeMomentFlow back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
  if(stage==='selectChild') return <div className="wrap">
   <Bar title="Who are you journalling for?" back={()=>setStage('dashboard')} onSignOut={onSignOut}/>
