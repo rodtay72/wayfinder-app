@@ -591,10 +591,33 @@ const DB = {
     return { ...(row.data || {}), parentId: row.data?.parentId || row.parent_id, childId: row.data?.childId || row.child_id };
   },
 
-  saveDyad: async (userId, parentId, dyad) => {
+  saveDyad: async (userId, parentId, dyad, authSession = null) => {
+    let session = null;
+    try {
+      session = await getAuthenticatedReadSession(userId, 'saveDyad', authSession);
+    } catch (_) {}
+
+    if (session?.access_token) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/dyads?on_conflict=user_id,child_id`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify({ user_id: userId, parent_id: parentId, child_id: dyad.childId, data: dyad })
+      });
+      if (!response.ok) {
+        const responseText = await response.text();
+        throw new Error(`Authenticated saveDyad failed with status ${response.status}: ${responseText || response.statusText}`);
+      }
+      return;
+    }
+
     const { error } = await sb.from('dyads')
       .upsert({ user_id: userId, parent_id: parentId, child_id: dyad.childId, data: dyad }, { onConflict: 'user_id,child_id' });
-    if (error) console.error('saveDyad error:', error);
+    if (error) throw error;
   },
 
   // Journal entries
@@ -650,7 +673,30 @@ const DB = {
     return (data || []).map(r => normalizeJournalEntryRow(r));
   },
 
-  saveEntry: async (userId, entry) => {
+  saveEntry: async (userId, entry, authSession = null) => {
+    let session = null;
+    try {
+      session = await getAuthenticatedReadSession(userId, 'saveEntry', authSession);
+    } catch (_) {}
+
+    if (session?.access_token) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/journal_entries`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal'
+        },
+        body: JSON.stringify({ id: entry.id, user_id: userId, parent_id: entry.parentId, data: entry })
+      });
+      if (!response.ok) {
+        const responseText = await response.text();
+        throw new Error(`Authenticated saveEntry failed with status ${response.status}: ${responseText || response.statusText}`);
+      }
+      return;
+    }
+
     const { error } = await sb.from('journal_entries')
       .insert({ id: entry.id, user_id: userId, parent_id: entry.parentId, data: entry });
     if (error) console.error('saveEntry error:', error);

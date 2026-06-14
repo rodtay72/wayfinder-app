@@ -979,12 +979,160 @@ const emptyDecodeMoment=()=>({
  locate:{possibleNeeds:[],parentAffects:[]},
  integrate:{parentCognition:'',affectIntensity:{},parentBehaviours:[]},
  growth:{capacities:[],awarenessMarkers:[]},
- navigate:{nextOption:'',nextAction:'',repairIntention:''}
+ navigate:{nextOption:'',nextAction:'',repairIntention:'',observeNextTime:''}
 });
 
-function DecodeMomentFlow({back,onSignOut}){
+const DECODE_ENTRY_TYPE='behaviour_decode';
+const cleanDecodeText=(value)=>String(value||'').trim();
+const decodeList=(value)=>safeArray(value).filter(Boolean);
+const decodeAffectText=(decode)=>{
+ const locate=safeObject(decode?.locate);
+ const integrate=safeObject(decode?.integrate);
+ const rated=Object.entries(safeObject(integrate.affectIntensity))
+  .filter(([,v])=>v!==undefined&&v!==null)
+  .map(([k,v])=>`${k} ${v}/5`);
+ if(rated.length)return rated.join(', ');
+ return decodeList(locate.parentAffects).join(', ');
+};
+const decodeNextActionText=(decode)=>{
+ const navigate=safeObject(decode?.navigate);
+ return [navigate.nextOption,cleanDecodeText(navigate.nextAction)].filter(Boolean).join(' - ');
+};
+const decodeAlignmentGapText=(decode)=>{
+ const locate=safeObject(decode?.locate);
+ const integrate=safeObject(decode?.integrate);
+ const needs=decodeList(locate.possibleNeeds);
+ const responses=decodeList(integrate.parentBehaviours);
+ const affects=decodeList(locate.parentAffects);
+ const needText=needs.length?needs.join(', '):'an emerging need';
+ const responseText=responses.length?responses.join(', ').toLowerCase():affects.length?affects.join(', ').toLowerCase():'a protective response';
+ return `Your child may have needed ${needText}, while your response may have moved toward ${responseText}.`;
+};
+const buildDecodeReminderEntry=({decode,parentId,childId=''})=>{
+ const createdAt=new Date().toISOString();
+ const awareness=safeObject(decode?.awareness);
+ const locate=safeObject(decode?.locate);
+ const integrate=safeObject(decode?.integrate);
+ const growth=safeObject(decode?.growth);
+ const navigate=safeObject(decode?.navigate);
+ const possibleNeeds=decodeList(locate.possibleNeeds);
+ const possibleSignal=[awareness.initialObservation,awareness.context].filter(Boolean);
+ const feelings=decodeAffectText(decode);
+ const alignmentGap=decodeAlignmentGapText(decode);
+ const nextAction=decodeNextActionText(decode);
+ const reminder={
+  observed_behaviour:cleanDecodeText(awareness.observedBehaviour),
+  moment_noticed:cleanDecodeText(awareness.observedBehaviour),
+  awareness_signals:possibleSignal,
+  possible_signal_explored:possibleSignal,
+  possible_need_worth_staying_curious_about:possibleNeeds,
+  thinking:cleanDecodeText(integrate.parentCognition),
+  feelings,
+  affect_intensity:safeObject(integrate.affectIntensity),
+  behaviour_what_i_did:decodeList(integrate.parentBehaviours),
+  possible_alignment_gap:alignmentGap,
+  stabilising_response_to_practise:decodeList(growth.capacities),
+  next_action:nextAction,
+  next_option:navigate.nextOption||'',
+  next_action_note:cleanDecodeText(navigate.nextAction),
+  repair_intention:navigate.repairIntention||'',
+  what_i_will_observe_next_time:cleanDecodeText(navigate.observeNextTime),
+  awareness_markers:decodeList(growth.awarenessMarkers),
+  created_at:createdAt
+ };
+ return {
+  id:Date.now(),
+  parentId,
+  childId,
+  entry_type:DECODE_ENTRY_TYPE,
+  entryType:DECODE_ENTRY_TYPE,
+  title:'Alignment Reminder',
+  activity:'Alignment Reminder',
+  phase:'Decode a Moment',
+  date:createdAt.split('T')[0],
+  submittedAt:createdAt,
+  timestamp:createdAt,
+  createdAt,
+  autoWords:[],
+  markers:{},
+  reminder,
+  align:{
+   awareness:{
+    observed_behaviour:reminder.observed_behaviour,
+    context:awareness.context||'',
+    initial_observation:awareness.initialObservation||'',
+    awareness_signals:reminder.awareness_signals
+   },
+   locate:{
+    possible_child_need:possibleNeeds,
+    parent_affect:decodeList(locate.parentAffects)
+   },
+   integrate:{
+    parent_cognition:reminder.thinking,
+    parent_affect:feelings,
+    parent_affect_intensity:reminder.affect_intensity,
+    parent_behaviour:reminder.behaviour_what_i_did,
+    possible_misalignment:alignmentGap
+   },
+   growth:{
+    growth_capacity:reminder.stabilising_response_to_practise,
+    awareness_markers:reminder.awareness_markers
+   },
+   navigate:{
+    next_action:reminder.next_action,
+    repair_intention:reminder.repair_intention,
+    observe_next_time:reminder.what_i_will_observe_next_time
+   }
+  }
+ };
+};
+const isBehaviourDecodeEntry=(entry)=>[entry?.entry_type,entry?.entryType,entry?.type].includes(DECODE_ENTRY_TYPE);
+const decodeReminderFromEntry=(entry)=>{
+ const reminder=safeObject(entry?.reminder);
+ if(Object.keys(reminder).length)return reminder;
+ const align=safeObject(entry?.align);
+ const awareness=safeObject(align.awareness);
+ const locate=safeObject(align.locate);
+ const integrate=safeObject(align.integrate);
+ const growth=safeObject(align.growth);
+ const navigate=safeObject(align.navigate);
+ return {
+  observed_behaviour:awareness.observed_behaviour||'',
+  awareness_signals:decodeList(awareness.awareness_signals||[awareness.initial_observation,awareness.context]),
+  possible_signal_explored:decodeList(awareness.awareness_signals||[awareness.initial_observation,awareness.context]),
+  possible_need_worth_staying_curious_about:decodeList(locate.possible_child_need),
+  thinking:integrate.parent_cognition||'',
+  feelings:integrate.parent_affect||'',
+  affect_intensity:safeObject(integrate.parent_affect_intensity),
+  behaviour_what_i_did:decodeList(integrate.parent_behaviour),
+  possible_alignment_gap:integrate.possible_misalignment||'',
+  stabilising_response_to_practise:decodeList(growth.growth_capacity),
+  next_action:navigate.next_action||'',
+  repair_intention:navigate.repair_intention||'',
+  what_i_will_observe_next_time:navigate.observe_next_time||''
+ };
+};
+const decodeDisplayText=(value,fallback='-')=>{
+ if(Array.isArray(value)){
+  const text=value.filter(Boolean).join(', ');
+  return text||fallback;
+ }
+ if(value&&typeof value==='object'){
+  const text=Object.entries(value)
+   .filter(([,v])=>v!==undefined&&v!==null&&v!=='')
+   .map(([k,v])=>`${k} ${v}/5`)
+   .join(', ');
+  return text||fallback;
+ }
+ return cleanDecodeText(value)||fallback;
+};
+
+function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,onSaved,onSignOut}){
  const [step,setStep]=useState(0);
  const [decode,setDecode]=useState(emptyDecodeMoment);
+ const [saveState,setSaveState]=useState('idle');
+ const [saveError,setSaveError]=useState('');
+ const [selectedChildId,setSelectedChildId]=useState(()=>dyads.length===1?dyads[0]?.childId||'':'');
  const update=(section,key,value)=>setDecode(p=>({...p,[section]:{...p[section],[key]:value}}));
  const toggle=(section,key,value)=>setDecode(p=>{
   const current=p[section][key]||[];
@@ -1007,12 +1155,6 @@ function DecodeMomentFlow({back,onSignOut}){
   if(decode.locate.parentAffects.length)return decode.locate.parentAffects.join(', ');
   return 'Not selected yet';
  };
- const needPhrase=decode.locate.possibleNeeds.length?decode.locate.possibleNeeds.join(', '):'an emerging need';
- const cabPattern=decode.integrate.parentBehaviours.length
-  ? decode.integrate.parentBehaviours.join(', ').toLowerCase()
-  : decode.locate.parentAffects.length
-   ? decode.locate.parentAffects.join(', ').toLowerCase()
-   : 'a protective response';
  const nextAction=[decode.navigate.nextOption,decode.navigate.nextAction.trim()].filter(Boolean).join(' - ')||'Not written yet';
 
  const Chip=({active,onClick,children})=><button type="button" className={'chip decode-chip'+(active?' selected':'')} onClick={onClick}>{children}</button>;
@@ -1026,10 +1168,29 @@ function DecodeMomentFlow({back,onSignOut}){
    <small>{s.title}</small>
   </div>)}
  </div>:null;
+ const saveDecode=async()=>{
+  if(saveState==='saving')return;
+  setSaveState('saving');
+  setSaveError('');
+  const entry=buildDecodeReminderEntry({decode,parentId,childId:selectedChildId});
+  try{
+   const {data:freshData}=await Auth.getFreshSession();
+   const freshSession=freshData?.session||authSession;
+   await DB.saveEntry(user.id,entry,freshSession);
+   const savedEntries=await DB.getEntries(user.id,parentId,authSession);
+   const found=(savedEntries||[]).some(saved=>String(saved.id)===String(entry.id)||saved.submittedAt===entry.submittedAt||saved.timestamp===entry.timestamp);
+   if(!found)throw new Error('Saved Decode reminder was not returned by Journal Trail read.');
+   setSaveState('saved');
+   if(onSaved)onSaved(entry,savedEntries);
+  }catch(err){
+   console.error('decode save error:',err);
+   setSaveState('error');
+   setSaveError('We could not save this reminder yet. Please try again.');
+  }
+ };
 
  const screen=()=>{
   if(step===0)return <div className="card decode-step-card">
-   <p className="pill">UI prototype</p>
    <h1>Decode a Moment</h1>
    <p className="decode-lead">Sometimes a child’s behaviour is the visible part of something they cannot yet explain. This is not about finding what is wrong with your child. It is about slowing the moment down, noticing what may have been happening for them, and noticing what happened in your thinking, feelings, and behaviour.</p>
    <div className="decode-teach">
@@ -1140,26 +1301,52 @@ function DecodeMomentFlow({back,onSignOut}){
     <label>Is there anything to repair with your child?</label>
     <div className="chips decode-grid">{DECODE_REPAIR_OPTIONS.map(option=><Chip key={option} active={decode.navigate.repairIntention===option} onClick={()=>update('navigate','repairIntention',option)}>{option}</Chip>)}</div>
    </div>
+   <div className="field">
+    <label>What will I observe next time?</label>
+    <textarea value={decode.navigate.observeNextTime} onChange={e=>update('navigate','observeNextTime',e.target.value)} />
+   </div>
    <StepButtons primary="Show Summary"/>
   </div>;
 
   return <div className="card decode-step-card">
-   <div className="align-kicker">Summary</div>
+   <div className="align-kicker">Reminder</div>
    <h1>My Alignment Reminder</h1>
    <p className="sub">Let's explore this as a reflection, not a conclusion.</p>
+   {saveState==='saved'
+    ? <p className="decode-note">Saved to your Journal Trail. You can return to this reminder and notice what changes over time.</p>
+    : saveError
+     ? <p className="decode-note">{saveError}</p>
+     : null}
    <div className="decode-summary">
-    <div><span>Observed behaviour</span><p>{textOrEmpty(decode.awareness.observedBehaviour)}</p></div>
-    <div><span>Possible child need</span><p>{listOrEmpty(decode.locate.possibleNeeds)}</p></div>
-    <div><span>What happened in me</span><p><b>Thinking:</b> {textOrEmpty(decode.integrate.parentCognition)}<br/><b>Feelings:</b> {affectSummary()}<br/><b>Behaviour / what I did:</b> {listOrEmpty(decode.integrate.parentBehaviours)}</p></div>
-    <div><span>Possible misalignment</span><p>Your child may have needed {needPhrase}, while your response may have moved toward {cabPattern}.</p></div>
-    <div><span>Growth capacity</span><p>{listOrEmpty(decode.growth.capacities)}</p></div>
-    <div><span>Next action</span><p>{nextAction}</p></div>
+    <div><span>The moment I noticed</span><p>{textOrEmpty(decode.awareness.observedBehaviour)}</p></div>
+    <div><span>One possible signal I explored</span><p>{[decode.awareness.initialObservation,decode.awareness.context].filter(Boolean).join(', ')||'Not selected yet'}</p></div>
+    <div><span>A possible need worth staying curious about</span><p>{listOrEmpty(decode.locate.possibleNeeds)}</p></div>
+    <div><span>What was happening in me</span><p><b>Thinking:</b> {textOrEmpty(decode.integrate.parentCognition)}<br/><b>Feelings:</b> {affectSummary()}<br/><b>Behaviour / What I did:</b> {listOrEmpty(decode.integrate.parentBehaviours)}</p></div>
+    <div><span>Possible alignment gap</span><p>{decodeAlignmentGapText(decode)}</p></div>
+    <div><span>What I want to practise</span><p>{listOrEmpty(decode.growth.capacities)}</p></div>
+    <div><span>My next action</span><p>{nextAction}</p></div>
     <div><span>Repair intention</span><p>{decode.navigate.repairIntention||'Not selected yet'}</p></div>
+    <div><span>What I will observe next time</span><p>{textOrEmpty(decode.navigate.observeNextTime)}</p></div>
    </div>
-   <p className="decode-note">This summary is not a diagnosis. It is a reflection to help you practise alignment.</p>
+   <p className="decode-note">This is a reflection, not an assessment of your child.</p>
+   {saveState!=='saved'&&(dyads.length===0
+    ?<p className="decode-note" style={{color:'#b44',marginBottom:12}}>Add a child before saving this reminder to Journal Trail.</p>
+    :<div className="field" style={{marginBottom:16}}>
+     <label>Which child is this reminder connected to?</label>
+     {dyads.length===1
+      ?<p style={{marginTop:8,fontWeight:600,color:'#40514b'}}>Connected to Child ID: {dyads[0].childId}{[dyads[0].childGender,ageFrom(dyads[0].childDob,null)].filter(Boolean).length?' ('+[dyads[0].childGender,ageFrom(dyads[0].childDob,null)].filter(Boolean).join(', ')+')':''}</p>
+      :<div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:8}}>{dyads.map(d=>{const meta=[d.childGender,ageFrom(d.childDob,null)].filter(Boolean);return<button type="button" key={d.childId} className={'chip decode-chip'+(selectedChildId===d.childId?' selected':'')} onClick={()=>setSelectedChildId(d.childId)}>Child ID: {d.childId}{meta.length?' · '+meta.join(', '):''}</button>;})}</div>
+     }
+    </div>
+   )}
    <div className="decode-actions">
-    <button type="button" className="btn btn-secondary" onClick={goBack}>Back</button>
-    <button type="button" className="btn btn-primary" onClick={back}>Return to Dashboard</button>
+    {saveState==='saved' ? <>
+     <button type="button" className="btn btn-primary" onClick={onViewTrail}>View Journal Trail</button>
+     <button type="button" className="btn btn-secondary" onClick={back}>Return to Dashboard</button>
+    </> : <>
+     <button type="button" className="btn btn-secondary" onClick={goBack} disabled={saveState==='saving'}>Back</button>
+     <button type="button" className="btn btn-primary" onClick={saveDecode} disabled={saveState==='saving'||!selectedChildId}>{saveState==='saving'?'Saving...':'Save to Journal Trail'}</button>
+    </>}
    </div>
   </div>;
  };
@@ -1187,8 +1374,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   return date&&!isNaN(date)?date.getTime():0;
  };
  const entryChildId=(entry)=>entry?.childId||entry?.child_id||entry?.dyadId||entry?.dyad_id||'';
- const entryTitle=(entry)=>entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
- const entryPhaseLabel=(entry)=>entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
+ const entryTitle=(entry)=>isBehaviourDecodeEntry(entry)?'Alignment Reminder':entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
+ const entryPhaseLabel=(entry)=>isBehaviourDecodeEntry(entry)?'Decode a Moment':entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
  const childMatchesEntry=(child,entry)=>{
   const childId=child?.childId||child?.child_id||'';
   const id=entryChildId(entry);
@@ -1392,7 +1579,16 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  </div>;
  }
 
- if(stage==='decode') return <DecodeMomentFlow back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+ if(stage==='decode') return <DecodeMomentFlow
+  user={user}
+  parentId={parentId}
+  authSession={authSession}
+  dyads={dyads}
+  back={()=>setStage('dashboard')}
+  onViewTrail={()=>setStage('trail')}
+  onSaved={(entry)=>setEntries(prev=>[entry,...prev.filter(e=>String(e.id)!==String(entry.id))])}
+  onSignOut={onSignOut}
+ />;
 
  if(stage==='selectChild') return <div className="wrap">
   <Bar title="Who are you journalling for?" back={()=>setStage('dashboard')} onSignOut={onSignOut}/>
@@ -1410,7 +1606,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
  if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
- if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()} onSignOut={onSignOut}/>;
+ if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy,authSession);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()} onSignOut={onSignOut}/>;
 
  if(stage==='done') return <div className="wrap">
   <Bar title="Entry saved" back={()=>loadDashboard()} onSignOut={onSignOut}/>
@@ -1441,8 +1637,8 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
   return date&&!isNaN(date)?date.getTime():0;
  };
  const entryChildId=(entry)=>entry?.childId||entry?.child_id||entry?.dyadId||entry?.dyad_id||'';
- const entryTitle=(entry)=>entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
- const entryPhaseLabel=(entry)=>entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
+ const entryTitle=(entry)=>isBehaviourDecodeEntry(entry)?'Alignment Reminder':entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
+ const entryPhaseLabel=(entry)=>isBehaviourDecodeEntry(entry)?'Decode a Moment':entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
  const dyadByChildId=Object.fromEntries((dyads||[]).map(d=>[String(d.childId||d.child_id||''),d]));
  const entryChildAge=(entry)=>{
   const childId=entryChildId(entry);
@@ -1457,20 +1653,22 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
   });
  },[user.id,parentId,authSession?.access_token]);
 
+ const activityEntries=entries.filter(e=>!isBehaviourDecodeEntry(e));
  const wordCounts={};
- entries.forEach(e=>(e.autoWords||[]).forEach(w=>{wordCounts[w]=(wordCounts[w]||0)+1;}));
+ activityEntries.forEach(e=>(e.autoWords||[]).forEach(w=>{wordCounts[w]=(wordCounts[w]||0)+1;}));
  const topWords=Object.entries(wordCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
 
  const patternGroups={I:[],S:[],D:[],C:[]};
  topWords.forEach(([w])=>{const q=WORD_Q[w];if(q&&patternGroups[q])patternGroups[q].push(w);});
 
  const markerCounts={};
- entries.forEach(e=>{
+ activityEntries.forEach(e=>{
   Object.entries(e.markers||{}).forEach(([k,v])=>{
    if(v.claimed) markerCounts[k]=(markerCounts[k]||0)+1;
   });
  });
  const totalEntries=entries.length;
+ const totalActivityEntries=activityEntries.length;
 
  const fmt=d=>{
   if(!d) return '-';
@@ -1502,8 +1700,8 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
    </p> : patternGroups.I.length>0||patternGroups.S.length>0 ? <p className="sub" style={{marginTop:12,fontSize:12}}>
     Your I/S patterns: {[...patternGroups.I,...patternGroups.S].join(', ')}. These can support emotional safety when paced and bounded.
    </p> : null}
-   {entries.length>=4 && (()=>{
-    const chronological=[...entries].sort((a,b)=>entryTime(a)-entryTime(b));
+   {activityEntries.length>=4 && (()=>{
+    const chronological=[...activityEntries].sort((a,b)=>entryTime(a)-entryTime(b));
     const countWords=(list)=>{
      const counts={};
      list.forEach(e=>(e.autoWords||[]).forEach(w=>{counts[w]=(counts[w]||0)+1;}));
@@ -1528,17 +1726,17 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
    })()}
   </div>}
 
-  {totalEntries>0 && <div className="card">
+  {totalActivityEntries>0 && <div className="card">
    <h2 style={{marginBottom:4}}>Congruence markers</h2>
-   <p className="sub" style={{marginBottom:14}}>How often you claimed each marker across {totalEntries} {totalEntries===1?'entry':'entries'}.</p>
+   <p className="sub" style={{marginBottom:14}}>How often you claimed each marker across {totalActivityEntries} {totalActivityEntries===1?'activity entry':'activity entries'}.</p>
    <div style={{display:'grid',gap:8}}>
     {MARKERS.map(m=>{
      const count=markerCounts[m.key]||0;
-     const pct=totalEntries>0?Math.round((count/totalEntries)*100):0;
+     const pct=totalActivityEntries>0?Math.round((count/totalActivityEntries)*100):0;
      return <div key={m.key}>
       <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:3}}>
        <span style={{fontWeight:600}}>{m.label}</span>
-       <span style={{color:'#888'}}>{count}/{totalEntries}</span>
+       <span style={{color:'#888'}}>{count}/{totalActivityEntries}</span>
       </div>
       <div style={{background:'#eee',borderRadius:4,height:6}}>
        <div style={{background:'var(--sage)',borderRadius:4,height:6,width:pct+'%',transition:'width .4s'}}/>
@@ -1555,6 +1753,8 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
     const childAge=entryChildAge(e);
     const childId=entryChildId(e);
     const phaseLabel=entryPhaseLabel(e);
+    const isDecode=isBehaviourDecodeEntry(e);
+    const reminder=isDecode?decodeReminderFromEntry(e):null;
     return <div key={e.id} style={{borderBottom:'1px solid #eee',paddingBottom:12,marginBottom:12}}>
      <div style={{cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}} onClick={()=>setOpenId(isOpen?null:e.id)}>
       <div>
@@ -1563,7 +1763,20 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
       </div>
       <span style={{fontSize:18,color:'#999',marginLeft:8}}>{isOpen?'^':'v'}</span>
      </div>
-     {isOpen && <div style={{marginTop:12,background:'#fafafa',borderRadius:8,padding:14,fontSize:14,lineHeight:1.7}}>
+     {isOpen && (isDecode ? <div style={{marginTop:12}}>
+      <div className="decode-summary">
+       <div><span>The moment I noticed</span><p>{decodeDisplayText(reminder.observed_behaviour||reminder.moment_noticed)}</p></div>
+       <div><span>One possible signal I explored</span><p>{decodeDisplayText(reminder.possible_signal_explored||reminder.awareness_signals)}</p></div>
+       <div><span>A possible need worth staying curious about</span><p>{decodeDisplayText(reminder.possible_need_worth_staying_curious_about)}</p></div>
+       <div><span>What was happening in me</span><p><b>Thinking:</b> {decodeDisplayText(reminder.thinking)}<br/><b>Feelings:</b> {decodeDisplayText(reminder.feelings||reminder.affect_intensity)}<br/><b>Behaviour / What I did:</b> {decodeDisplayText(reminder.behaviour_what_i_did)}</p></div>
+       <div><span>Possible alignment gap</span><p>{decodeDisplayText(reminder.possible_alignment_gap)}</p></div>
+       <div><span>What I want to practise</span><p>{decodeDisplayText(reminder.stabilising_response_to_practise)}</p></div>
+       <div><span>My next action</span><p>{decodeDisplayText(reminder.next_action)}</p></div>
+       <div><span>Repair intention</span><p>{decodeDisplayText(reminder.repair_intention)}</p></div>
+       <div><span>What I will observe next time</span><p>{decodeDisplayText(reminder.what_i_will_observe_next_time)}</p></div>
+      </div>
+      <p className="hint">This is a reflection, not an assessment of your child.</p>
+     </div> : <div style={{marginTop:12,background:'#fafafa',borderRadius:8,padding:14,fontSize:14,lineHeight:1.7}}>
       <div style={{marginBottom:8}}><strong>Thoughts:</strong> {e.cab?.thoughts||'-'}</div>
       <div style={{marginBottom:8}}><strong>Feelings:</strong> {e.cab?.feelings||'-'}</div>
       <div style={{marginBottom:8}}><strong>Actions:</strong> {e.cab?.actions||'-'}</div>
@@ -1572,7 +1785,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
       {Object.values(e.markers||{}).filter(m=>m.claimed).length>0 && <div style={{marginTop:6}}>
        <strong>Markers claimed:</strong> {Object.entries(e.markers).filter(([,v])=>v.claimed).map(([k])=>MARKERS.find(m=>m.key===k)?.label||k).join(', ')}
       </div>}
-     </div>}
+     </div>)}
     </div>;
    })}
   </div>
@@ -1581,7 +1794,20 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
 
 function RegisterDyad({parentId,initial,onSave,back,onSignOut}){
  const [f,setF]=useState({childId:initial.childId||genId('C'),parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
+ const [saveError,setSaveError]=useState('');
+ const [saving,setSaving]=useState(false);
  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+ const handleSave=async()=>{
+  setSaveError('');
+  setSaving(true);
+  try{
+   await onSave(f);
+  }catch(err){
+   setSaveError('We could not save this child yet. Please try again.');
+  }finally{
+   setSaving(false);
+  }
+ };
  return <div className="wrap">
   <Bar title="Set up your space" back={back} onSignOut={onSignOut}/>
   <div className="card">
@@ -1601,7 +1827,8 @@ function RegisterDyad({parentId,initial,onSave,back,onSignOut}){
     <div className="field"><label>DISC blend (if known)</label><input placeholder="optional — e.g. DSC" value={f.disc} onChange={e=>set('disc',e.target.value.toUpperCase())}/></div>
     <div className="field"><label>Cultural background</label><select value={f.ethnicity} onChange={e=>set('ethnicity',e.target.value)}>{Object.keys(CULTURE).map(c=><option key={c}>{c}</option>)}</select><p className="hint">Helps your counsellor offer culturally-attuned reflections.</p></div>
    </div>
-   <button className="btn btn-primary btn-block" onClick={()=>onSave(f)}>Save &amp; begin</button>
+   {saveError&&<p style={{color:'#c0392b',marginBottom:8}}>{saveError}</p>}
+   <button className="btn btn-primary btn-block" onClick={handleSave} disabled={saving}>{saving?'Saving…':'Save & begin'}</button>
   </div>
  </div>;
 }
