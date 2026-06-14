@@ -8,7 +8,9 @@ This repository is the production source of truth:
 
 - GitHub repo: `rodtay72/wayfinder-app`
 - Production app: `wayfinder-modular.vercel.app`
-- Local folder: `C:\Users\rodne\OneDrive\Favorites\Documents\Claude\Projects\wayfinder-app`
+- Local folder: `C:\Users\rodne\Documents\CodeProjects\active\wayfinder-app`
+
+Do not work from the old OneDrive path `C:\Users\rodne\OneDrive\Favorites\Documents\Claude\Projects\wayfinder-app`. It is deprecated and must not be used.
 
 Do not work from `wayfinder_modular` except as a read-only reference.
 
