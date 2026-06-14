@@ -199,7 +199,12 @@ const UI_TEXT = {
     cultureLabel: "Cultural background",
     cultureHint: "Helps your counsellor offer culturally-attuned reflections."
   },
-  
+
+  decode: {
+    privacyNudge: "Keep names and identifying details out. Use your child's Child ID or a simple description of what happened.",
+    counsellorReminder: "This reflection is a starting point. If this pattern repeats or feels difficult to understand, consider reviewing it with a counsellor."
+  },
+
   genderOptions: ["Prefer not to say", "Male", "Female", "Non-binary"]
 };
 

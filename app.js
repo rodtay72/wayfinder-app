@@ -1211,6 +1211,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    <div className="field">
     <label>What did your child do?</label>
     <textarea value={decode.awareness.observedBehaviour} onChange={e=>update('awareness','observedBehaviour',e.target.value)} />
+    <p className="hint">{UI_TEXT.decode.privacyNudge}</p>
    </div>
    <div className="field">
     <label>When did this happen?</label>
@@ -1329,6 +1330,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
     <div><span>What I will observe next time</span><p>{textOrEmpty(decode.navigate.observeNextTime)}</p></div>
    </div>
    <p className="decode-note">This is a reflection, not an assessment of your child.</p>
+   <p className="decode-note">{UI_TEXT.decode.counsellorReminder}</p>
    {saveState!=='saved'&&(dyads.length===0
     ?<p className="decode-note" style={{color:'#b44',marginBottom:12}}>Add a child before saving this reminder to Journal Trail.</p>
     :<div className="field" style={{marginBottom:16}}>
