@@ -240,3 +240,13 @@
     .awareness-input-wrap{width:100%;min-width:0;height:auto;min-height:0;}
     .awareness-helper{max-width:none;width:100%;align-self:auto;}
   }
+
+  /* Phase 2 - Journal Trail Evolution: filter bar + behaviour decode summary card */
+  .trail-filterbar{background:#f0f4f2;}
+  .trail-filter-row{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:8px;}
+  .trail-filter-label{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--sage-deep);margin-right:4px;}
+  .chip.selected{background:var(--sage-deep);border-color:var(--sage-deep);color:#fff;box-shadow:0 0 0 3px rgba(124,152,133,.12);}
+  .trail-filter-meta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:4px;}
+  .trail-clear{background:none;border:0;color:var(--sage-deep);font-weight:600;font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0;}
+  .decode-trail-card{border-left:4px solid var(--sage);background:#fafafa;border-radius:8px;padding:4px 14px 12px;}
+  .decode-trail-card .decode-summary{margin:10px 0 4px;}

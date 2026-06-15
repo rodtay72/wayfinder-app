@@ -1672,6 +1672,28 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
  const totalEntries=entries.length;
  const totalActivityEntries=activityEntries.length;
 
+ // Phase 2: read-only filtering of the Past entries list only. Does not affect the
+ // emotional-pattern or congruence summaries above, which stay based on activityEntries.
+ const [typeFilter,setTypeFilter]=useState('all'); // all | activity | decode
+ const [childFilter,setChildFilter]=useState('all');
+ const [needFilter,setNeedFilter]=useState([]);
+ const [growthFilter,setGrowthFilter]=useState([]);
+ const decodeNeedsOf=(e)=>decodeList(decodeReminderFromEntry(e).possible_need_worth_staying_curious_about);
+ const decodeGrowthOf=(e)=>decodeList(decodeReminderFromEntry(e).stabilising_response_to_practise);
+ const decodeEntries=entries.filter(isBehaviourDecodeEntry);
+ const needOptions=[...new Set(decodeEntries.flatMap(decodeNeedsOf))].filter(Boolean);
+ const growthOptions=[...new Set(decodeEntries.flatMap(decodeGrowthOf))].filter(Boolean);
+ const childOptions=(dyads||[]).map(d=>{const id=String(d.childId||d.child_id||'');const meta=[d.childGender,ageFrom(d.childDob,null)].filter(Boolean);return {id,label:'Child ID: '+id+(meta.length?' · '+meta.join(', '):'')};}).filter(o=>o.id);
+ const hasUnassigned=entries.some(e=>!entryChildId(e));
+ const toggleArr=(arr,setArr,v)=>setArr(arr.includes(v)?arr.filter(x=>x!==v):[...arr,v]);
+ const matchesType=(e)=>typeFilter==='all'?true:typeFilter==='decode'?isBehaviourDecodeEntry(e):!isBehaviourDecodeEntry(e);
+ const matchesChild=(e)=>childFilter==='all'?true:childFilter==='__unassigned__'?!entryChildId(e):String(entryChildId(e))===String(childFilter);
+ const matchesNeed=(e)=>needFilter.length===0?true:(isBehaviourDecodeEntry(e)&&decodeNeedsOf(e).some(n=>needFilter.includes(n)));
+ const matchesGrowth=(e)=>growthFilter.length===0?true:(isBehaviourDecodeEntry(e)&&decodeGrowthOf(e).some(g=>growthFilter.includes(g)));
+ const filteredEntries=entries.filter(e=>matchesType(e)&&matchesChild(e)&&matchesNeed(e)&&matchesGrowth(e));
+ const anyFilterActive=typeFilter!=='all'||childFilter!=='all'||needFilter.length>0||growthFilter.length>0;
+ const clearFilters=()=>{setTypeFilter('all');setChildFilter('all');setNeedFilter([]);setGrowthFilter([]);};
+
  const fmt=d=>{
   if(!d) return '-';
   const date=parseStoredDate(d);
@@ -1748,9 +1770,36 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
    </div>
   </div>}
 
+  {totalEntries>0 && <div className="card trail-filterbar">
+   <div className="trail-filter-row">
+    <span className="trail-filter-label">{UI_TEXT.trail.showLabel}</span>
+    <button type="button" className={'chip'+(typeFilter==='all'?' selected':'')} onClick={()=>setTypeFilter('all')}>{UI_TEXT.trail.filterAll}</button>
+    <button type="button" className={'chip'+(typeFilter==='activity'?' selected':'')} onClick={()=>setTypeFilter('activity')}>{UI_TEXT.trail.filterActivity}</button>
+    <button type="button" className={'chip'+(typeFilter==='decode'?' selected':'')} onClick={()=>setTypeFilter('decode')}>{UI_TEXT.trail.filterDecode}</button>
+   </div>
+   {(childOptions.length>0||hasUnassigned) && <div className="trail-filter-row">
+    <span className="trail-filter-label">{UI_TEXT.trail.childLabel}</span>
+    <button type="button" className={'chip'+(childFilter==='all'?' selected':'')} onClick={()=>setChildFilter('all')}>{UI_TEXT.trail.childAll}</button>
+    {childOptions.map(o=><button type="button" key={o.id} className={'chip'+(childFilter===o.id?' selected':'')} onClick={()=>setChildFilter(o.id)}>{o.label}</button>)}
+    {hasUnassigned && <button type="button" className={'chip'+(childFilter==='__unassigned__'?' selected':'')} onClick={()=>setChildFilter('__unassigned__')}>{UI_TEXT.trail.childUnassigned}</button>}
+   </div>}
+   {needOptions.length>0 && <div className="trail-filter-row">
+    <span className="trail-filter-label">{UI_TEXT.trail.needLabel}</span>
+    {needOptions.map(n=><button type="button" key={n} className={'chip'+(needFilter.includes(n)?' selected':'')} onClick={()=>toggleArr(needFilter,setNeedFilter,n)}>{n}</button>)}
+   </div>}
+   {growthOptions.length>0 && <div className="trail-filter-row">
+    <span className="trail-filter-label">{UI_TEXT.trail.growthLabel}</span>
+    {growthOptions.map(g=><button type="button" key={g} className={'chip'+(growthFilter.includes(g)?' selected':'')} onClick={()=>toggleArr(growthFilter,setGrowthFilter,g)}>{g}</button>)}
+   </div>}
+   <div className="trail-filter-meta">
+    <span className="sub">{'Showing '+filteredEntries.length+' of '+totalEntries+' '+(totalEntries===1?'entry':'entries')}</span>
+    {anyFilterActive && <button type="button" className="trail-clear" onClick={clearFilters}>{UI_TEXT.trail.clearFilters}</button>}
+   </div>
+  </div>}
+
   <div className="card">
-   <h2 style={{marginBottom:14}}>Past entries <span style={{fontWeight:400,fontSize:14,color:'#888'}}>({totalEntries})</span></h2>
-   {totalEntries===0 ? <p className="sub">No entries yet. Your journal trail will build here as you reflect.</p> : entries.map(e=>{
+   <h2 style={{marginBottom:14}}>Past entries <span style={{fontWeight:400,fontSize:14,color:'#888'}}>({filteredEntries.length}{filteredEntries.length!==totalEntries?' of '+totalEntries:''})</span></h2>
+   {totalEntries===0 ? <p className="sub">No entries yet. Your journal trail will build here as you reflect.</p> : filteredEntries.length===0 ? <p className="sub">{UI_TEXT.trail.emptyFiltered}</p> : filteredEntries.map(e=>{
     const isOpen=openId===e.id;
     const childAge=entryChildAge(e);
     const childId=entryChildId(e);
@@ -1765,19 +1814,23 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
       </div>
       <span style={{fontSize:18,color:'#999',marginLeft:8}}>{isOpen?'^':'v'}</span>
      </div>
-     {isOpen && (isDecode ? <div style={{marginTop:12}}>
+     {isDecode && <div className="decode-trail-card" style={{marginTop:10}}>
       <div className="decode-summary">
-       <div><span>The moment I noticed</span><p>{decodeDisplayText(reminder.observed_behaviour||reminder.moment_noticed)}</p></div>
-       <div><span>One possible signal I explored</span><p>{decodeDisplayText(reminder.possible_signal_explored||reminder.awareness_signals)}</p></div>
+       <div><span>Behaviour</span><p>{decodeDisplayText(reminder.observed_behaviour||reminder.moment_noticed)}</p></div>
        <div><span>A possible need worth staying curious about</span><p>{decodeDisplayText(reminder.possible_need_worth_staying_curious_about)}</p></div>
-       <div><span>What was happening in me</span><p><b>Thinking:</b> {decodeDisplayText(reminder.thinking)}<br/><b>Feelings:</b> {decodeDisplayText(reminder.feelings||reminder.affect_intensity)}<br/><b>Behaviour / What I did:</b> {decodeDisplayText(reminder.behaviour_what_i_did)}</p></div>
-       <div><span>Possible alignment gap</span><p>{decodeDisplayText(reminder.possible_alignment_gap)}</p></div>
-       <div><span>What I want to practise</span><p>{decodeDisplayText(reminder.stabilising_response_to_practise)}</p></div>
-       <div><span>My next action</span><p>{decodeDisplayText(reminder.next_action)}</p></div>
+       <div><span>Possible CAB misalignment</span><p>{decodeDisplayText(reminder.possible_alignment_gap)}</p></div>
+       <div><span>Growth capacity</span><p>{decodeDisplayText(reminder.stabilising_response_to_practise)}</p></div>
+       <div><span>Next action</span><p>{decodeDisplayText(reminder.next_action)}</p></div>
        <div><span>Repair intention</span><p>{decodeDisplayText(reminder.repair_intention)}</p></div>
-       <div><span>What I will observe next time</span><p>{decodeDisplayText(reminder.what_i_will_observe_next_time)}</p></div>
       </div>
       <p className="hint">This is a reflection, not an assessment of your child.</p>
+     </div>}
+     {isOpen && (isDecode ? <div style={{marginTop:12}}>
+      <div className="decode-summary">
+       <div><span>One possible signal I explored</span><p>{decodeDisplayText(reminder.possible_signal_explored||reminder.awareness_signals)}</p></div>
+       <div><span>What was happening in me</span><p><b>Thinking:</b> {decodeDisplayText(reminder.thinking)}<br/><b>Feelings:</b> {decodeDisplayText(reminder.feelings||reminder.affect_intensity)}<br/><b>Behaviour / What I did:</b> {decodeDisplayText(reminder.behaviour_what_i_did)}</p></div>
+       <div><span>What I will observe next time</span><p>{decodeDisplayText(reminder.what_i_will_observe_next_time)}</p></div>
+      </div>
      </div> : <div style={{marginTop:12,background:'#fafafa',borderRadius:8,padding:14,fontSize:14,lineHeight:1.7}}>
       <div style={{marginBottom:8}}><strong>Thoughts:</strong> {e.cab?.thoughts||'-'}</div>
       <div style={{marginBottom:8}}><strong>Feelings:</strong> {e.cab?.feelings||'-'}</div>

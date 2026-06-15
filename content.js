@@ -205,6 +205,20 @@ const UI_TEXT = {
     counsellorReminder: "This reflection is a starting point. If this pattern repeats or feels difficult to understand, consider reviewing it with a counsellor."
   },
 
+  trail: {
+    showLabel: "Show",
+    filterAll: "All entries",
+    filterActivity: "Activity journals",
+    filterDecode: "Behaviour decodes",
+    childLabel: "Child",
+    childAll: "All children",
+    childUnassigned: "Unassigned",
+    needLabel: "Possible need",
+    growthLabel: "Growth capacity",
+    clearFilters: "Clear filters",
+    emptyFiltered: "No entries match these filters. Clear filters to see all."
+  },
+
   genderOptions: ["Prefer not to say", "Male", "Female", "Non-binary"]
 };
 
