@@ -15,6 +15,21 @@ This document supplements those plans by defining the **two-layer product model*
 
 ---
 
+### Product hierarchy this plan operates within
+
+Wayfinder Phase 3B preserves the three-tier hierarchy:
+
+- Emotional regulation is the parent-wide core capacity.
+- ALIGN is the shared process.
+- Parent-child relationship quality/tending is the visible growth outcome.
+
+Both Layer 1 and Layer 2 serve this hierarchy:
+
+- Layer 1 shows what the parent may be growing in themselves.
+- Layer 2 shows where that same growth is activated differently in each child relationship.
+
+---
+
 ## 1. The core product question Phase 3B resolves
 
 Phase 3 (Your ALIGN Journey) surfaces what the parent is growing across their parenting practice.
@@ -245,6 +260,8 @@ Cards that say "You are at Locate" are forbidden. Cards that say "Locate appears
 ### Repair-as-failure framing
 
 The Navigate / repair section of ALIGN must never be framed as evidence that the relationship "failed." A Navigate or repair reflection is evidence of parental growth  -  the capacity to return, reconnect, and practise again. Repair must be presented as an ALIGN strength, not a problem.
+
+Forbidden language this section must never imply: "the relationship is fixed," "the relationship is solved," or any phrasing that treats a parent-child relationship as a problem with a completed resolution. A parent-child relationship is not a problem to be solved. It is a continuing practice of tending, returning, and noticing.
 
 ---
 
