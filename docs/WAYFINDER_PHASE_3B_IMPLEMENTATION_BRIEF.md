@@ -198,6 +198,12 @@ Use the presence and content of each `align.*` nested section to detect which st
 An entry with content in `align.locate` and `align.growth` indicates Locate and Growth stages were at least explored.
 Do not treat decode completion as confirmed practice evidence. Use "explored" framing only.
 
+**Implementation caution - phase field is a cautious proxy only:**
+The `phase` field on activity entries is a proxy for ALIGN stage inference, not proof that the parent actually practised that stage. An activity entry with `phase: "L"` indicates the parent chose a Locate activity - it does not confirm they engaged in full Locate-stage emotional regulation practice. All parent-facing copy derived from `phase` inference must use "may", "might", "possible", or "appears to suggest". Never state a stage as fact from a `phase` tag alone.
+
+**Implementation caution - exclude decode entries from phase tallies:**
+When deriving Practice Direction or any metric that counts phase frequency across activity entries, the derivation logic must filter to activity journal entries only. Behaviour decode entries (`entry_type === "behaviour_decode"`) must be excluded from phase tallies. Decode entries may contain `align{}` nested sections and could include phase-like string values in nested fields; including them in an activity phase count would pollute the tally with non-activity data.
+
 **Derivation rules for Journey cards:**
 
 - Current Growth Edge: From the most recent decode entry's `align.growth.growth_capacity`, OR the most recent activity entry's `phase` label, whichever is more recent. If both are absent, use threshold-appropriate empty state.
@@ -592,21 +598,38 @@ node --check supabase.js
 
 ### Forbidden content checks (PowerShell)
 
+The following phrase-based checks are whole-file zero-match blockers. Any match in `app.js`, `content.js`, or `styles.css` is a blocker.
+
+**Framing and labelling checks:**
+
 ```powershell
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "relationship fixed"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "relationship solved"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "child profile"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "child personality"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "difficult child"
-Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "score"
-Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "completed"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "fully aligned"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "child improved"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "behaviour solved"
 Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "inadequate journalling"
 ```
 
-All checks must return zero matches. Any match is a blocker.
+**Scoring and stage-completion framing checks:**
+
+New Phase 3B code must not introduce ALIGN scoring, stage completion framing, or achievement language. Check using phrase-specific patterns to avoid false-positives on existing legitimate app code.
+
+```powershell
+Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "Journey score"
+Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "ALIGN score"
+Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "stage completed"
+Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "completed ALIGN"
+Select-String -Path .\app.js, .\content.js, .\styles.css -SimpleMatch -Pattern "completed stage"
+```
+
+**Note on bare terms "score" and "completed":**
+The bare terms "score" and "completed" must not be used as whole-file zero-match blockers. The existing app legitimately uses terms such as `criticalScore`, `nurtureScore`, DISC score references, "no score to chase" copy, and password-recovery or role-completion states. A whole-file zero-match check for "score" or "completed" would false-positive on this existing code and block valid builds.
+
+New Phase 3B code must not introduce ALIGN scoring, stage-completion framing, or achievement language. This requirement is enforced through the phrase-specific checks above and through the manual test checklist in Section 13.
 
 ### Protected area checks (PowerShell)
 
@@ -626,9 +649,12 @@ Note: `ensure_profile`, `Authorization`, and `Bearer` may legitimately exist in 
 
 ```bash
 rg -n "relationship fixed|relationship solved|child profile|child personality|difficult child" app.js content.js styles.css
-rg -n "score|completed|fully aligned|child improved|behaviour solved|inadequate journalling" app.js content.js styles.css
+rg -n "fully aligned|child improved|behaviour solved|inadequate journalling" app.js content.js styles.css
+rg -n "Journey score|ALIGN score|stage completed|completed ALIGN|completed stage" app.js content.js styles.css
 rg -n "profiles\.(insert|upsert)|ensure_profile|Authorization|Bearer" app.js content.js styles.css
 ```
+
+Note: bare "score" and "completed" are not included in the bash checks for the same reason as the PowerShell checks above - they would false-positive on existing legitimate app code.
 
 ### Verify script
 
