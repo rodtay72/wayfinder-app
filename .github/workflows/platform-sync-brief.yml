@@ -1,0 +1,64 @@
+﻿name: Platform Sync Brief Reminder
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  platform-sync-brief-reminder:
+    name: platform-sync-brief-reminder
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Upsert platform sync brief reminder
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- wayfinder-platform-sync-brief -->';
+            const body = `${marker}
+            ## Platform sync brief reminder
+
+            Before merge, complete a brief using [docs/PLATFORM_SYNC_BRIEF_TEMPLATE.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.payload.pull_request.head.sha}/docs/PLATFORM_SYNC_BRIEF_TEMPLATE.md) if this PR is user-facing, research-related, consent/privacy-related, or AI-related.
+
+            **Privacy:** Do not paste raw user data, reflection content, parent emails, child names, Supabase UUIDs, JWTs, tokens, or secrets into the brief.
+
+            After merge (manual owner steps — this workflow does not auto-commit or auto-merge):
+            - Update [docs/CURRENT_LAUNCH_STATUS.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/docs/CURRENT_LAUNCH_STATUS.md) if a user-facing release shipped.
+            - Run production smoke test (see PR template post-merge checklist).
+
+            Internal/docs-only PRs may skip the brief if the PR template declares no socialisation needed.
+            `;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+              core.info('Updated existing platform sync brief reminder.');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body
+              });
+              core.info('Posted platform sync brief reminder.');
+            }
