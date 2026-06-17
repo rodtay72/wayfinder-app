@@ -1135,7 +1135,7 @@ const decodeDisplayText=(value,fallback='-')=>{
  return cleanDecodeText(value)||fallback;
 };
 
-const ALIGN_JOURNEY_EMPTY_COPY='Your ALIGN Journey will appear here as you decode more moments. Each reflection helps you notice what your child may have needed, what happened in your CAB, and what you may want to practise next.';
+const ALIGN_JOURNEY_REASSURANCE='These reflections are not labels or scores. They are gentle prompts to help you notice alignment over time.';
 const alignJourneyEntryTime=(entry)=>{
  const d=parseStoredDate(firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at));
  return d&&!isNaN(d)?d.getTime():0;
@@ -1144,112 +1144,276 @@ const alignJourneyText=(value)=>{
  const text=decodeDisplayText(value,'');
  return text==='-'?'':text;
 };
-const alignJourneyExploredStage=(reminder)=>{
- const r=reminder||{};
- if(alignJourneyText(r.next_action)||alignJourneyText(r.repair_intention)) return {key:'n',label:'Navigate',phrase:'choosing one repair or next action gently'};
- if(decodeList(r.stabilising_response_to_practise).length) return {key:'g',label:'Growth',phrase:'building a stabilising capacity'};
- if(alignJourneyText(r.possible_alignment_gap)||alignJourneyText(r.thinking)) return {key:'i',label:'Integrate',phrase:'connecting a possible need with what happened in you'};
- if(decodeList(r.possible_need_worth_staying_curious_about).length) return {key:'l',label:'Locate',phrase:'noticing the need beneath behaviour'};
- if(alignJourneyText(r.observed_behaviour)) return {key:'a',label:'Awareness',phrase:'pausing and noticing what happened'};
- return {key:'a',label:'Awareness',phrase:'opening awareness in parenting moments'};
+const ALIGN_JOURNEY_PHASE_FOCUS={
+ A:{label:'Awareness',phrase:'you may be building the habit of noticing and reflecting'},
+ L:{label:'Locate',phrase:'you may be practising staying curious during structured activities'},
+ I:{label:'Integrate',phrase:'you may be practising connecting what you notice with what happened in you'},
+ G:{label:'Growth',phrase:'you may be practising a stabilising capacity through recent activities'},
+ N:{label:'Navigate',phrase:'you may be practising choosing a next step or repair gently'}
 };
-const createAlignJourneySummary=(entries)=>{
+const alignJourneyValidPhase=(entry)=>{
+ const phase=String(entry?.phase||'').trim().toUpperCase();
+ return ['A','L','I','G','N'].includes(phase)?phase:'';
+};
+const getActivityJournalEntries=(entries)=>{
+ const safeEntries=Array.isArray(entries)?entries:[];
+ return safeEntries.filter(e=>!isBehaviourDecodeEntry(e)).sort((a,b)=>alignJourneyEntryTime(b)-alignJourneyEntryTime(a));
+};
+const alignJourneyModeCount=(items)=>{
+ const counts={};
+ items.forEach(item=>{
+  if(item) counts[item]=(counts[item]||0)+1;
+ });
+ return Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+};
+const getMostCommonPossibleNeed=(decodes,minCount=2)=>{
+ const needs=[];
+ decodes.forEach(entry=>{
+  decodeList(decodeReminderFromEntry(entry).possible_need_worth_staying_curious_about).forEach(need=>{
+   if(need) needs.push(need);
+  });
+ });
+ const top=alignJourneyModeCount(needs)[0];
+ return top&&top[1]>=minCount?top[0]:'';
+};
+const getMostCommonGrowthCapacity=(decodes,minCount=2)=>{
+ const capacities=[];
+ decodes.forEach(entry=>{
+  decodeList(decodeReminderFromEntry(entry).stabilising_response_to_practise).forEach(capacity=>{
+   if(capacity) capacities.push(capacity);
+  });
+ });
+ const top=alignJourneyModeCount(capacities)[0];
+ return top&&top[1]>=minCount?top[0]:'';
+};
+const getClaimedMarkerLabels=(entry)=>{
+ const markerSource=typeof MARKERS!=='undefined'?MARKERS:[];
+ const markers=entry?.markers||{};
+ return markerSource.filter(m=>markers[m.key]?.claimed).map(m=>m.label);
+};
+const getMostCommonActivityPhase=(activities,minCount=2)=>{
+ const phases=activities.map(alignJourneyValidPhase).filter(Boolean);
+ const top=alignJourneyModeCount(phases)[0];
+ return top&&top[1]>=minCount?top[0]:'';
+};
+const getBehaviourDecodeEntries=(entries)=>{
+ const safeEntries=Array.isArray(entries)?entries:[];
+ return safeEntries.filter(isBehaviourDecodeEntry).sort((a,b)=>alignJourneyEntryTime(b)-alignJourneyEntryTime(a));
+};
+const getLatestDecodeEntry=(entries)=>getBehaviourDecodeEntries(entries)[0]||null;
+const getMostCommonRepairIntention=(decodes,minCount=2)=>{
+ const repairs=[];
+ decodes.forEach(entry=>{
+  const repair=alignJourneyText(decodeReminderFromEntry(entry).repair_intention);
+  if(repair&&!/^no repair needed$/i.test(repair)) repairs.push(repair);
+ });
+ const top=alignJourneyModeCount(repairs)[0];
+ return top&&top[1]>=minCount?top[0]:'';
+};
+const alignJourneyPracticeFocusFromPhase=(phaseKey)=>{
+ const focus=ALIGN_JOURNEY_PHASE_FOCUS[phaseKey]||ALIGN_JOURNEY_PHASE_FOCUS.A;
+ return 'From your recent activities, '+focus.label.toLowerCase()+' may be a practice context for you — '+focus.phrase+'.';
+};
+const getMostCommonCABSignal=(decodes,minCount=2)=>{
+ const signals=[];
+ decodes.forEach(entry=>{
+  const r=decodeReminderFromEntry(entry);
+  const gap=alignJourneyText(r.possible_alignment_gap);
+  const thinking=alignJourneyText(r.thinking);
+  if(gap) signals.push(gap);
+  if(thinking) signals.push(thinking);
+ });
+ const top=alignJourneyModeCount(signals)[0];
+ return top&&top[1]>=minCount?top[0]:'';
+};
+const alignJourneyDecodeReflectiveFocus=(decodes)=>{
+ if(!decodes.length) return '';
+ const latestReminder=decodeReminderFromEntry(decodes[0])||{};
+ const latestNeeds=decodeList(latestReminder.possible_need_worth_staying_curious_about);
+ const commonNeed=getMostCommonPossibleNeed(decodes,2);
+ const focusNeed=latestNeeds[0]||commonNeed;
+ if(focusNeed){
+  return 'You may be exploring locate: staying curious about a possible need beneath behaviour. A possible need worth staying curious about: '+focusNeed.toLowerCase()+'.';
+ }
+ const commonCAB=getMostCommonCABSignal(decodes,2);
+ if(commonCAB){
+  return 'You may be practising integrate: connecting a possible need with what happened in you. A theme that may be worth noticing: '+commonCAB.toLowerCase()+'.';
+ }
+ const commonCapacity=getMostCommonGrowthCapacity(decodes,2);
+ if(commonCapacity){
+  return 'You may be practising growth: building a stabilising capacity. A capacity that may be emerging: '+commonCapacity.toLowerCase()+'.';
+ }
+ if(alignJourneyText(latestReminder.observed_behaviour)){
+  return 'You may be exploring awareness: pausing and noticing what happened.';
+ }
+ return 'You may be beginning to explore awareness: pausing and noticing in parenting moments.';
+};
+const alignJourneyReflectiveFocus=(decodes,activities)=>{
+ if(decodes.length){
+  let focus=alignJourneyDecodeReflectiveFocus(decodes);
+  if(activities.length) focus+=' Recent activity reflections may support this practice.';
+  return focus;
+ }
+ if(activities.length){
+  const latestPhase=alignJourneyValidPhase(activities[0])||'A';
+  return alignJourneyPracticeFocusFromPhase(latestPhase);
+ }
+ return '';
+};
+const alignJourneyActivityRhythmPattern=(activities)=>{
+ let pattern='You may be building a rhythm of reflection through recent activities.';
+ const commonPhase=getMostCommonActivityPhase(activities,2);
+ if(commonPhase){
+  const focus=ALIGN_JOURNEY_PHASE_FOCUS[commonPhase];
+  if(focus) pattern+=' Recent activities may suggest you are beginning to explore '+focus.label.toLowerCase()+' practice.';
+ }
+ return pattern;
+};
+const alignJourneyNextStepFallback=(decodes,activities)=>{
+ const directions={
+  a:'pausing and noticing before responding',
+  l:'staying curious about a possible need beneath what you notice',
+  i:'connecting a possible need with what happened in you',
+  g:'practising one stabilising capacity gently',
+  n:'choosing one repair or next action when you are ready'
+ };
+ if(!decodes.length&&activities.length){
+  return 'When you are ready, Decode a Moment may help you notice a possible need and your CAB response more clearly.';
+ }
+ if(activities.length){
+  const phase=alignJourneyValidPhase(activities[0])||getMostCommonActivityPhase(activities,2)||'A';
+  return 'A gentle next step could be: '+(directions[phase.toLowerCase()]||directions.a)+'.';
+ }
+ if(getMostCommonGrowthCapacity(decodes,2)) return 'A gentle next step could be: '+directions.g+'.';
+ if(getMostCommonCABSignal(decodes,2)) return 'A gentle next step could be: '+directions.i+'.';
+ const latestNeeds=decodeList(decodeReminderFromEntry(decodes[0]).possible_need_worth_staying_curious_about);
+ if(latestNeeds.length||getMostCommonPossibleNeed(decodes,2)) return 'A gentle next step could be: '+directions.l+'.';
+ return 'A gentle next step could be: '+directions.a+'.';
+};
+const alignJourneyDecodeRecentPattern=(decodes)=>{
+ const count=decodes.length;
+ const latestReminder=decodeReminderFromEntry(decodes[0])||{};
+ const latestNeeds=decodeList(latestReminder.possible_need_worth_staying_curious_about);
+ const commonNeed=getMostCommonPossibleNeed(decodes,2);
+ const gap=alignJourneyText(latestReminder.possible_alignment_gap);
+ const thinking=alignJourneyText(latestReminder.thinking);
+ if(count===1){
+  return 'One reflection is a starting point. A few more decoded moments may help something worth noticing appear more safely here.';
+ }
+ if(count<=3){
+  if(/urgency|rush|quick|late|hurry/i.test(gap)||/urgency|rush|quick|late|hurry/i.test(thinking)){
+   return 'An early signal may involve urgency when predictability may be needed.';
+  }
+  if(gap){
+   return 'A recent reflection may involve a possible alignment gap worth noticing — without judging yourself or your child.';
+  }
+  if(thinking&&/predict|transition|control|plan|expect/i.test(thinking)){
+   return 'An early signal may involve how thinking and a possible need might not yet align.';
+  }
+  if(latestNeeds.length){
+   return 'Recent reflections may be touching possible needs worth staying curious about.';
+  }
+  return 'Recent reflections may be showing moments where pause and noticing are still forming.';
+ }
+ if(commonNeed){
+  return 'A possible theme across recent reflections: '+commonNeed.toLowerCase()+' may have appeared as a need worth staying curious about.';
+ }
+ if(/urgency|rush|quick|late|hurry/i.test(gap)||/urgency|rush|quick|late|hurry/i.test(thinking)){
+  return 'A recent pattern may involve urgency when predictability may be needed.';
+ }
+ if(gap){
+  return 'A possible theme across recent reflections may involve moments where your response and a possible need might not yet align.';
+ }
+ if(thinking){
+  return 'A possible theme may involve pausing to notice how your thinking may shape the moment.';
+ }
+ return 'Recent reflections may be showing moments where pause and noticing are still forming.';
+};
+const getMostCommonClaimedMarkerLabel=(activities)=>{
+ const labels=[];
+ activities.forEach(entry=>{
+  getClaimedMarkerLabels(entry).forEach(label=>{
+   if(label) labels.push(label);
+  });
+ });
+ const top=alignJourneyModeCount(labels)[0];
+ return top?top[0]:'';
+};
+const buildAlignJourneySummary=(entries)=>{
  const emptyResult={
-  currentFocus:ALIGN_JOURNEY_EMPTY_COPY,
-  recentPattern:ALIGN_JOURNEY_EMPTY_COPY,
-  growthPractice:ALIGN_JOURNEY_EMPTY_COPY,
-  nextStep:ALIGN_JOURNEY_EMPTY_COPY,
+  currentFocus:'',
+  recentPattern:'',
+  growthPractice:'',
+  nextStep:'',
   hasDecodeEntries:false,
   showEmpty:true
  };
  try{
-  const safeEntries=Array.isArray(entries)?entries:[];
-  const decodes=safeEntries.filter(isBehaviourDecodeEntry).sort((a,b)=>alignJourneyEntryTime(b)-alignJourneyEntryTime(a));
-  if(decodes.length===0) return emptyResult;
-  const count=decodes.length;
-  const latestReminder=decodeReminderFromEntry(decodes[0])||{};
-  const stage=alignJourneyExploredStage(latestReminder);
-  let currentFocus;
-  if(count===1){
-   currentFocus='From your recent decode, you may be beginning to explore '+stage.label.toLowerCase()+': '+stage.phrase+'.';
-  }else{
-   currentFocus='You may be practising '+stage.label+': '+stage.phrase+'.';
-  }
+  const decodes=getBehaviourDecodeEntries(entries);
+  const activities=getActivityJournalEntries(entries);
+  const decodeCount=decodes.length;
+  const activityCount=activities.length;
+  if(decodeCount===0&&activityCount===0) return emptyResult;
+  const currentFocus=alignJourneyReflectiveFocus(decodes,activities);
   let recentPattern;
-  if(count===1){
-   recentPattern='One reflection is a starting point. A few more moments may help something worth noticing appear more safely here.';
-  }else if(count<=3){
-   const gap=alignJourneyText(latestReminder.possible_alignment_gap);
-   const needs=decodeList(latestReminder.possible_need_worth_staying_curious_about);
-   if(/urgency|rush|quick|late|hurry/i.test(gap)){
-    recentPattern='A recent pattern may involve urgency when predictability may be needed.';
-   }else if(gap){
-    recentPattern='A recent reflection may involve a possible alignment gap worth noticing — without judging yourself or your child.';
-   }else if(needs.length){
-    recentPattern='Recent reflections may be touching possible needs worth staying curious about.';
-   }else{
-    recentPattern='Recent reflections may be showing moments where pause and noticing are still forming.';
-   }
+  if(decodeCount===0){
+   recentPattern=alignJourneyActivityRhythmPattern(activities);
+  }else if(activityCount===0){
+   recentPattern=alignJourneyDecodeRecentPattern(decodes);
+  }else if(decodeCount===1){
+   recentPattern=alignJourneyDecodeRecentPattern(decodes)+' '+alignJourneyActivityRhythmPattern(activities);
   }else{
-   const needCounts={};
-   decodes.forEach(e=>{
-    decodeList(decodeReminderFromEntry(e).possible_need_worth_staying_curious_about).forEach(n=>{
-     if(n) needCounts[n]=(needCounts[n]||0)+1;
-    });
-   });
-   const topNeed=Object.entries(needCounts).sort((a,b)=>b[1]-a[1])[0];
-   const gap=alignJourneyText(latestReminder.possible_alignment_gap);
-   if(topNeed&&topNeed[1]>=2){
-    recentPattern='A possible theme across recent reflections: '+topNeed[0].toLowerCase()+' may have appeared as a need worth staying curious about.';
-   }else if(/urgency|rush|quick|late|hurry/i.test(gap)){
-    recentPattern='A recent pattern may involve urgency when predictability may be needed.';
-   }else if(gap){
-    recentPattern='A possible theme across recent reflections may involve moments where your response and a possible need might not yet align.';
-   }else{
-    recentPattern='Recent reflections may be showing moments where pause and noticing are still forming.';
-   }
+   recentPattern=alignJourneyDecodeRecentPattern(decodes);
   }
-  const capacities=decodeList(latestReminder.stabilising_response_to_practise);
+  const latestReminder=decodeCount?decodeReminderFromEntry(decodes[0])||{}:{};
+  const latestCapacities=decodeCount?decodeList(latestReminder.stabilising_response_to_practise):[];
+  const commonCapacity=decodeCount?getMostCommonGrowthCapacity(decodes,2):'';
   let growthPractice;
-  if(capacities.length){
-   growthPractice='Your current growth practice may be '+capacities[0].toLowerCase()+'.';
-  }else if(count<=3){
-   growthPractice='A practice direction may emerge here as you decode more moments.';
+  if(latestCapacities.length){
+   growthPractice='Your current growth practice may be '+latestCapacities[0].toLowerCase()+'.';
+  }else if(commonCapacity&&decodeCount>=4){
+   growthPractice='A growth practice that may be emerging: '+commonCapacity.toLowerCase()+'.';
   }else{
-   growthPractice='Pausing before correcting may be a practice worth tending as you reflect.';
+   const markerLabel=getMostCommonClaimedMarkerLabel(activities);
+   if(markerLabel){
+    growthPractice='A practice you may be tending: '+markerLabel+'.';
+   }else if(decodeCount>0&&decodeCount<=3){
+    growthPractice='A practice direction may emerge here as you decode more moments.';
+   }else if(activityCount>0){
+    growthPractice='A practice direction may emerge here as you reflect on more activities.';
+   }else{
+    growthPractice='Pausing before correcting may be a practice worth tending as you reflect.';
+   }
   }
-  const nextAction=alignJourneyText(latestReminder.next_action);
-  const repair=alignJourneyText(latestReminder.repair_intention);
   let nextStep;
-  if(nextAction){
-   nextStep='Next time, you might try: '+nextAction+'.';
-  }else if(repair&&!/^no repair needed$/i.test(repair)){
-   nextStep='You might consider a repair step: '+repair+'.';
+  if(decodeCount){
+   const nextAction=alignJourneyText(latestReminder.next_action);
+   const repair=alignJourneyText(latestReminder.repair_intention);
+   if(nextAction){
+    nextStep='A gentle next step could be: '+nextAction+'.';
+   }else if(repair&&!/^no repair needed$/i.test(repair)){
+    nextStep='A gentle next step could be: '+repair+'.';
+   }else{
+    nextStep=alignJourneyNextStepFallback(decodes,activities);
+   }
   }else{
-   const directions={
-    a:'pausing and noticing before responding',
-    l:'staying curious about a possible need beneath what you notice',
-    i:'connecting a possible need with what happened in you',
-    g:'practising one stabilising capacity gently',
-    n:'choosing one repair or next action when you are ready'
-   };
-   nextStep='One possible next direction: '+(directions[stage.key]||directions.a)+'.';
+   nextStep=alignJourneyNextStepFallback(decodes,activities);
   }
   return {
    currentFocus,
    recentPattern,
    growthPractice,
    nextStep,
-   hasDecodeEntries:true,
+   hasDecodeEntries:decodeCount>0,
    showEmpty:false
   };
  }catch(err){
   return emptyResult;
  }
 };
-function AlignJourneySection({entries}){
- const summary=createAlignJourneySummary(entries);
- return <div className="card dashboard-section align-journey-card" role="region" aria-label="Your ALIGN Journey">
+function AlignJourneySection({entries,onStartDecode}){
+ const summary=buildAlignJourneySummary(entries);
+ return <div className="card dashboard-section align-journey-section" role="region" aria-label="Your ALIGN Journey">
   <div className="dashboard-section-head">
    <div>
     <h2>Your ALIGN Journey</h2>
@@ -1257,25 +1421,30 @@ function AlignJourneySection({entries}){
    </div>
   </div>
   {summary.showEmpty ? <div className="dashboard-empty align-journey-empty">
-   <p className="sub">{ALIGN_JOURNEY_EMPTY_COPY}</p>
-  </div> : <div className="align-journey-grid">
-   <div className="align-journey-item">
-    <span className="align-journey-label">Current Focus</span>
-    <p className="align-journey-text">{summary.currentFocus}</p>
+   <p className="align-journey-empty-title">Your ALIGN Journey is beginning</p>
+   <p className="align-journey-empty-body">After you decode a few moments, Wayfinder will reflect back possible patterns in needs, CAB responses, growth practices, and next actions.</p>
+   {onStartDecode ? <button type="button" className="btn btn-primary align-journey-empty-cta" onClick={onStartDecode}>Start Decode</button> : null}
+  </div> : <>
+   <div className="align-journey-grid">
+    <div className="align-journey-card align-journey-item">
+     <span className="align-journey-label">Current Focus</span>
+     <p className="align-journey-text">{summary.currentFocus}</p>
+    </div>
+    <div className="align-journey-card align-journey-item">
+     <span className="align-journey-label">Recent Pattern</span>
+     <p className="align-journey-text">{summary.recentPattern}</p>
+    </div>
+    <div className="align-journey-card align-journey-item">
+     <span className="align-journey-label">Growth Practice</span>
+     <p className="align-journey-text">{summary.growthPractice}</p>
+    </div>
+    <div className="align-journey-card align-journey-item">
+     <span className="align-journey-label">Next Step</span>
+     <p className="align-journey-text">{summary.nextStep}</p>
+    </div>
    </div>
-   <div className="align-journey-item">
-    <span className="align-journey-label">Recent Pattern</span>
-    <p className="align-journey-text">{summary.recentPattern}</p>
-   </div>
-   <div className="align-journey-item">
-    <span className="align-journey-label">Growth Practice</span>
-    <p className="align-journey-text">{summary.growthPractice}</p>
-   </div>
-   <div className="align-journey-item">
-    <span className="align-journey-label">Next Step</span>
-    <p className="align-journey-text">{summary.nextStep}</p>
-   </div>
-  </div>}
+   <p className="align-journey-note">{ALIGN_JOURNEY_REASSURANCE}</p>
+  </>}
  </div>;
 }
 
@@ -1736,7 +1905,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
    <RelationshipGarden dyads={dyads} entries={entries}/>
 
-   <AlignJourneySection entries={entries}/>
+   <AlignJourneySection entries={entries} onStartDecode={startDecode}/>
 
    <div className="card decode-card">
     <div>
