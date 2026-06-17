@@ -1448,6 +1448,84 @@ function AlignJourneySection({entries,onStartDecode}){
  </div>;
 }
 
+
+
+function appVersionEntryStatus(entry){
+ const status=String(entry?.status||'').trim().toLowerCase();
+ if(status==='released'||status==='planned')return status;
+ if(String(entry?.version||'').trim().toLowerCase()==='upcoming')return 'planned';
+ return 'released';
+}
+function appVersionTagClass(tag,status){
+ const t=String(tag||'').trim().toLowerCase();
+ if(t.includes('privacy')||t.includes('consent'))return 'app-version-tag app-version-tag--privacy';
+ if(t.includes('security'))return 'app-version-tag app-version-tag--security';
+ if(t.includes('research'))return 'app-version-tag app-version-tag--research';
+ if(t.includes('decode'))return 'app-version-tag app-version-tag--decode';
+ if(status==='planned')return 'app-version-tag app-version-tag--planned';
+ return 'app-version-tag app-version-tag--default';
+}
+function appVersionValidEntry(entry){
+ return entry&&String(entry.title||'').trim()&&String(entry.body||'').trim();
+}
+function AppVersionEntryCard({entry,planned}){
+ const title=String(entry.title||'').trim();
+ const body=String(entry.body||'').trim();
+ const parentAction=String(entry.parentAction||'').trim();
+ const tag=String(entry.tag||'').trim();
+ const version=String(entry.version||'').trim();
+ const date=String(entry.date||'').trim();
+ const itemKey=String(entry.id||title).trim()||title;
+ const status=appVersionEntryStatus(entry);
+ return <article key={itemKey} className={'app-version-entry'+(planned?' app-version-entry--planned':'')}>
+  <div className="app-version-meta">
+   {version ? <span className="app-version-label">{version}</span> : null}
+   {date ? <span className="app-version-date">{date}</span> : null}
+  </div>
+  {tag ? <span className={appVersionTagClass(tag,status)}>{tag}</span> : null}
+  <h3 className="app-version-entry-title">{title}</h3>
+  <p className="app-version-entry-body">{body}</p>
+  {parentAction ? <p className="app-version-entry-action">{parentAction}</p> : null}
+ </article>;
+}
+function AppVersionPage({back,onSignOut}){
+ const versions=typeof WAYFINDER_APP_VERSIONS!=='undefined'?WAYFINDER_APP_VERSIONS:[];
+ const pageMeta=typeof APP_VERSION_PAGE!=='undefined'?APP_VERSION_PAGE:{};
+ const valid=Array.isArray(versions)?versions.filter(appVersionValidEntry):[];
+ const released=valid.filter(e=>appVersionEntryStatus(e)==='released');
+ const planned=valid.filter(e=>appVersionEntryStatus(e)==='planned');
+ const pageTitle=String(pageMeta.title||'App Version').trim()||'App Version';
+ const subtitle=String(pageMeta.subtitle||'').trim();
+ const releasedHeading=String(pageMeta.releasedHeading||'Recent updates').trim();
+ const plannedHeading=String(pageMeta.plannedHeading||'Planned').trim();
+ const reassurance=String(pageMeta.reassurance||'').trim();
+ const workflowNote=String(pageMeta.workflowNote||'').trim();
+ return <div className="wrap">
+  <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
+  <div className="card dashboard-section app-version-intro">
+   {subtitle ? <p className="dashboard-helper app-version-subtitle">{subtitle}</p> : null}
+   {reassurance ? <p className="app-version-reassurance">{reassurance}</p> : null}
+   {workflowNote ? <p className="app-version-workflow-note">{workflowNote}</p> : null}
+  </div>
+  {released.length>0 ? <div className="card dashboard-section app-version-section">
+   <h2 className="app-version-section-title">{releasedHeading}</h2>
+   <div className="app-version-list">
+    {released.map(entry=><AppVersionEntryCard key={String(entry.id||entry.title)} entry={entry}/>)}
+   </div>
+  </div> : null}
+  {planned.length>0 ? <div className="card dashboard-section app-version-section app-version-section--planned">
+   <h2 className="app-version-section-title">{plannedHeading}</h2>
+   <p className="dashboard-helper app-version-planned-note">These items are planned and may change as Wayfinder develops.</p>
+   <div className="app-version-list">
+    {planned.map(entry=><AppVersionEntryCard key={String(entry.id||entry.title)} entry={entry} planned/>)}
+   </div>
+  </div> : null}
+  {released.length===0&&planned.length===0 ? <div className="card dashboard-section app-version-empty">
+   <p className="sub">No version notes are available right now.</p>
+  </div> : null}
+ </div>;
+}
+
 function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,onSaved,onSignOut}){
  const [step,setStep]=useState(0);
  const [decode,setDecode]=useState(emptyDecodeMoment);
@@ -1772,7 +1850,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [aiInsight,setAiInsight]=useState('');
  const [insightLoading,setInsightLoading]=useState(false);
  const [discBars,setDiscBars]=useState(null);
- const [stage,setStage]=useState('loading'); // loading | dashboard | decode | selectChild | register | trail | journal | done
+ const [stage,setStage]=useState('loading'); // loading | dashboard | decode | selectChild | register | trail | appVersion | journal | done
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
  const entryDateValue=(entry)=>firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at);
@@ -1899,6 +1977,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch" onClick={startNewChild}>+ New child</button>
      <button className="switch" onClick={startNewEntry}>Start new activity</button>
      <button className="switch switch-trail" onClick={()=>setStage('trail')}>Journal trail</button>
+     <button className="switch switch-muted" onClick={()=>setStage('appVersion')}>App Version</button>
      <button className="switch switch-muted" onClick={onSignOut}>Sign out</button>
    </div>
   </div>
@@ -1906,6 +1985,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
    <RelationshipGarden dyads={dyads} entries={entries}/>
 
    <AlignJourneySection entries={entries} onStartDecode={startDecode}/>
+
 
    <div className="card decode-card">
     <div>
@@ -2021,7 +2101,9 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   </div>
  </div>;
 
- if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+ if(stage==='appVersion') return <AppVersionPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+
+if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
  if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy,authSession);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()} onSignOut={onSignOut}/>;
 

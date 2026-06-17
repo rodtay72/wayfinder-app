@@ -222,6 +222,93 @@ const UI_TEXT = {
   genderOptions: ["Prefer not to say", "Male", "Female", "Non-binary"]
 };
 
+
+// APP VERSION PAGE (edit copy here - no database or admin UI)
+// Workflow: before merging a user-facing PR, add or update an entry at the top of
+// WAYFINDER_APP_VERSIONS with parent-facing copy. Internal-only PRs: note in the PR
+// description that no App Version entry is needed.
+const APP_VERSION_PAGE = {
+  title: "App Version",
+  subtitle: "A parent-facing record of Wayfinder updates, privacy reminders, and planned improvements.",
+  releasedHeading: "Recent updates",
+  plannedHeading: "Planned",
+  reassurance: "These notes help you understand what may have changed and what is coming next. They are not labels, scores, or clinical assessments.",
+  workflowNote: "Wayfinder updates this page when parent-facing improvements are released. Future research or data use will always be explained with clear notice, consent, and privacy safeguards."
+};
+
+const WAYFINDER_APP_VERSIONS = [
+  {
+    id: "v0-3-2-align-journey",
+    version: "v0.3.2",
+    date: "June 2026",
+    status: "released",
+    tag: "Reflection update",
+    title: "Your ALIGN Journey",
+    body: "Wayfinder now offers a gentle ALIGN Journey reflection so parents can notice what they may be practising over time, such as noticing a possible need, pausing before responding, or choosing one next action. These reflections are not labels or scores.",
+    parentAction: "After a few reflections, open Your ALIGN Journey to notice what may be emerging."
+  },
+  {
+    id: "v0-3-1-decode",
+    version: "v0.3.1",
+    date: "June 2026",
+    status: "released",
+    tag: "Decode support",
+    title: "Decode a Moment",
+    body: "Decode a Moment helps you slow down after something happens with your child. It guides you to explore the possible need, your CAB response, and one gentle next step.",
+    parentAction: "Try it after a difficult moment, or when you want to understand a repeated moment more clearly."
+  },
+  {
+    id: "v0-3-0-journal-trail",
+    version: "v0.3.0",
+    date: "June 2026",
+    status: "released",
+    tag: "Practice trail",
+    title: "Journal Trail improvements",
+    body: "The Journal Trail helps you revisit recent reflections and activities so you can notice how your practice is developing over time.",
+    parentAction: "Use it to revisit what you noticed, what helped, and what you may try next."
+  },
+  {
+    id: "upcoming-privacy-reminder",
+    version: "Upcoming",
+    date: "Planned",
+    status: "planned",
+    tag: "Privacy reminder",
+    title: "Reflection privacy reminder",
+    body: "Wayfinder uses generated Parent IDs and Child IDs in the app interface. When writing reflections, avoid adding names or identifying details unless they are truly needed.",
+    parentAction: "Keep reflections focused on what happened, what you noticed, and what you may try next."
+  },
+  {
+    id: "upcoming-pdpa-consent",
+    version: "Upcoming",
+    date: "Planned",
+    status: "planned",
+    tag: "Privacy and consent",
+    title: "Clearer PDPA and research-use notice",
+    body: "We are planning clearer consent and research-use notices before registration, so parents can understand what may be used, what is not used, and how anonymised or de-identified learning may support future improvements.",
+    parentAction: "We will keep privacy, clarity, and parent choice at the centre."
+  },
+  {
+    id: "upcoming-security-review",
+    version: "Upcoming",
+    date: "Planned",
+    status: "planned",
+    tag: "Security review",
+    title: "HIPAA and security-readiness review",
+    body: "We are reviewing what additional safeguards would be needed if Wayfinder is used in healthcare or counselling contexts that require HIPAA or HIPAA-aligned protection. This is a readiness review, not a compliance claim.",
+    parentAction: "Security, privacy, and appropriate access controls will remain part of future planning."
+  },
+  {
+    id: "upcoming-research",
+    version: "Upcoming",
+    date: "Planned",
+    status: "planned",
+    tag: "Future research",
+    title: "Future parent reflection research",
+    body: "Wayfinder may later support research into parent reflection, emotional regulation, and repair. Any such use should be explained clearly, use anonymised or de-identified learning where appropriate, and respect parent choice.",
+    parentAction: "Future research features should be introduced with clear notice, consent, and privacy safeguards."
+  }
+];
+
 // Export everything
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -234,6 +321,8 @@ if (typeof module !== 'undefined' && module.exports) {
     SHIFT_WORDS,
     CHILD_NEEDS_WORDS,
     CULTURE,
-    UI_TEXT
+    UI_TEXT,
+    APP_VERSION_PAGE,
+    WAYFINDER_APP_VERSIONS
   };
 }
