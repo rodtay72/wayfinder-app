@@ -6,9 +6,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-17
+**Last updated:** 2026-06-18
 
-**Last verified merge:** PR #4 — PDPA signup notice (Phase A UI-only)
+**Last verified merge:** PR #5 — Day 0 agent ops (automation layer)
 
 ## Released on main
 
@@ -17,12 +17,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | v0.3.2 | Your ALIGN Journey read-only insights | PR #2 |
 | App Version page | Parent-facing release notes page | PR #3 |
 | PDPA signup notice | Signup-only privacy/data-use acknowledgement checkbox (not persisted) | PR #4 |
+| Agent ops (Day 0) | PR template, issue template, CODEOWNERS, guardrail workflows, ops docs | PR #5 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `automation/wayfinder-agentic-release-system` | Day 0 agent ops: PR template, issue template, CODEOWNERS, guardrail workflows, ops docs | Built locally — pending commit/PR |
+| `docs/research-ai-capability-map` | Day 1 Issue #6: Research + AI Capability Map | Built locally — pending commit/PR |
 
 ## Deferred / not started
 
