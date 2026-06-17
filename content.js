@@ -309,6 +309,15 @@ const WAYFINDER_APP_VERSIONS = [
   }
 ];
 
+// PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)
+const PDPA_SIGNUP_NOTICE = {
+  version: "2026-06-1",
+  title: "Before you create your account",
+  body: "Wayfinder uses account, profile, generated Parent ID, generated Child ID, activity, and reflection information to provide the app experience, protect access, and support your parent-child reflection journey. Wayfinder does not intentionally collect precise location data or device IDs for parent reflection features. Please avoid adding names, addresses, school names, or other identifying details in reflections unless they are truly needed. Future research or learning use would require clearer notice, appropriate safeguards, and consent or another appropriate basis where required. Anonymised or de-identified learning may be used only where suitable safeguards are in place, and free-text reflections may contain identifying details if they are typed in.",
+  checkboxLabel: "I have read and understood this privacy and data-use notice.",
+  uncheckedMessage: "Please read the privacy and data-use notice and confirm you understand it before creating your account."
+};
+
 // Export everything
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -323,6 +332,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CULTURE,
     UI_TEXT,
     APP_VERSION_PAGE,
-    WAYFINDER_APP_VERSIONS
+    WAYFINDER_APP_VERSIONS,
+    PDPA_SIGNUP_NOTICE
   };
 }

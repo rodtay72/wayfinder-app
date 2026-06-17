@@ -278,10 +278,29 @@ function AuthScreen({onAuth, role, message, messageEmail}){
  const [loading,setLoading]=useState(false);
  const [resendStatus,setResendStatus]=useState('');
  const [resendLoading,setResendLoading]=useState(false);
+ const [pdpaAcknowledged,setPdpaAcknowledged]=useState(false);
+ const [pdpaNoticePrompt,setPdpaNoticePrompt]=useState('');
  const allowSignup=role!=='counsellor';
  const activeMode=allowSignup?mode:'signin';
+ const pdpaNotice=typeof PDPA_SIGNUP_NOTICE!=='undefined'?PDPA_SIGNUP_NOTICE:{};
+ const pdpaTitle=String(pdpaNotice.title||'Before you create your account').trim();
+ const pdpaBody=String(pdpaNotice.body||'').trim();
+ const pdpaCheckboxLabel=String(pdpaNotice.checkboxLabel||'I have read and understood this privacy and data-use notice.').trim();
+ const pdpaUncheckedMessage=String(pdpaNotice.uncheckedMessage||'Please read the privacy and data-use notice and confirm you understand it before creating your account.').trim();
+ const switchMode=(nextMode)=>{
+  setMode(nextMode);
+  setError('');
+  setPdpaNoticePrompt('');
+  if(nextMode==='signin')setPdpaAcknowledged(false);
+ };
  const submit=async()=>{
-  setError('');setLoading(true);
+  setError('');
+  setPdpaNoticePrompt('');
+  if(activeMode==='signup'&&!pdpaAcknowledged){
+   setPdpaNoticePrompt(pdpaUncheckedMessage);
+   return;
+  }
+  setLoading(true);
   try{
    const {data,error:err}=activeMode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
    if(err)throw err;
@@ -322,9 +341,22 @@ function AuthScreen({onAuth, role, message, messageEmail}){
     {resendStatus&&<div style={{marginTop:8,color:'#4f7a5e'}}>{resendStatus}</div>}
    </div>}
    {error&&<div style={{color:'#c0392b',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fdecea',borderRadius:6}}>{error}</div>}
-   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>{loading?'Please wait…':activeMode==='signin'?'Sign in':'Create account'}</button>
+   {activeMode==='signup'&&pdpaBody ? <div className="pdpa-notice-block" role="region" aria-label={pdpaTitle}>
+    <h3 className="pdpa-notice-title">{pdpaTitle}</h3>
+    <p className="pdpa-notice-body">{pdpaBody}</p>
+    <label className="pdpa-notice-check">
+     <input
+      type="checkbox"
+      checked={pdpaAcknowledged}
+      onChange={(event)=>{setPdpaAcknowledged(event.target.checked);if(event.target.checked)setPdpaNoticePrompt('');}}
+     />
+     <span>{pdpaCheckboxLabel}</span>
+    </label>
+    {pdpaNoticePrompt ? <p className="pdpa-notice-prompt" role="status">{pdpaNoticePrompt}</p> : null}
+   </div> : null}
+   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading||(activeMode==='signup'&&!pdpaAcknowledged)}>{loading?'Please wait…':activeMode==='signin'?'Sign in':'Create account'}</button>
    {allowSignup ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
-    {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signup');setError('');}}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>{setMode('signin');setError('');}}>Sign in</span></span>}
+    {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
    </p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Counsellor accounts are provisioned by the Wayfinder administrator.</p>}
    </div>
   </div>
