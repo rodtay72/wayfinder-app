@@ -1,0 +1,14 @@
+﻿# Wayfinder high-risk paths — require owner review before merge.
+# CODEOWNERS is not enforceable until branch protection / ruleset enables
+# "Require review from Code Owners" on main.
+
+/supabase.js @rodtay72
+/api/ @rodtay72
+*.sql @rodtay72
+/vercel.json @rodtay72
+/index.html @rodtay72
+/counsellor.html @rodtay72
+/verify.html @rodtay72
+/package.json @rodtay72
+/package-lock.json @rodtay72
+/scripts/verify-wayfinder.ps1 @rodtay72

@@ -1,0 +1,160 @@
+﻿name: Agent task
+description: Structured task intake for Wayfinder autonomous agent work
+title: "[Agent] "
+labels:
+  - agent-task
+body:
+  - type: input
+    id: task_title
+    attributes:
+      label: Task title
+      description: Short name for this task
+      placeholder: e.g. Phase 3B.3 journal trail filter polish
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Task type
+      options:
+        - feature
+        - content
+        - ui
+        - fix
+        - docs
+        - automation
+        - research
+        - audit
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk_level
+    attributes:
+      label: Risk level
+      options:
+        - low
+        - medium
+        - high
+    validations:
+      required: true
+
+  - type: input
+    id: phase_name
+    attributes:
+      label: Phase name
+      placeholder: e.g. Phase 3B.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: cursor_mode
+    attributes:
+      label: Cursor mode
+      description: Plan before non-trivial build work; Debug for layout or runtime bugs
+      options:
+        - Plan
+        - Agent
+        - Debug
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What success looks like when this task is complete
+      placeholder: Describe the outcome, not just the steps
+    validations:
+      required: true
+
+  - type: textarea
+    id: allowed_files
+    attributes:
+      label: Allowed files
+      description: Explicit allowlist. Agents must not edit files outside this list unless approved.
+      placeholder: |
+        e.g.
+        - app.js (AuthScreen section only)
+        - content.js
+        - styles.css
+    validations:
+      required: true
+
+  - type: textarea
+    id: forbidden_files
+    attributes:
+      label: Forbidden files
+      description: Default high-risk paths from AGENTS.md unless explicitly approved
+      value: |
+        - supabase.js
+        - api/*
+        - *.sql / RLS files
+        - index.html, counsellor.html, verify.html
+        - vercel.json, deployment config
+        - auth/profile/session logic (unless approved)
+        - Parent ID / Child ID generation (unless approved)
+        - journal save/read core (unless approved)
+        - dashboard loading core (unless approved)
+        - Babel / script loading in HTML entry points
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_tests
+    attributes:
+      label: Acceptance tests
+      description: Browser and functional checks required before merge
+      placeholder: |
+        - Local browser test steps
+        - Sign-in / sign-up paths if auth touched
+        - Dashboard load if reads touched
+        - Mobile layout if UI touched
+    validations:
+      required: true
+
+  - type: dropdown
+    id: socialisation_requirement
+    attributes:
+      label: Socialisation requirement
+      options:
+        - none
+        - platform-sync-brief
+        - app-version-entry
+        - both
+    validations:
+      required: true
+
+  - type: dropdown
+    id: app_version_requirement
+    attributes:
+      label: App Version requirement
+      options:
+        - required
+        - not-needed
+        - tbd
+    validations:
+      required: true
+
+  - type: input
+    id: branch_name
+    attributes:
+      label: Branch name
+      placeholder: e.g. feature/phase-3b-3-trail-filters
+    validations:
+      required: true
+
+  - type: textarea
+    id: stop_conditions
+    attributes:
+      label: Stop conditions
+      description: When the agent must halt and ask for human review
+      value: |
+        - main is dirty or production is unstable
+        - requested change conflicts with ALIGN/CAB canon or PDPA rules
+        - high-risk file touched without approval
+        - checks fail and cannot be fixed within scope
+        - user-facing copy needs legal review
+    validations:
+      required: true

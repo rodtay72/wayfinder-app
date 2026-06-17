@@ -1,0 +1,150 @@
+﻿name: Wayfinder Guardrails
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  wayfinder-guardrails-check:
+    name: wayfinder-guardrails-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check whitespace (PR diff)
+        if: github.event_name == 'pull_request'
+        run: git diff --check "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
+
+      - name: Check whitespace (working tree)
+        if: github.event_name == 'workflow_dispatch'
+        run: git diff --check
+
+      - name: Check supabase.js syntax
+        run: node --check supabase.js
+
+      - name: Reject import/export in browser scripts
+        run: |
+          set -euo pipefail
+          MATCHES="$(rg -n '^\s*(import|export)\b' app.js content.js images.js supabase.js 2>/dev/null || true)"
+          if [ -n "$MATCHES" ]; then
+            echo "$MATCHES"
+            echo "::error::Forbidden import/export found in browser scripts."
+            exit 1
+          fi
+          echo "No forbidden import/export found."
+
+      - name: Reject browser-side profile writes
+        run: |
+          set -euo pipefail
+          MATCHES="$(rg -n 'profiles\.(insert|upsert)' app.js supabase.js api/ 2>/dev/null || true)"
+          if [ -n "$MATCHES" ]; then
+            echo "$MATCHES"
+            echo "::error::Forbidden profiles.insert/profiles.upsert found."
+            exit 1
+          fi
+          echo "No forbidden browser-side profile writes found."
+
+      - name: Confirm ensure_profile and Bearer auth paths exist
+        run: |
+          set -euo pipefail
+          grep -q "ensure_profile" supabase.js
+          grep -q "Authorization" supabase.js
+          grep -q "Bearer" supabase.js
+          echo "Required auth/profile patterns present in supabase.js."
+
+      - name: Report high-risk file changes
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          CHANGED="$(git diff --name-only "$BASE" "$HEAD" || true)"
+          HIGH_RISK=(
+            "supabase.js"
+            "vercel.json"
+            "index.html"
+            "counsellor.html"
+            "verify.html"
+            "package.json"
+            "package-lock.json"
+            "scripts/verify-wayfinder.ps1"
+          )
+          WARN=0
+          {
+            echo "## High-risk file warnings"
+            echo
+            for file in "${HIGH_RISK[@]}"; do
+              if echo "$CHANGED" | grep -Fxq "$file"; then
+                echo "- Warning: \`$file\` changed — owner review required."
+                echo "::warning file=$file::High-risk path changed — owner review required."
+                WARN=1
+              fi
+            done
+            if echo "$CHANGED" | grep -Eq '^api/'; then
+              echo "- Warning: \`api/*\` changed — owner review required."
+              echo "::warning::api/* changed — owner review required."
+              WARN=1
+            fi
+            if echo "$CHANGED" | grep -Eq '\.sql$'; then
+              echo "- Warning: \`*.sql\` changed — owner review required."
+              echo "::warning::*.sql changed — owner review required."
+              WARN=1
+            fi
+            if echo "$CHANGED" | grep -Fxq "app.js"; then
+              echo "- Warning: \`app.js\` changed — review auth/profile/session, journal save/read, and dashboard loading sections."
+              echo "::warning file=app.js::app.js changed — review auth, journal, and dashboard sections."
+              WARN=1
+            fi
+            if [ "$WARN" -eq 0 ]; then
+              echo "No high-risk path warnings for this PR."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remind about App Version for user-facing UI changes
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          CHANGED="$(git diff --name-only "$BASE" "$HEAD" || true)"
+          UI_TOUCH=0
+          for ui in app.js content.js styles.css; do
+            if echo "$CHANGED" | grep -Fxq "$ui"; then
+              UI_TOUCH=1
+            fi
+          done
+          if [ "$UI_TOUCH" -eq 0 ]; then
+            echo "No user-facing UI files changed — App Version reminder skipped."
+            exit 0
+          fi
+          if git diff "$BASE" "$HEAD" -- content.js | grep -q "WAYFINDER_APP_VERSIONS"; then
+            echo "content.js App Version section changed."
+            exit 0
+          fi
+          if echo "${PR_BODY:-}" | grep -qi "No App Version entry needed"; then
+            echo "PR declares no App Version entry needed."
+            exit 0
+          fi
+          {
+            echo "## App Version reminder"
+            echo
+            echo "Warning: \`app.js\`, \`content.js\`, and/or \`styles.css\` changed without a \`WAYFINDER_APP_VERSIONS\` update."
+            echo "Add an App Version entry for parent-facing releases, or state **No App Version entry needed** in the PR description."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning::User-facing UI files changed without App Version update or explicit PR declaration."
