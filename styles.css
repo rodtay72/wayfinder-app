@@ -57,6 +57,7 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .field{margin-bottom:16px;}
   .btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:650;transition:.15s;}
+  .btn:disabled,button.btn:disabled{opacity:0.55;cursor:not-allowed;}
   .btn-primary{background:var(--sage-deep);color:#fff;} .btn-primary:hover{background:var(--ink);}
   .btn-ghost{background:var(--mist);color:var(--sage-deep);} .btn-ghost:disabled{opacity:.4;cursor:not-allowed;}
   .btn-warm{background:var(--warm);color:#fff;} .btn-warm:hover{background:var(--alert);}
@@ -220,6 +221,14 @@
   .app-version-entry-body{font-size:14px;line-height:1.65;color:#5d6c66;margin:0;}
   .app-version-entry-action{font-size:13px;line-height:1.6;color:var(--sage-deep);margin:12px 0 0;padding-top:10px;border-top:1px solid rgba(232,224,212,.85);font-style:italic;}
   .app-version-empty{text-align:center;padding:28px 24px;}
+  .pdpa-notice-block{max-width:100%;overflow:hidden;box-sizing:border-box;background:#FBF8F3;border:1px solid #E8E0D4;border-radius:10px;padding:16px 18px;margin-bottom:16px;}
+  .pdpa-notice-title{font-size:15px;font-weight:800;color:#40514b;margin:0 0 10px;line-height:1.35;text-transform:none;letter-spacing:normal;}
+  .pdpa-notice-body{font-size:13px;line-height:1.65;color:#5d6c66;margin:0 0 14px;overflow-wrap:anywhere;word-wrap:break-word;}
+  .pdpa-notice-check{display:grid;grid-template-columns:1.25rem minmax(0,1fr);align-items:start;column-gap:0.75rem;width:100%;max-width:100%;box-sizing:border-box;margin-top:1rem;margin-bottom:0;cursor:pointer;position:static;font-weight:400;color:#40514b;}
+  .pdpa-notice-check input[type="checkbox"]{width:1rem;height:1rem;margin:0.2rem 0 0 0;padding:0;position:static;flex:none;accent-color:var(--sage-deep);}
+  .pdpa-notice-check span{display:block;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:normal;white-space:normal;line-height:1.45;position:static;font-size:13px;}
+  .pdpa-notice-prompt{font-size:13px;line-height:1.55;color:#8a5a00;margin:12px 0 0;padding:10px 12px;background:#fff4d6;border-radius:6px;overflow-wrap:anywhere;word-wrap:break-word;}
+
   .dashboard-section{padding:24px;}
   .dashboard-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;}
   .dashboard-section-head-spaced{margin-top:22px;padding-top:20px;border-top:1px solid #E8E0D4;}
