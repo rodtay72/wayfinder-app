@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-18
 
-**Last verified merge:** PR #17 — Research Export SOP + Data Dictionary (Day 6)
+**Last verified merge:** PR #19 — Research Launch Readiness + Study Operations Plan (Day 7)
 
 ## Released on main
 
@@ -24,12 +24,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | AI Congruence Analysis Contract | Day 4 docs-only AI governance contract | PR #13 |
 | Consent + Research Governance Plan | Day 5 docs-only consent and research governance | PR #15 |
 | Research Export SOP + Data Dictionary | Day 6 docs-only export SOP and data dictionary | PR #17 |
+| Research Launch Readiness + Study Operations Plan | Day 7 docs-only research launch readiness and study ops | PR #19 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/research-launch-readiness-study-ops` | Day 7: Research Launch Readiness + Study Operations Plan (docs-only) | Built locally — pending commit/PR |
+| `ops/platform-sync-production-ops` | Day 8: Platform Sync + Production Ops (docs-only) | In flight |
 
 ## Deferred / not started
 
