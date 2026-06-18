@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-18
 
-**Last verified merge:** PR #9 — Activity Practice Taxonomy (Issue #8)
+**Last verified merge:** PR #11 — Questionnaire Measures Framework (Day 3)
 
 ## Released on main
 
@@ -20,12 +20,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Agent ops (Day 0) | PR template, issue template, CODEOWNERS, guardrail workflows, ops docs | PR #5 |
 | Research + AI Capability Map | Issue #6 docs-only research architecture | PR #7 |
 | Activity Practice Taxonomy | Issue #8 metadata-only (`ACTIVITY_PRACTICE_CATALOG`; `ACTIVITIES` unchanged) | PR #9 |
+| Questionnaire Measures Framework | Day 3 docs-only research architecture with item vetting governance | PR #11 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/questionnaire-measures-framework` | Day 3: Questionnaire Measures Framework (docs-only) | Built locally — pending commit/PR |
+| `docs/ai-congruence-analysis-contract` | Day 4: AI Congruence Analysis Contract (docs-only) | Built locally — pending commit/PR |
 
 ## Deferred / not started
 
