@@ -2,7 +2,7 @@
 
 ## Status
 
-**Issue #8 — metadata-only (Day 2)**  
+**Issue #8 — metadata-only (Day 2)**
 Planning and research architecture. No UI changes. No journal save/read changes. No Supabase/schema changes.
 
 Related:
