@@ -347,6 +347,7 @@ See [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READI
 | [.github/workflows/wayfinder-checks.yml](../.github/workflows/wayfinder-checks.yml) | Baseline CI: whitespace, `node --check supabase.js`, profiles ban, ensure_profile/Bearer presence |
 | [.github/workflows/wayfinder-guardrails.yml](../.github/workflows/wayfinder-guardrails.yml) | Extended CI: import/export scan, high-risk file warnings, App Version reminder |
 | [.github/workflows/platform-sync-brief.yml](../.github/workflows/platform-sync-brief.yml) | PR comment reminder for platform sync brief |
+| [.github/workflows/production-smoke-reminder.yml](../.github/workflows/production-smoke-reminder.yml) | Daily + manual public URL heartbeat; step summary; reusable `production-watch` issue upsert (manual smoke checklist only) |
 | [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md) | PR guardrail checklist |
 | [.github/ISSUE_TEMPLATE/agent_task.yml](../.github/ISSUE_TEMPLATE/agent_task.yml) | Structured agent task intake |
 | [.github/CODEOWNERS](../.github/CODEOWNERS) | High-risk path ownership (enforceable when branch protection enabled) |
@@ -358,37 +359,34 @@ Existing workflows do **not** auto-commit, auto-merge, or require external secre
 
 ## 19. What automation is recommended next
 
-Prioritised for **Day 9+** with separate explicit approval:
-
-| Priority | Automation | Scope | Notes |
-|----------|------------|-------|-------|
-| 1 | Scheduled daily launch-readiness issue | GitHub Actions cron | Checklist template only; no auto-merge |
-| 2 | Production URL heartbeat | HTTP 200 on public URL | Does not test auth/journal paths |
-| 3 | Post-merge smoke reminder | Issue or PR comment | Reminder-only |
-| 4 | Weekly guardrail summary on `main` | Scheduled workflow | Report CI trend |
-| 5 | OpenClaw webhook for handoff summaries | External integration | Requires secrets; deferred |
-
-**Day 8 implements none of the above** — recommendation only.
+| Priority | Automation | Status |
+|----------|------------|--------|
+| 1 | Scheduled reusable production smoke reminder issue | **Implemented Day 9** — `production-smoke-reminder.yml` |
+| 2 | Production URL heartbeat (public GET) | **Implemented Day 9** — same workflow |
+| 3 | Post-merge smoke reminder | Partial — PR template + platform sync brief; no auto-trigger on merge |
+| 4 | Weekly guardrail summary on `main` | Deferred |
+| 5 | OpenClaw webhook for handoff summaries | Deferred — requires secrets |
 
 ---
 
-## 20. Day 9 recommendation: Production Monitoring / Smoke Test Workflow
+## 20. Day 9: Production Monitoring / Smoke Test Workflow
 
-Proposed Day 9 branch (example): `automation/production-smoke-reminders`
+**Branch:** `automation/production-smoke-reminders`
 
-| Deliverable | Description |
-|-------------|-------------|
-| Scheduled smoke-test reminder | Daily GitHub issue with manual smoke checklist |
-| URL heartbeat | Optional workflow; failure opens or labels `production-watch` issue |
-| Guardrail extension | Optional; baseline guardrails already exist |
-| Platform sync daily issue | Optional complement to PR comment bot |
+| Deliverable | Status |
+|-------------|--------|
+| Public URL heartbeat | Implemented — `curl` GET to production URL; no auth/Supabase |
+| GitHub Actions step summary | Implemented — heartbeat result + manual checklist |
+| Reusable `production-watch` issue upsert | Implemented — one open issue; not daily new issues |
+| Guardrail extension | Not in scope — baseline guardrails unchanged |
+| Auto-merge / auto-rollback / login testing | **Not implemented** |
 
-**Hard limits for Day 9:**
+**Implemented limits:**
 
 - Reminder and heartbeat only — **no auto-merge, no auto-rollback**
-- No auth-session or journal smoke automation without separate approval
-- No secrets added without owner review
-- Fragile production workflow logic requires explicit approval
+- No auth-session or journal smoke automation
+- No repository secrets
+- Owner disables schedule in GitHub UI after launch if desired
 
 ---
 
@@ -417,7 +415,7 @@ Stop work and ask for human review when:
 | [WAYFINDER_AGENT_OPERATING_SYSTEM.md](./WAYFINDER_AGENT_OPERATING_SYSTEM.md) | Day 0 automation rules | GitHub automation changes |
 | [PLATFORM_SYNC_BRIEF_TEMPLATE.md](./PLATFORM_SYNC_BRIEF_TEMPLATE.md) | Per-PR cross-platform brief | Socialisation requirements change |
 
-**Day 8 scope:** docs-only. No App Version entry. No workflow files changed.
+**Day 9 scope:** workflow + minimal docs update. No App Version entry. No runtime changes.
 
 ---
 
