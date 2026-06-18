@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-18
 
-**Last verified merge:** PR #5 — Day 0 agent ops (automation layer)
+**Last verified merge:** PR #7 — Research + AI Capability Map (Issue #6)
 
 ## Released on main
 
@@ -18,12 +18,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | App Version page | Parent-facing release notes page | PR #3 |
 | PDPA signup notice | Signup-only privacy/data-use acknowledgement checkbox (not persisted) | PR #4 |
 | Agent ops (Day 0) | PR template, issue template, CODEOWNERS, guardrail workflows, ops docs | PR #5 |
+| Research + AI Capability Map | Issue #6 docs-only research architecture | PR #7 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/research-ai-capability-map` | Day 1 Issue #6: Research + AI Capability Map | Built locally — pending commit/PR |
+| `feature/activity-practice-taxonomy` | Day 2 Issue #8: Activity Practice Taxonomy (metadata-only) | Built locally — pending commit/PR |
 
 ## Deferred / not started
 
