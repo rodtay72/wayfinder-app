@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-18
 
-**Last verified merge:** PR #19 — Research Launch Readiness + Study Operations Plan (Day 7)
+**Last verified merge:** PR #21 — Platform Sync + Production Ops (Day 8)
 
 ## Released on main
 
@@ -25,12 +25,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Consent + Research Governance Plan | Day 5 docs-only consent and research governance | PR #15 |
 | Research Export SOP + Data Dictionary | Day 6 docs-only export SOP and data dictionary | PR #17 |
 | Research Launch Readiness + Study Operations Plan | Day 7 docs-only research launch readiness and study ops | PR #19 |
+| Platform Sync + Production Ops | Day 8 docs-only handoff brief and production ops plan | PR #21 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `ops/platform-sync-production-ops` | Day 8: Platform Sync + Production Ops (docs-only) | In flight |
+| `automation/production-smoke-reminders` | Day 9: Production smoke reminder workflow (public URL heartbeat + manual checklist issue) | In flight |
 
 ## Deferred / not started
 
@@ -57,3 +58,4 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - Use `.github/PULL_REQUEST_TEMPLATE.md` for every PR.
 - High-risk paths require CODEOWNERS review once branch protection is enabled.
 - Platform sync brief required for user-facing, research, consent, or AI changes.
+- Production smoke reminder workflow (`.github/workflows/production-smoke-reminder.yml`) runs daily at 22:00 UTC and via manual dispatch — public URL heartbeat only; auth/journal/dashboard checks remain manual.
