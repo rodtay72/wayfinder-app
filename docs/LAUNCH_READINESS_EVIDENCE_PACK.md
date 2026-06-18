@@ -406,4 +406,5 @@ Do not fill **Confirmed** without explicit verification. Do not record emails, U
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md)
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md)
+- [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — owner manual check script (Issue #26)
 - [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md) — research go/no-go (separate)

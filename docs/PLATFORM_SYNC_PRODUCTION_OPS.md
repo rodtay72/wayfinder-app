@@ -416,6 +416,7 @@ Stop work and ask for human review when:
 | [WAYFINDER_AGENT_OPERATING_SYSTEM.md](./WAYFINDER_AGENT_OPERATING_SYSTEM.md) | Day 0 automation rules | GitHub automation changes |
 | [PLATFORM_SYNC_BRIEF_TEMPLATE.md](./PLATFORM_SYNC_BRIEF_TEMPLATE.md) | Per-PR cross-platform brief | Socialisation requirements change |
 | [LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) | Owner launch go/no-go evidence ledger | Before app launch decision; after manual smoke |
+| [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) | Owner step-by-step launch-day manual checks | Pre-launch and launch-day operations (Issue #26) |
 
 **Day 10 scope:** evidence pack + minimal docs update. No App Version entry. No runtime or workflow changes.
 
