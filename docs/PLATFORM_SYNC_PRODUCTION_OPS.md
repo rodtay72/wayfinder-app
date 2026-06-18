@@ -335,6 +335,7 @@ Document rollback decision in handoff summary.
 - [ ] App Version entries current for all user-facing releases since last parent-visible ship
 - [ ] Deferred items explicitly listed (consent persistence, export code, questionnaire UI, etc.)
 - [ ] Research launch go/no-go **separate** from app launch — docs alone do not authorise research enrolment
+- [ ] Owner completes [LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) manual evidence and sign-off (§8–§21)
 
 See [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md) for research-specific pre-launch criteria.
 
@@ -414,8 +415,9 @@ Stop work and ask for human review when:
 | [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) | Living release snapshot | After user-facing merges and smoke |
 | [WAYFINDER_AGENT_OPERATING_SYSTEM.md](./WAYFINDER_AGENT_OPERATING_SYSTEM.md) | Day 0 automation rules | GitHub automation changes |
 | [PLATFORM_SYNC_BRIEF_TEMPLATE.md](./PLATFORM_SYNC_BRIEF_TEMPLATE.md) | Per-PR cross-platform brief | Socialisation requirements change |
+| [LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) | Owner launch go/no-go evidence ledger | Before app launch decision; after manual smoke |
 
-**Day 9 scope:** workflow + minimal docs update. No App Version entry. No runtime changes.
+**Day 10 scope:** evidence pack + minimal docs update. No App Version entry. No runtime or workflow changes.
 
 ---
 
