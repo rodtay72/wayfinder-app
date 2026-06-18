@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-18
 
-**Last verified merge:** PR #23 — Production Smoke Reminder workflow (Day 9)
+**Last verified merge:** PR #25 — Launch Readiness Evidence Pack (Day 10)
 
 ## Released on main
 
@@ -27,12 +27,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Research Launch Readiness + Study Operations Plan | Day 7 docs-only research launch readiness and study ops | PR #19 |
 | Platform Sync + Production Ops | Day 8 docs-only handoff brief and production ops plan | PR #21 |
 | Production Smoke Reminder workflow | Day 9 public URL heartbeat + manual smoke reminder issue | PR #23 |
+| Launch Readiness Evidence Pack | Day 10 docs-only owner go/no-go evidence ledger | PR #25 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/launch-readiness-evidence-pack` | Day 10: Final launch readiness evidence pack (docs-only) | In flight |
+| `docs/launch-operator-runbook` | Day 11: Launch operator runbook (Issue #26, docs-only) | In flight |
 
 ## Deferred / not started
 
@@ -61,3 +62,4 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - Platform sync brief required for user-facing, research, consent, or AI changes.
 - Production smoke reminder workflow (`.github/workflows/production-smoke-reminder.yml`) runs daily at 22:00 UTC and via manual dispatch — public URL heartbeat only; auth/journal/dashboard checks remain manual.
 - Launch readiness evidence pack: [docs/LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — owner go/no-go ledger; manual production evidence required before launch-ready.
+- Launch operator runbook: [docs/LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — step-by-step manual pre-launch and launch-day checks (Issue #26).
