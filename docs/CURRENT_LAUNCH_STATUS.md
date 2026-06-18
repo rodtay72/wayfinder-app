@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-18
 
-**Last verified merge:** PR #11 — Questionnaire Measures Framework (Day 3)
+**Last verified merge:** PR #13 — AI Congruence Analysis Contract (Day 4)
 
 ## Released on main
 
@@ -21,16 +21,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Research + AI Capability Map | Issue #6 docs-only research architecture | PR #7 |
 | Activity Practice Taxonomy | Issue #8 metadata-only (`ACTIVITY_PRACTICE_CATALOG`; `ACTIVITIES` unchanged) | PR #9 |
 | Questionnaire Measures Framework | Day 3 docs-only research architecture with item vetting governance | PR #11 |
+| AI Congruence Analysis Contract | Day 4 docs-only AI governance contract | PR #13 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/ai-congruence-analysis-contract` | Day 4: AI Congruence Analysis Contract (docs-only) | Built locally — pending commit/PR |
+| `docs/consent-research-governance-plan` | Day 5: Consent + Research Governance Implementation Plan (docs-only) | Built locally — pending commit/PR |
 
 ## Deferred / not started
 
-- PDPA consent persistence (Phase B)
+- Consent persistence (Phase 5C/D — see Consent + Research Governance Plan)
 - Mandatory research consent governance
 - Questionnaire UI, scoring, or response storage in app
 - DISC profile persistence/display fix
