@@ -92,7 +92,7 @@ All must be true:
 
 **Current baseline (Day 12 / PR #30):** Owner manual smoke recorded **all good** on [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28), 2026-06-19. Re-verify after any production-impacting merge.
 
-**Day 13 / PR #32 complete:** Launch freeze protocol merged. **Day 14 launch candidate** recorded in [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) (Issue #33) — **conditional** on Issue #28 and manual smoke remaining clear.
+**Day 13 / PR #32 complete:** Launch freeze protocol merged. **Day 14 / PR #35 complete:** Launch candidate recorded in [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) (Issue #33) — **conditional** on Issue #28 and manual smoke remaining clear. **Day 15:** 24/7 ops handoff in [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) (Issue #36).
 
 ### No-go (hold launch or pause merges)
 
@@ -187,8 +187,9 @@ Before recommending **any** change during launch freeze, agents must read:
 4. [docs/LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md)
 5. [docs/CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md)
 6. **This protocol** — [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
-7. [docs/LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate (Issue #33)
-8. GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — do **not** close
+7. [docs/LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate (Issue #33, PR #35)
+8. [docs/24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops and reporting (Issue #36)
+9. GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — do **not** close
 
 ### Agent must
 
@@ -225,6 +226,7 @@ Stop and escalate to Rodney when:
 - [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — manual smoke script
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md) — incident and ops rhythm
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md) — agent handoff rules
-- [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate sign-off (Issue #33)
+- [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate sign-off (Issue #33, PR #35)
+- [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops handoff (Issue #36)
 
 **Issue #28:** Recurring `production-watch` production smoke reminder — **keep open.**

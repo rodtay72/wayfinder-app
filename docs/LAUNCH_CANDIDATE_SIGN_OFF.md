@@ -68,7 +68,8 @@ All items **Confirmed** merged on `main`:
 | 11 | Launch Operator Runbook | PR #27 | #26 |
 | 12 | Production Smoke Evidence (owner manual smoke all good) | PR #30 | #28 |
 | 13 | Launch Freeze and Go/No-Go Protocol | PR #32 | #31 |
-| 14 | Launch Candidate Sign-Off (this document) | Pending merge | #33 |
+| 14 | Launch Candidate Sign-Off (this document) | PR #35 | #33 |
+| 15 | 24/7 Launch Operations Handoff | Pending merge | #36 |
 
 ---
 
@@ -159,4 +160,5 @@ When stopped: update evidence pack, pause merges, follow [PLATFORM_SYNC_PRODUCTI
 - [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
 - GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — recurring production smoke reminder — **keep open**
-- GitHub [Issue #33](https://github.com/rodtay72/wayfinder-app/issues/33) — Day 14 launch candidate sign-off
+- GitHub [Issue #33](https://github.com/rodtay72/wayfinder-app/issues/33) — Day 14 launch candidate sign-off (PR #35)
+- [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops handoff (Issue #36)
