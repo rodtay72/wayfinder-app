@@ -73,7 +73,7 @@ Use cautious language in all product and evidence notes: **may**, **might**, **p
 | Item | Value |
 |------|-------|
 | Launch window | ~7 days from 2026-06-18 (~2026-06-25) per [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md) |
-| **Day 10 priority** | Final launch readiness evidence pack — consolidation and owner sign-off |
+| **Day 10 priority** | Launch freeze and go/no-go protocol (Issue #31) — see [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md) |
 | Not the priority | New features, runtime changes, workflow behaviour changes, or more research governance docs |
 | Safety rule | Production safety outranks convenience |
 
@@ -419,5 +419,6 @@ Do not fill **Confirmed** without explicit verification. Do not record emails, U
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md)
 - [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — owner manual check script (Issue #26)
+- [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md) — launch freeze and go/no-go (Issue #31)
 - GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — recurring `production-watch` reminder (public heartbeat + manual checklist prompt); **keep open**; owner manual smoke recorded in §8
 - [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md) — research go/no-go (separate)

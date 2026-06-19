@@ -8,7 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-19
 
-**Last verified merge:** PR #25 — Launch Readiness Evidence Pack (Day 10)
+**Last verified merge:** PR #30 — Production Smoke Evidence (Day 12)
+
+**Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
 ## Released on main
 
@@ -28,13 +30,14 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Platform Sync + Production Ops | Day 8 docs-only handoff brief and production ops plan | PR #21 |
 | Production Smoke Reminder workflow | Day 9 public URL heartbeat + manual smoke reminder issue | PR #23 |
 | Launch Readiness Evidence Pack | Day 10 docs-only owner go/no-go evidence ledger | PR #25 |
+| Launch Operator Runbook | Day 11 docs-only manual pre-launch and launch-day checks | PR #27 |
+| Production Smoke Evidence | Day 12 owner manual smoke recorded (all good) — Issue #28 | PR #30 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/launch-operator-runbook` | Day 11: Launch operator runbook (Issue #26, docs-only) | In flight |
-| `docs/production-smoke-evidence-completion` | Issue #28: Record owner manual smoke (all good) in evidence pack — Issue #28 stays open | In flight |
+| `docs/launch-freeze-go-no-go-protocol` | Day 13: Launch freeze and go/no-go protocol (Issue #31, docs-only) | In flight |
 
 ## Deferred / not started
 
@@ -57,10 +60,12 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 ## Agent ops notes
 
+- **Launch freeze active** — [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 - One branch, one merge at a time.
 - Use `.github/PULL_REQUEST_TEMPLATE.md` for every PR.
 - High-risk paths require CODEOWNERS review once branch protection is enabled.
 - Platform sync brief required for user-facing, research, consent, or AI changes.
-- Production smoke reminder workflow (`.github/workflows/production-smoke-reminder.yml`) runs daily at 22:00 UTC and via manual dispatch — public URL heartbeat only; auth/journal/dashboard checks remain manual.
-- Launch readiness evidence pack: [docs/LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — owner manual smoke **Confirmed** (Rodney, 2026-06-19, all good) recorded on [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28); public heartbeat on Issue #28 remains separate automation.
-- Launch operator runbook: [docs/LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — step-by-step manual pre-launch and launch-day checks (Issue #26).
+- Production smoke reminder workflow (`.github/workflows/production-smoke-reminder.yml`) runs daily at 22:00 UTC (06:00 SGT) and via manual dispatch — public URL heartbeat only; auth/journal/dashboard checks remain manual.
+- [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — recurring `production-watch` reminder — **keep open**
+- Launch readiness evidence pack: [docs/LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — owner manual smoke **Confirmed** (Rodney, 2026-06-19, all good) on Issue #28; public heartbeat separate
+- Launch operator runbook: [docs/LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — manual smoke script (Issue #26)

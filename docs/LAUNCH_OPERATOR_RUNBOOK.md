@@ -8,6 +8,8 @@ Step-by-step guide for Rodney to perform **final pre-launch** and **launch-day**
 
 Read first: [LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — record results there after each check.
 
+During **launch freeze**, also read [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md) (Issue #31).
+
 ---
 
 ## 1. Purpose and scope
@@ -362,6 +364,8 @@ Empty states (no children / no activities) are **Pass** if UI is friendly and no
 ---
 
 ## 20. Post-launch monitoring rhythm
+
+During **launch freeze**, follow daily SGT rhythm in [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md) §3.
 
 Daily (or after any user-facing merge):
 
