@@ -73,7 +73,7 @@ Use cautious language in all product and evidence notes: **may**, **might**, **p
 | Item | Value |
 |------|-------|
 | Launch window | ~7 days from 2026-06-18 (~2026-06-25) per [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md) |
-| **Current priority** | Launch candidate sign-off (Issue #33) — see [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md); Day 13 freeze protocol complete (PR #32) |
+| **Current priority** | 24/7 launch operations handoff (Issue #36) — see [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md); Day 14 launch candidate complete (PR #35) |
 | Not the priority | New features, runtime changes, workflow behaviour changes, or more research governance docs |
 | Safety rule | Production safety outranks convenience |
 
@@ -426,6 +426,19 @@ Owner baseline sign-off (2026-06-19) references §7–§21 evidence above. Re-ve
 
 ---
 
+## 24. 24/7 launch operations handoff (Day 15)
+
+| Item | Status |
+|------|--------|
+| GitHub as operating centre documented | See [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) |
+| Always-post-report rule defined | **Yes** — issue before PR; PR after PR exists |
+| Standard report fields reusable | **Yes** — §3 of handoff doc |
+| Issue #28 closed | **No** — recurring reminder **stays open** |
+
+Purpose: reduce Rodney involvement; enable ChatGPT, Cursor, Claude, Codex, OpenClaw, and future operators to continue launch ops safely.
+
+---
+
 ## Related docs
 
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md)
@@ -433,6 +446,7 @@ Owner baseline sign-off (2026-06-19) references §7–§21 evidence above. Re-ve
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md)
 - [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — owner manual check script (Issue #26)
 - [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md) — launch freeze and go/no-go (Issue #31)
-- [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate sign-off (Issue #33); conditional on Issue #28
+- [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate sign-off (Issue #33, PR #35); conditional on Issue #28
+- [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops and reporting (Issue #36)
 - GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — recurring `production-watch` reminder (public heartbeat + manual checklist prompt); **keep open**; owner manual smoke recorded in §8
 - [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md) — research go/no-go (separate)
