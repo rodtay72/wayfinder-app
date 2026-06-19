@@ -92,7 +92,7 @@ All must be true:
 
 **Current baseline (Day 12 / PR #30):** Owner manual smoke recorded **all good** on [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28), 2026-06-19. Re-verify after any production-impacting merge.
 
-**Day 13 / PR #32 complete:** Launch freeze protocol merged. **Day 14 / PR #35 complete:** Launch candidate recorded in [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) (Issue #33) — **conditional** on Issue #28 and manual smoke remaining clear. **Day 15:** 24/7 ops handoff in [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) (Issue #36).
+**Day 13 / PR #32 complete:** Launch freeze protocol merged. **Day 14 / PR #35 complete:** Launch candidate recorded in [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) (Issue #33) — **conditional** on Issue #28 and manual smoke remaining clear. **Day 15 / PR #37 complete:** 24/7 ops handoff in [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) (Issue #36). **Day 16:** Incident playbook in [PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) (Issue #38). **Production Cycle 1:** Owner-confirmed PASS on Issue #28 (non-sensitive reference).
 
 ### No-go (hold launch or pause merges)
 
@@ -132,6 +132,8 @@ Scheduled public heartbeat: **22:00 UTC daily** (= **06:00 SGT** next calendar d
 ---
 
 ## 4. Incident triage
+
+Full playbook: [PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) (Issue #38). Incidents are **operational/data-safety events** — not child/parent diagnostic conclusions.
 
 ### Severity during freeze
 
@@ -188,8 +190,9 @@ Before recommending **any** change during launch freeze, agents must read:
 5. [docs/CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md)
 6. **This protocol** — [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 7. [docs/LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate (Issue #33, PR #35)
-8. [docs/24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops and reporting (Issue #36)
-9. GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — do **not** close
+8. [docs/24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops and reporting (Issue #36, PR #37)
+9. [docs/PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) — Day 16 incident triage and recovery (Issue #38)
+10. GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — do **not** close
 
 ### Agent must
 
@@ -227,6 +230,7 @@ Stop and escalate to Rodney when:
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md) — incident and ops rhythm
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md) — agent handoff rules
 - [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate sign-off (Issue #33, PR #35)
-- [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops handoff (Issue #36)
+- [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops handoff (Issue #36, PR #37)
+- [PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) — Day 16 incident triage and recovery (Issue #38)
 
 **Issue #28:** Recurring `production-watch` production smoke reminder — **keep open.**
