@@ -417,7 +417,7 @@ Copy after launch checks or incident:
 - ALIGN/CAB or PDPA canon would be weakened
 - Uncertainty about auth, RLS, journal, or dashboard integrity
 
-When stopped: update evidence pack, pause merges, use [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md) incident steps, and do not ask agents to mark Pass without your verification.
+When stopped: update evidence pack, pause merges, use [PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) for incident triage/recovery and [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md) incident steps, and do not ask agents to mark Pass without your verification.
 
 ---
 
@@ -428,4 +428,5 @@ When stopped: update evidence pack, pause merges, use [PLATFORM_SYNC_PRODUCTION_
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md)
 - [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate sign-off (Issue #33, PR #35)
-- [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops handoff and reporting (Issue #36)
+- [24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 24/7 ops handoff and reporting (Issue #36, PR #37)
+- [PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) — Day 16 incident triage and recovery (Issue #38)

@@ -254,7 +254,7 @@ Stop work, pause merges, and escalate to Rodney when:
 - **Issue #28 closed** without owner approval
 - Request touches **forbidden files** without explicit issue allowlist
 
-When stopped: update evidence pack if smoke-related, post stop report to issue/PR, do not commit/push until owner resolves.
+When stopped: update evidence pack if smoke-related, post stop report to issue/PR, do not commit/push until owner resolves. For production incidents, follow [PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md).
 
 ---
 
@@ -268,4 +268,5 @@ When stopped: update evidence pack if smoke-related, post stop report to issue/P
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md)
 - GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — **keep open**
-- GitHub [Issue #36](https://github.com/rodtay72/wayfinder-app/issues/36) — Day 15 24/7 handoff
+- GitHub [Issue #36](https://github.com/rodtay72/wayfinder-app/issues/36) — Day 15 24/7 handoff (PR #37)
+- [PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) — Day 16 incident triage and recovery (Issue #38)
