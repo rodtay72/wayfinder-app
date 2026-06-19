@@ -8,7 +8,7 @@ Step-by-step guide for Rodney to perform **final pre-launch** and **launch-day**
 
 Read first: [LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — record results there after each check.
 
-During **launch freeze**, also read [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md) (Issue #31).
+During **launch freeze**, also read [LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md) (Issue #31) and [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) (Issue #33).
 
 ---
 
@@ -272,7 +272,8 @@ After §5–§12, update [LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_
 2. Set **Failed** for any failed check — document in Notes without PII.
 3. Leave untouched rows as **Pending / To verify**.
 4. Complete §20 go/no-go checkboxes and §21 owner sign-off when ready.
-5. Do **not** invent HTTP codes or pass/fail for checks you did not run.
+5. If launch candidate status applies, confirm [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) §3 remains valid — conditional on Issue #28 and manual smoke staying clear.
+6. Do **not** invent HTTP codes or pass/fail for checks you did not run.
 
 **Launch-ready means:** §8–§14 manual rows Confirmed + §21 signed — not heartbeat alone.
 
@@ -426,3 +427,4 @@ When stopped: update evidence pack, pause merges, use [PLATFORM_SYNC_PRODUCTION_
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md)
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md)
+- [LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 launch candidate sign-off (Issue #33)
