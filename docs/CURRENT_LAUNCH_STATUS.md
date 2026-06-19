@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-19
 
-**Last verified merge:** PR #30 — Production Smoke Evidence (Day 12)
+**Last verified merge:** PR #32 — Launch Freeze and Go/No-Go Protocol (Day 13)
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -32,12 +32,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Launch Readiness Evidence Pack | Day 10 docs-only owner go/no-go evidence ledger | PR #25 |
 | Launch Operator Runbook | Day 11 docs-only manual pre-launch and launch-day checks | PR #27 |
 | Production Smoke Evidence | Day 12 owner manual smoke recorded (all good) — Issue #28 | PR #30 |
+| Launch Freeze and Go/No-Go Protocol | Day 13 docs-only launch freeze operations — Issue #31 | PR #32 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/launch-freeze-go-no-go-protocol` | Day 13: Launch freeze and go/no-go protocol (Issue #31, docs-only) | In flight |
+| `docs/launch-candidate-sign-off` | Day 14: Launch candidate sign-off (Issue #33, docs-only) | In flight |
 
 ## Deferred / not started
 
@@ -69,3 +70,4 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — recurring `production-watch` reminder — **keep open**
 - Launch readiness evidence pack: [docs/LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — owner manual smoke **Confirmed** (Rodney, 2026-06-19, all good) on Issue #28; public heartbeat separate
 - Launch operator runbook: [docs/LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — manual smoke script (Issue #26)
+- Launch candidate sign-off: [docs/LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 (Issue #33); **conditional** on Issue #28 and manual smoke remaining clear
