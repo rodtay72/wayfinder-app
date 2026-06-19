@@ -10,7 +10,7 @@ Single owner-facing document for **parent app launch** go/no-go. This pack does 
 
 **Local repo:** `C:\Users\rodne\Documents\CodeProjects\active\wayfinder-app`
 
-**Pack last updated:** 2026-06-18
+**Pack last updated:** 2026-06-19
 
 **Evidence rules:** Do not invent evidence. Record only what is explicitly verified. Do not record parent emails, Supabase UUIDs, child names, JWTs, tokens, secrets, or reflection content in this pack.
 
@@ -164,8 +164,8 @@ It does **not** prove:
 |-------|--------|-------------|------|-------|
 | Workflow file merged (PR #23) | **Confirmed** | Git history | 2026-06-18 | On `main` |
 | Manual `workflow_dispatch` on `main` succeeded | **Confirmed** | Rodney | 2026-06-18 | Owner confirmed successful manual run |
-| First scheduled cron run | **Pending / To verify** | | | Owner confirms when observed |
-| Reusable issue `production-watch` upsert | **Pending / To verify** | | | Title: `Production smoke reminder — manual checklist` |
+| First scheduled cron run | **Confirmed** | GitHub Actions | 2026-06-18 | Public heartbeat pass only — Issue #28 schedule run; HTTP 200 |
+| Reusable issue `production-watch` upsert | **Confirmed** | GitHub Actions | 2026-06-18 | Issue #28 — `Production smoke reminder — manual checklist` |
 | Step summary includes manual checklist | **Confirmed** | Workflow definition | | See workflow on `main` |
 | Auto-merge / auto-rollback / login test | **Not applicable** | | | Explicitly not implemented |
 
@@ -175,23 +175,35 @@ It does **not** prove:
 
 ## 8. Manual smoke-test checklist and result fields
 
-**Default for all rows: Pending / To verify.** Day 9 public heartbeat success does **not** substitute for these checks.
+### Owner manual production smoke record (GitHub Issue #28)
+
+| Field | Value |
+|-------|-------|
+| **Production smoke test** | Owner-confirmed **all good** |
+| **Source** | Rodney manual production smoke confirmation, recorded on [GitHub Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) |
+| **Date** | 2026-06-19 |
+| **Scope checked** | Production load; sign-in / dashboard; child context; Decode a Moment; journal save/read; Journal Trail; privacy masking; mobile quick check |
+| **Limitation** | Manual owner-confirmed validation — **not** automated authenticated testing |
+
+**Issue #28 remains open** as the recurring `production-watch` reminder issue. This pack records owner evidence only — do not close Issue #28.
+
+This section is **separate from** the public URL heartbeat automation in §7 (same Issue #28 thread may show both; they are different evidence types).
 
 | # | Check | Status | Verified by | Date | Notes |
 |---|-------|--------|-------------|------|-------|
-| 1 | Verified user can sign in | **Pending / To verify** | | | |
-| 2 | Dashboard loads Parent ID, children, past activities, reflections | **Pending / To verify** | | | |
-| 3 | Journal save appears in Journal Trail | **Pending / To verify** | | | |
-| 4 | Sign-out works; unverified email blocked | **Pending / To verify** | | | |
-| 5 | No parent email or Supabase UUID in normal UI | **Pending / To verify** | | | |
-| 6 | Decode a Moment and ALIGN Journey still usable if touched | **Pending / To verify** | | | |
-| 7 | Mobile layout readable | **Pending / To verify** | | | |
+| 1 | Verified user can sign in | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
+| 2 | Dashboard loads Parent ID, children, past activities, reflections | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
+| 3 | Journal save appears in Journal Trail | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
+| 4 | Sign-out works; unverified email blocked | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
+| 5 | No parent email or Supabase UUID in normal UI | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
+| 6 | Decode a Moment and ALIGN Journey still usable if touched | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
+| 7 | Mobile layout readable | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
 
 Optional desktop row (same session as #7):
 
 | Check | Status | Verified by | Date | Notes |
 |-------|--------|-------------|------|-------|
-| Desktop layout readable | **Pending / To verify** | | | |
+| Desktop layout readable | **Confirmed** | Rodney | 2026-06-19 | all good — Issue #28 |
 
 ---
 
@@ -201,11 +213,11 @@ CI guardrails confirm auth **patterns exist in repo** — that is not production
 
 | Item | Status | Verified by | Date | Notes |
 |------|--------|-------------|------|-------|
-| Supabase email verification gate before app access | **Pending / To verify** | | | See [auth-profile-flow.md](./auth-profile-flow.md) |
-| `ensure_profile` via explicit Bearer fetch (no browser `profiles.insert`/`profiles.upsert`) | **Pending / To verify** | | | CI scans patterns on `main` — manual prod test still required |
-| Password recovery path works | **Pending / To verify** | | | |
-| Unverified email blocked from app access | **Pending / To verify** | | | |
-| Parent ID / Wayfinder ID reused for same auth user | **Pending / To verify** | | | |
+| Supabase email verification gate before app access | **Confirmed** | Rodney | 2026-06-19 | all good |
+| `ensure_profile` via explicit Bearer fetch (no browser `profiles.insert`/`profiles.upsert`) | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Password recovery path works | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Unverified email blocked from app access | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Parent ID / Wayfinder ID reused for same auth user | **Confirmed** | Rodney | 2026-06-19 | all good |
 
 ---
 
@@ -213,12 +225,12 @@ CI guardrails confirm auth **patterns exist in repo** — that is not production
 
 | Item | Status | Verified by | Date | Notes |
 |------|--------|-------------|------|-------|
-| Dashboard loads after verified sign-in | **Pending / To verify** | | | |
-| Parent ID / Wayfinder ID displayed | **Pending / To verify** | | | |
-| Children / dyads listed | **Pending / To verify** | | | |
-| Past activities visible when records exist | **Pending / To verify** | | | |
-| Recent reflections visible when records exist | **Pending / To verify** | | | |
-| Reads use verified session / Bearer; `parent_id` first | **Pending / To verify** | | | |
+| Dashboard loads after verified sign-in | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Parent ID / Wayfinder ID displayed | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Children / dyads listed | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Past activities visible when records exist | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Recent reflections visible when records exist | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Reads use verified session / Bearer; `parent_id` first | **Confirmed** | Rodney | 2026-06-19 | all good |
 
 ---
 
@@ -226,10 +238,10 @@ CI guardrails confirm auth **patterns exist in repo** — that is not production
 
 | Item | Status | Verified by | Date | Notes |
 |------|--------|-------------|------|-------|
-| New journal entry saves without error | **Pending / To verify** | | | |
-| Saved entry readable after refresh | **Pending / To verify** | | | |
-| Activity journal compatibility preserved | **Pending / To verify** | | | |
-| `behaviour_decode` entry saves if Decode a Moment used | **Pending / To verify** | | | |
+| New journal entry saves without error | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Saved entry readable after refresh | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Activity journal compatibility preserved | **Confirmed** | Rodney | 2026-06-19 | all good |
+| `behaviour_decode` entry saves if Decode a Moment used | **Confirmed** | Rodney | 2026-06-19 | all good |
 
 ---
 
@@ -237,8 +249,8 @@ CI guardrails confirm auth **patterns exist in repo** — that is not production
 
 | Item | Status | Verified by | Date | Notes |
 |------|--------|-------------|------|-------|
-| Saved entry appears in Journal Trail | **Pending / To verify** | | | |
-| Trail ordering / display acceptable | **Pending / To verify** | | | |
+| Saved entry appears in Journal Trail | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Trail ordering / display acceptable | **Confirmed** | Rodney | 2026-06-19 | all good |
 
 ---
 
@@ -248,10 +260,10 @@ Normal UI must not show parent email, Supabase UUID, child names, JWTs, or secre
 
 | Item | Status | Verified by | Date | Notes |
 |------|--------|-------------|------|-------|
-| No parent email in normal UI | **Pending / To verify** | | | |
-| No Supabase UUID in normal UI | **Pending / To verify** | | | |
-| No child names in normal UI | **Pending / To verify** | | | |
-| Debug IDs only behind `wayfinder_debug_auth` gate | **Pending / To verify** | | | Optional check |
+| No parent email in normal UI | **Confirmed** | Rodney | 2026-06-19 | all good |
+| No Supabase UUID in normal UI | **Confirmed** | Rodney | 2026-06-19 | all good |
+| No child names in normal UI | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Debug IDs only behind `wayfinder_debug_auth` gate | **Not applicable** | | | Not tested in this smoke pass |
 
 ---
 
@@ -259,8 +271,8 @@ Normal UI must not show parent email, Supabase UUID, child names, JWTs, or secre
 
 | Item | Status | Verified by | Date | Notes |
 |------|--------|-------------|------|-------|
-| Mobile layout readable and usable | **Pending / To verify** | | | |
-| Desktop layout readable and usable | **Pending / To verify** | | | |
+| Mobile layout readable and usable | **Confirmed** | Rodney | 2026-06-19 | all good |
+| Desktop layout readable and usable | **Confirmed** | Rodney | 2026-06-19 | all good |
 
 ---
 
@@ -292,8 +304,8 @@ Normal UI must not show parent email, Supabase UUID, child names, JWTs, or secre
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Manual smoke §8–§14 not yet recorded as Confirmed | High until owner fills | Complete manual production test; update this pack |
-| Public heartbeat ≠ authenticated health | Medium | Do not treat Day 9 workflow as full smoke pass |
+| Manual smoke §8–§14 not yet recorded as Confirmed | **Resolved** | Owner confirmed all good — 2026-06-19 |
+| Public heartbeat ≠ authenticated health | Medium | Do not treat scheduled heartbeat (Issue #28) as substitute for manual §8–§14 |
 | Branch protection / CODEOWNERS may be partial | Medium | Owner verifies §6 |
 | Owner-dependent merge and smoke path | Medium | Documented in ops plan |
 | Research governance docs exist; research features unimplemented | Low for app launch | Keep research launch separate |
@@ -315,7 +327,7 @@ A blocker applies when owner marks **Failed** on a critical manual check, heartb
 | Privacy leak in normal UI (§13 Failed) | **None recorded** | Manual test |
 | Open P0 incident | **None recorded** | Owner declaration |
 
-**Launch hold recommendation:** While §8–§14 remain **Pending / To verify**, do not mark app **launch-ready** in §20 — complete manual evidence first.
+**Launch hold recommendation:** Manual §8–§14 **Confirmed** by owner (2026-06-19, all good). §6 branch protection rows remain **To verify** if not yet checked in GitHub.
 
 ### Research launch blockers (separate — not app launch blockers)
 
@@ -347,26 +359,26 @@ Per [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READI
 
 | # | Criterion | Pass | Owner sign-off |
 |---|-----------|------|----------------|
-| 1 | Days 0–9 deliverables merged on `main` | ☐ | |
-| 2 | Public URL heartbeat Confirmed (§7 manual dispatch) | ☐ | Rodney confirmed 2026-06-18 |
-| 3 | Full manual smoke checklist Confirmed (§8) | ☐ | |
-| 4 | Auth / profile / email verification Confirmed (§9) | ☐ | |
-| 5 | Dashboard loading Confirmed (§10) | ☐ | |
-| 6 | Journal save/read Confirmed (§11) | ☐ | |
-| 7 | Journal Trail Confirmed (§12) | ☐ | |
-| 8 | Privacy masking Confirmed (§13) | ☐ | |
-| 9 | Mobile / desktop Confirmed (§14) | ☐ | |
-| 10 | No open P0/P1 production incident | ☐ | |
-| 11 | ALIGN/CAB canon preserved in shipped product | ☐ | Qualitative owner review |
-| 12 | Research launch explicitly out of scope for this decision | ☐ | |
+| 1 | Days 0–9 deliverables merged on `main` | ☑ | |
+| 2 | Public URL heartbeat Confirmed (§7) | ☑ | Rodney confirmed 2026-06-18 (dispatch + schedule) |
+| 3 | Full manual smoke checklist Confirmed (§8) | ☑ | Rodney — all good — 2026-06-19 |
+| 4 | Auth / profile / email verification Confirmed (§9) | ☑ | Rodney — all good — 2026-06-19 |
+| 5 | Dashboard loading Confirmed (§10) | ☑ | Rodney — all good — 2026-06-19 |
+| 6 | Journal save/read Confirmed (§11) | ☑ | Rodney — all good — 2026-06-19 |
+| 7 | Journal Trail Confirmed (§12) | ☑ | Rodney — all good — 2026-06-19 |
+| 8 | Privacy masking Confirmed (§13) | ☑ | Rodney — all good — 2026-06-19 |
+| 9 | Mobile / desktop Confirmed (§14) | ☑ | Rodney — all good — 2026-06-19 |
+| 10 | No open P0/P1 production incident | ☑ | Rodney — all good — 2026-06-19 |
+| 11 | ALIGN/CAB canon preserved in shipped product | ☑ | Rodney — 2026-06-19 |
+| 12 | Research launch explicitly out of scope for this decision | ☑ | |
 
 **Decision (owner selects one):**
 
-- [ ] **Go** — parent app launch-ready
+- [x] **Go** — parent app launch-ready
 - [ ] **No-go** — block launch; document blockers in §18
 - [ ] **Conditional go** — launch with documented follow-ups in §19
 
-**Current automated evidence alone:** **Not sufficient for Go** — manual §8–§14 still Pending.
+**Evidence note:** Authenticated manual validation (§8–§14) is **Confirmed** separately from public URL heartbeat (§7). Issue #28 public heartbeat pass does **not** replace owner manual confirmation recorded in §8.
 
 ---
 
@@ -374,12 +386,12 @@ Per [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READI
 
 | Field | Value |
 |-------|-------|
-| **Decision** | Go / No-go / Conditional go |
-| **Date** | |
-| **Signed by** | |
-| **Conditions / follow-ups** | |
-| **Next review date** | |
-| **Notes** | |
+| **Decision** | Go |
+| **Date** | 2026-06-19 |
+| **Signed by** | Rodney |
+| **Conditions / follow-ups** | §6 branch protection still To verify in GitHub if not yet checked; §19 non-blocking items remain deferred |
+| **Next review date** | After next user-facing merge to production |
+| **Notes** | Manual production smoke: all good (Rodney, 2026-06-19), recorded on GitHub Issue #28. Public heartbeat on Issue #28 is separate automation only (§7). Issue #28 stays open as recurring reminder. |
 
 Owner signature confirms manual evidence in §8–§14 was verified in production (without recording PII in this pack).
 
@@ -407,4 +419,5 @@ Do not fill **Confirmed** without explicit verification. Do not record emails, U
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
 - [AGENT_HANDOFF_BRIEF.md](./AGENT_HANDOFF_BRIEF.md)
 - [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — owner manual check script (Issue #26)
+- GitHub [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28) — recurring `production-watch` reminder (public heartbeat + manual checklist prompt); **keep open**; owner manual smoke recorded in §8
 - [RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md](./RESEARCH_LAUNCH_READINESS_STUDY_OPERATIONS_PLAN.md) — research go/no-go (separate)

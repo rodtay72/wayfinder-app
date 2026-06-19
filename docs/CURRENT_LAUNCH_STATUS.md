@@ -6,7 +6,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-18
+**Last updated:** 2026-06-19
 
 **Last verified merge:** PR #25 — Launch Readiness Evidence Pack (Day 10)
 
@@ -34,6 +34,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
 | `docs/launch-operator-runbook` | Day 11: Launch operator runbook (Issue #26, docs-only) | In flight |
+| `docs/production-smoke-evidence-completion` | Issue #28: Record owner manual smoke (all good) in evidence pack — Issue #28 stays open | In flight |
 
 ## Deferred / not started
 
@@ -61,5 +62,5 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - High-risk paths require CODEOWNERS review once branch protection is enabled.
 - Platform sync brief required for user-facing, research, consent, or AI changes.
 - Production smoke reminder workflow (`.github/workflows/production-smoke-reminder.yml`) runs daily at 22:00 UTC and via manual dispatch — public URL heartbeat only; auth/journal/dashboard checks remain manual.
-- Launch readiness evidence pack: [docs/LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — owner go/no-go ledger; manual production evidence required before launch-ready.
+- Launch readiness evidence pack: [docs/LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md) — owner manual smoke **Confirmed** (Rodney, 2026-06-19, all good) recorded on [Issue #28](https://github.com/rodtay72/wayfinder-app/issues/28); public heartbeat on Issue #28 remains separate automation.
 - Launch operator runbook: [docs/LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — step-by-step manual pre-launch and launch-day checks (Issue #26).
