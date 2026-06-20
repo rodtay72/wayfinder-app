@@ -6,11 +6,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-19
+**Last updated:** 2026-06-20
 
-**Last verified merge:** PR #37 — 24/7 Launch Operations Handoff (Day 15)
+**Last verified merge:** PR #39 — Production Incident Triage and Recovery Playbook (Day 16)
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
+
+**v0.4 release train:** Active — 7-day product release — see [docs/V0_4_IMPLEMENTATION_CONTRACT.md](./V0_4_IMPLEMENTATION_CONTRACT.md) (Issue #40)
 
 ## Released on main
 
@@ -35,12 +37,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Launch Freeze and Go/No-Go Protocol | Day 13 docs-only launch freeze operations — Issue #31 | PR #32 |
 | Launch Candidate Sign-Off | Day 14 launch candidate accepted (conditional) — Issue #33 | PR #35 |
 | 24/7 Launch Operations Handoff | Day 15 GitHub as 24/7 operating centre — Issue #36 | PR #37 |
+| Production Incident Triage and Recovery Playbook | Day 16 incident triage and recovery — Issue #38 | PR #39 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/production-incident-triage-recovery` | Day 16: Production incident triage and recovery playbook (Issue #38, docs-only) | In flight |
+| `docs/v0-4-implementation-contract` | v0.4 Day 1: Implementation contract (Issue #40, docs-only) | In flight |
 
 ## Deferred / not started
 
@@ -74,5 +77,6 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - Launch operator runbook: [docs/LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — manual smoke script (Issue #26)
 - Launch candidate sign-off: [docs/LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 (Issue #33, PR #35); **conditional** on Issue #28 and manual smoke remaining clear
 - 24/7 launch operations handoff: [docs/24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 (Issue #36, PR #37); GitHub as operating centre; always-post-report rule
-- Production incident playbook: [docs/PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) — Day 16 (Issue #38); triage, recovery, and handoff for operational/data-safety events
+- Production incident playbook: [docs/PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) — Day 16 (Issue #38, PR #39); triage, recovery, and handoff for operational/data-safety events
+- **v0.4 implementation contract:** [docs/V0_4_IMPLEMENTATION_CONTRACT.md](./V0_4_IMPLEMENTATION_CONTRACT.md) — Day 1 of 7-day v0.4 product release train (Issue #40)
 - **Production Cycle 1:** Owner-confirmed PASS recorded on Issue #28 (non-sensitive reference only)
