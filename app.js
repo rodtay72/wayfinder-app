@@ -1877,11 +1877,12 @@ function AppVersionPage({back,onSignOut}){
  </div>;
 }
 
-function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,onSaved,onSignOut}){
+function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,onShareForReview,onSaved,onSignOut}){
  const [step,setStep]=useState(0);
  const [decode,setDecode]=useState(emptyDecodeMoment);
  const [saveState,setSaveState]=useState('idle');
  const [saveError,setSaveError]=useState('');
+ const [savedEntry,setSavedEntry]=useState(null);
  const [selectedChildId,setSelectedChildId]=useState(()=>dyads.length===1?dyads[0]?.childId||'':'');
  const update=(section,key,value)=>setDecode(p=>({...p,[section]:{...p[section],[key]:value}}));
  const toggle=(section,key,value)=>setDecode(p=>{
@@ -1931,6 +1932,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    const found=(savedEntries||[]).some(saved=>String(saved.id)===String(entry.id)||saved.submittedAt===entry.submittedAt||saved.timestamp===entry.timestamp);
    if(!found)throw new Error('Saved Decode reminder was not returned by Journal Trail read.');
    setSaveState('saved');
+   setSavedEntry(entry);
    if(onSaved)onSaved(entry,savedEntries);
   }catch(err){
    console.error('decode save error:',err);
@@ -2094,6 +2096,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    <div className="decode-actions">
     {saveState==='saved' ? <>
      <button type="button" className="btn btn-primary" onClick={onViewTrail}>View Journal Trail</button>
+     <button type="button" className="btn btn-secondary" onClick={()=>onShareForReview?.(savedEntry)}>{typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING.postSaveButtonLabel:'Share this reflection for counsellor review'}</button>
      <button type="button" className="btn btn-secondary" onClick={back}>Return to Dashboard</button>
     </> : <>
      <button type="button" className="btn btn-secondary" onClick={goBack} disabled={saveState==='saving'}>Back</button>
@@ -2202,6 +2205,9 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [insightLoading,setInsightLoading]=useState(false);
  const [discBars,setDiscBars]=useState(null);
  const [stage,setStage]=useState('loading'); // loading | dashboard | decode | selectChild | register | trail | appVersion | events | journal | done
+ const [trailShareEntryId,setTrailShareEntryId]=useState(null);
+ const [trailScrollToShare,setTrailScrollToShare]=useState(false);
+ const [lastSavedEntryId,setLastSavedEntryId]=useState(null);
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
  const entryDateValue=(entry)=>firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at);
@@ -2303,6 +2309,12 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  };
  const startNewChild=()=>{setDyad(blankDyad());setStage('register');};
  const startDecode=()=>setStage('decode');
+ const reviewShareMeta=typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING:{};
+ const openTrailForReview=(entryId)=>{
+  setTrailShareEntryId(entryId||null);
+  setTrailScrollToShare(true);
+  setStage('trail');
+ };
 
  useEffect(()=>{
   if(!authSession?.access_token) return;
@@ -2328,6 +2340,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch" onClick={startNewChild}>+ New child</button>
      <button className="switch" onClick={startNewEntry}>Start new activity</button>
      <button className="switch switch-trail" onClick={()=>setStage('trail')}>Journal trail</button>
+     <button className="switch switch-trail" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardActionLabel||'Share for counsellor review'}</button>
      <button className="switch switch-trail" onClick={()=>setStage('events')}>Events</button>
      <button className="switch switch-muted" onClick={()=>setStage('appVersion')}>App Version</button>
      <button className="switch switch-muted" onClick={onSignOut}>Sign out</button>
@@ -2347,6 +2360,15 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <p className="dashboard-helper">Pause, notice what may have been happening, and choose one steady next step.</p>
     </div>
     <button className="btn btn-primary" onClick={startDecode}>Start Decode</button>
+   </div>
+
+   <div className="card review-share-dashboard-card">
+    <div>
+     <p className="pill">Optional support</p>
+     <h2>{reviewShareMeta.dashboardCardTitle||'Share for counsellor review'}</h2>
+     <p className="dashboard-helper">{reviewShareMeta.dashboardCardSubtitle||'Choose saved journal or Decode entries to share with your counsellor for time-limited ALIGN/CAB review.'}</p>
+    </div>
+    <button type="button" className="btn btn-secondary" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardCardButton||'Open sharing in Journal Trail'}</button>
    </div>
 
    <div className="card dashboard-section">
@@ -2435,6 +2457,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   dyads={dyads}
   back={()=>setStage('dashboard')}
   onViewTrail={()=>setStage('trail')}
+  onShareForReview={(entry)=>openTrailForReview(entry?.id)}
   onSaved={(entry)=>setEntries(prev=>[entry,...prev.filter(e=>String(e.id)!==String(entry.id))])}
   onSignOut={onSignOut}
  />;
@@ -2457,7 +2480,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
  if(stage==='events') return <ActivityEventsPage back={()=>setStage('dashboard')} onSignOut={onSignOut} authSession={authSession}/>;
 
-if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut} initialShareEntryId={trailShareEntryId} scrollToSharePanel={trailScrollToShare} onShareNavHandled={()=>{setTrailShareEntryId(null);setTrailScrollToShare(false);}}/>;
 
  if(stage==='register') return <RegisterDyad parentId={parentId} initial={dyad} onSave={async(dy)=>{await DB.saveDyad(user.id,parentId,dy,authSession);setDyad(dy);await loadDashboard();}} back={()=>dyads.length>0?setStage('dashboard'):back()} onSignOut={onSignOut}/>;
 
@@ -2471,19 +2494,229 @@ if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={
     <button className="btn btn-primary" onClick={()=>setStage('journal')}>Journal another entry</button>
     <button className="btn btn-secondary" onClick={()=>loadDashboard()}>Back to dashboard</button>
     {dyads.length>1&&<button className="btn btn-secondary" onClick={()=>setStage('selectChild')}>Switch child</button>}
-    <button className="btn btn-secondary" onClick={()=>alert('Therapist contact feature coming soon - you can share your questions during your next session.')}>Ask the therapist for any clarifications</button>
+    <button className="btn btn-secondary" onClick={()=>openTrailForReview(lastSavedEntryId)}>{reviewShareMeta.postSaveButtonLabel||UI_TEXT.buttons.askTherapist}</button>
+    <p className="sub" style={{fontSize:13,marginTop:-4}}>{reviewShareMeta.postSaveHelper||'Preview what will be shared and give consent in Journal Trail.'}</p>
     <button className="btn btn-ghost" onClick={back}>Done for now</button>
    </div>
   </div>
  </div>;
 
- return <ClientJournal parentId={parentId} dyad={dyad} onDone={()=>setStage('done')} back={()=>setStage('dashboard')} user={user} onSignOut={onSignOut}/>;
+ return <ClientJournal parentId={parentId} dyad={dyad} onDone={(entry)=>{setLastSavedEntryId(entry?.id||null);setStage('done');}} back={()=>setStage('dashboard')} user={user} onSignOut={onSignOut}/>;
 }
 
-function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
+function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,entryDateValue,fmt,focusEntryId,scrollIntoView,onScrollHandled}){
+ const meta=typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING:{};
+ const panelRef=useRef(null);
+ const [highlight,setHighlight]=useState(false);
+ const [unavailable,setUnavailable]=useState(false);
+ const [grants,setGrants]=useState([]);
+ const [loadingGrants,setLoadingGrants]=useState(true);
+ const [selectedIds,setSelectedIds]=useState([]);
+ const [counsellorId,setCounsellorId]=useState('');
+ const [counsellors,setCounsellors]=useState([]);
+ const [loadingCounsellors,setLoadingCounsellors]=useState(true);
+ const [counsellorsUnavailable,setCounsellorsUnavailable]=useState(false);
+ const [consent,setConsent]=useState(false);
+ const [status,setStatus]=useState('');
+ const [error,setError]=useState('');
+ const [submitting,setSubmitting]=useState(false);
+ const [revoking,setRevoking]=useState(null);
+ const shareableEntries=entries.filter(e=>e.id!==undefined&&e.id!==null&&e.id!=='');
+ const entryIdMatches=(a,b)=>String(a)===String(b);
+ const toggleId=(id)=>setSelectedIds(prev=>prev.some(x=>entryIdMatches(x,id))?prev.filter(x=>!entryIdMatches(x,id)):[...prev,id]);
+ const previewSnippet=(text,max=140)=>{
+  const clean=String(text||'').trim();
+  if(!clean) return '';
+  return clean.length>max?clean.slice(0,max)+'…':clean;
+ };
+ const previewEntryContent=(e)=>{
+  if(isBehaviourDecodeEntry(e)){
+   const reminder=decodeReminderFromEntry(e);
+   return [
+    reminder.observed_behaviour||reminder.moment_noticed?('Behaviour: '+previewSnippet(reminder.observed_behaviour||reminder.moment_noticed)):null,
+    reminder.possible_need_worth_staying_curious_about?('Possible need: '+previewSnippet(decodeDisplayText(reminder.possible_need_worth_staying_curious_about))):null,
+    reminder.thinking||reminder.feelings||reminder.behaviour_what_i_did?('In me: '+previewSnippet([reminder.thinking,reminder.feelings,reminder.behaviour_what_i_did].filter(Boolean).join(' · '))):null
+   ].filter(Boolean);
+  }
+  const cab=e.cab||{};
+  return [
+    cab.thoughts?('Thinking: '+previewSnippet(cab.thoughts)):null,
+    cab.feelings?('Feelings: '+previewSnippet(cab.feelings)):null,
+    cab.actions?('Behaviour: '+previewSnippet(cab.actions)):null,
+    cab.meaning?('Meaning: '+previewSnippet(cab.meaning)):null
+  ].filter(Boolean);
+ };
+ useEffect(()=>{
+  if(!focusEntryId&&!scrollIntoView) return;
+  if(focusEntryId&&shareableEntries.some(e=>entryIdMatches(e.id,focusEntryId))){
+   setSelectedIds(prev=>prev.some(id=>entryIdMatches(id,focusEntryId))?prev:[...prev,focusEntryId]);
+  }
+  if(scrollIntoView&&panelRef.current){
+   panelRef.current.scrollIntoView({behavior:'smooth',block:'start'});
+   setHighlight(true);
+   const timer=setTimeout(()=>setHighlight(false),2400);
+   onScrollHandled?.();
+   return ()=>clearTimeout(timer);
+  }
+ },[focusEntryId,scrollIntoView,entries.length]);
+ const loadGrants=async()=>{
+  setLoadingGrants(true);
+  const r=await DB.getParentReviewGrants(user.id,authSession);
+  setUnavailable(!!r.unavailable);
+  if(!r.unavailable){
+   const now=Date.now();
+   setGrants((r.rows||[]).filter(g=>g.status==='active'&&g.expires_at&&new Date(g.expires_at).getTime()>now));
+  }
+  setLoadingGrants(false);
+ };
+ useEffect(()=>{loadGrants();},[user.id,authSession?.access_token]);
+ useEffect(()=>{
+  let cancelled=false;
+  (async()=>{
+   setLoadingCounsellors(true);
+   const r=await DB.listAvailableCounsellors(authSession);
+   if(cancelled)return;
+   setCounsellorsUnavailable(!!r.unavailable);
+   setCounsellors(r.unavailable?[]:(r.rows||[]));
+   setLoadingCounsellors(false);
+  })();
+  return ()=>{cancelled=true;};
+ },[authSession?.access_token]);
+ const handleGrant=async()=>{
+  setError('');setStatus('');
+  if(unavailable){setError(meta.setupUnavailable);return;}
+  if(counsellorsUnavailable){setError(meta.setupUnavailable);return;}
+  if(!counsellors.length){setError(meta.noCounsellorsAvailable);return;}
+  if(!consent){setError(meta.consentRequired||'Please confirm consent before sharing.');return;}
+  if(!selectedIds.length){setError(meta.noEntriesSelected||'Select at least one entry to share.');return;}
+  const wid=String(counsellorId||'').trim();
+  if(!wid){setError(meta.counsellorRequired||'Please choose a counsellor before sharing.');return;}
+  setSubmitting(true);
+  try{
+   const resolved=await DB.resolveCounsellorUserId(wid,authSession);
+   if(resolved.unavailable){setError(meta.setupUnavailable);return;}
+   if(!resolved.userId){setError(meta.counsellorNotFound);return;}
+   const expiryDays=meta.grantExpiryDays||30;
+   const payload={
+    parent_user_id:user.id,
+    parent_id:parentId,
+    counsellor_user_id:resolved.userId,
+    counsellor_wayfinder_id:wid,
+    status:'active',
+    consent_version:meta.consentVersion||'2026-06-1',
+    consent_text_snapshot:meta.consentBody||'',
+    expires_at:new Date(Date.now()+expiryDays*24*60*60*1000).toISOString()
+   };
+   const result=await DB.createReviewGrant(user.id,parentId,payload,selectedIds,authSession);
+   if(result.unavailable){setError(meta.setupUnavailable);return;}
+   if(!result.ok){
+    AuthDebug.log('[review] grant failed:', { errorStage: result.errorStage || 'unknown', unavailable: !!result.unavailable });
+    setError(meta.grantError);
+    return;
+   }
+   setStatus(meta.grantCreated||'Review access granted.');
+   setSelectedIds([]);setConsent(false);setCounsellorId('');
+   loadGrants();
+  }catch(_){
+   setError(meta.grantError||'We could not complete review sharing.');
+  }finally{
+   setSubmitting(false);
+  }
+ };
+ const handleRevoke=async(grantId)=>{
+  setRevoking(grantId);setError('');setStatus('');
+  const r=await DB.revokeReviewGrant(user.id,grantId,authSession);
+  if(r.unavailable)setError(meta.setupUnavailable);
+  else if(r.ok){setStatus(meta.grantRevoked||'Review access revoked.');loadGrants();}
+  else setError(meta.grantError);
+  setRevoking(null);
+ };
+ if(unavailable) return <div ref={panelRef} id="parent-review-share-panel" className="card review-share-card review-share-card--unavailable">
+  <h2>{meta.title||'Share for counsellor review'}</h2>
+  <p className="sub">{meta.setupUnavailable}</p>
+ </div>;
+ return <div ref={panelRef} id="parent-review-share-panel" className={'card review-share-card review-share-card--focused'+(highlight?' is-focused':'')}>
+  <h2>{meta.title||'Share for counsellor review'}</h2>
+  <p className="sub">{meta.shareModeIntro||meta.subtitle}</p>
+  <p className="review-share-privacy">{meta.privacyNote}</p>
+  {shareableEntries.length===0 ? <p className="sub">Save journal or Decode entries first — then you can select which to share.</p> : <>
+   <div className="review-share-section">
+    <h3>{meta.selectEntriesLabel||'Select entries to share'}</h3>
+    <div className="review-share-entry-list">
+     {shareableEntries.map(e=>{
+      const id=e.id;
+      const checked=selectedIds.some(x=>entryIdMatches(x,id));
+      const isDecode=isBehaviourDecodeEntry(e);
+      return <label key={id} className={'review-share-entry'+(checked?' is-selected':'')}>
+       <input type="checkbox" checked={checked} onChange={()=>toggleId(id)} aria-label={'Share '+entryTitle(e)+' for counsellor review'}/>
+       <span className="review-share-entry-text">
+        <span className="review-share-entry-title">{entryTitle(e)}</span>
+        <span className="review-share-entry-meta">{fmt(entryDateValue(e))}{isDecode?' · Decode a Moment':' · Activity journal'}</span>
+       </span>
+      </label>;
+     })}
+    </div>
+   </div>
+   {selectedIds.length>0 && <div className="review-share-section review-share-preview">
+    <h3>{meta.previewLabel||'What will be shared'}</h3>
+    <div className="review-share-preview-items">
+     {shareableEntries.filter(e=>selectedIds.some(id=>entryIdMatches(id,e.id))).map(e=>{
+      const isDecode=isBehaviourDecodeEntry(e);
+      const lines=previewEntryContent(e);
+      return <div key={e.id} className="review-share-preview-item">
+       <div className="review-share-preview-head">
+        <strong>{entryTitle(e)}</strong>
+        <span>{fmt(entryDateValue(e))} · {isDecode?(meta.previewTypeDecode||'Decode a Moment'):(meta.previewTypeActivity||'Activity journal')}</span>
+       </div>
+       {lines.length>0 ? <ul className="review-share-preview-detail">{lines.map((line,i)=><li key={i}>{line}</li>)}</ul> : <p className="sub review-share-preview-empty">Reflection summary will be shared as saved.</p>}
+      </div>;
+     })}
+    </div>
+   </div>}
+   <div className="field review-share-counsellor-field">
+    <label>{meta.counsellorSelectLabel||'Choose your counsellor'}</label>
+    {loadingCounsellors ? <p className="sub">Loading counsellors…</p> : counsellorsUnavailable ? <p className="sub review-share-error">{meta.setupUnavailable}</p> : counsellors.length===0 ? <p className="sub review-share-error">{meta.noCounsellorsAvailable}</p> : <>
+     <select value={counsellorId} onChange={ev=>setCounsellorId(ev.target.value)}>
+      <option value="">{meta.counsellorSelectPlaceholder||'Select a counsellor…'}</option>
+      {counsellors.map(c=><option key={c.wayfinder_id} value={c.wayfinder_id}>{c.display_label||('Counsellor · '+c.wayfinder_id)}</option>)}
+     </select>
+     <p className="hint">{meta.counsellorSelectHint}</p>
+    </>}
+   </div>
+   <div className="review-share-consent">
+    <h3>{meta.consentTitle}</h3>
+    <p className="sub">{meta.consentBody}</p>
+    <p className="review-share-expiry">{meta.consentExpiryNotice||'Shared access lasts 30 days unless you revoke it earlier.'}</p>
+    <label className="review-share-consent-check">
+     <input type="checkbox" checked={consent} onChange={ev=>setConsent(ev.target.checked)}/>
+     <span>{meta.consentCheckbox}</span>
+    </label>
+   </div>
+   {error&&<p className="review-share-error">{error}</p>}
+   {status&&<p className="review-share-status">{status}</p>}
+   <button type="button" className="btn btn-primary btn-block review-share-submit" disabled={submitting||!selectedIds.length||!consent||!counsellorId||!counsellors.length||loadingCounsellors||counsellorsUnavailable} onClick={handleGrant}>{submitting?'Granting…':(meta.grantButton||'Grant review access')}</button>
+  </>}
+  <div className="review-share-section review-share-grants">
+   <h3>{meta.activeGrantsTitle||'Active review access'}</h3>
+   {loadingGrants ? <p className="sub">Loading…</p> : grants.length===0 ? <p className="sub">{meta.emptyGrants}</p> : grants.map(g=><div key={g.id} className="review-share-grant-row">
+    <div>
+     <strong>{g.counsellor_wayfinder_id}</strong>
+     <span className="review-share-grant-meta"> · expires {fmt(g.expires_at)}</span>
+    </div>
+    <button type="button" className="btn btn-ghost review-share-revoke" disabled={revoking===g.id} onClick={()=>handleRevoke(g.id)}>{revoking===g.id?'Revoking…':(meta.revokeButton||'Revoke access')}</button>
+   </div>)}
+  </div>
+ </div>;
+}
+
+function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialShareEntryId=null,scrollToSharePanel=false,onShareNavHandled}){
+ const reviewMeta=typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING:{};
  const [entries,setEntries]=useState([]);
  const [loading,setLoading]=useState(true);
  const [openId,setOpenId]=useState(null);
+ const [shareFocusEntryId,setShareFocusEntryId]=useState(initialShareEntryId);
+ const [shareScroll,setShareScroll]=useState(scrollToSharePanel);
+ const [shareMode,setShareMode]=useState(!!scrollToSharePanel||!!initialShareEntryId);
  const entryDateValue=(entry)=>firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at);
  const entryTime=(entry)=>{
   const date=parseStoredDate(entryDateValue(entry));
@@ -2505,6 +2738,27 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
    setLoading(false);
   });
  },[user.id,parentId,authSession?.access_token]);
+
+ useEffect(()=>{
+  if(initialShareEntryId||scrollToSharePanel){
+   setShareFocusEntryId(initialShareEntryId||null);
+   setShareScroll(!!scrollToSharePanel);
+   setShareMode(true);
+  }
+ },[initialShareEntryId,scrollToSharePanel]);
+
+ const enterShareMode=(entryId)=>{
+  setShareFocusEntryId(entryId||null);
+  setShareScroll(true);
+  setShareMode(true);
+ };
+
+ const exitShareMode=()=>{
+  setShareMode(false);
+  setShareFocusEntryId(null);
+  setShareScroll(false);
+  onShareNavHandled?.();
+ };
 
  const activityEntries=entries.filter(e=>!isBehaviourDecodeEntry(e));
  const wordCounts={};
@@ -2554,8 +2808,21 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
 
  if(loading) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your journal trail...</div></div>;
 
+ if(shareMode) return <div className="wrap review-share-mode-wrap">
+  <Bar title={reviewMeta.title||'Share for counsellor review'} back={exitShareMode} onSignOut={onSignOut}/>
+  <ParentReviewSharePanel user={user} parentId={parentId} entries={entries} authSession={authSession} entryTitle={entryTitle} entryDateValue={entryDateValue} fmt={fmt} focusEntryId={shareFocusEntryId} scrollIntoView={shareScroll} onScrollHandled={()=>setShareScroll(false)}/>
+  <button type="button" className="btn btn-ghost review-share-exit" onClick={exitShareMode}>{reviewMeta.browseTrailLink||'View full journal trail'}</button>
+ </div>;
+
  return <div className="wrap">
   <Bar title={'Journal trail - '+parentId} back={back} onSignOut={onSignOut}/>
+  <div className="card review-share-cta">
+   <div>
+    <h2>{reviewMeta.title||'Share for counsellor review'}</h2>
+    <p className="sub">{reviewMeta.dashboardCardSubtitle||reviewMeta.subtitle}</p>
+   </div>
+   <button type="button" className="btn btn-secondary" onClick={()=>enterShareMode(null)}>{reviewMeta.dashboardCardButton||'Open sharing'}</button>
+  </div>
 
   {topWords.length>0 && <div className="card" style={{background:'#f0f4f2'}}>
    <h2 style={{marginBottom:4}}>Your emotional patterns</h2>
@@ -2667,6 +2934,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
     const isDecode=isBehaviourDecodeEntry(e);
     const reminder=isDecode?decodeReminderFromEntry(e):null;
     const entryKey=e.id||`${childId}-${entryDateValue(e)}-${entryTitle(e)}`;
+    const canShare=e.id!==undefined&&e.id!==null&&e.id!=='';
     return <article key={entryKey} className={'trail-entry'+(isOpen?' is-open':'')+(isDecode?' is-decode':'')}>
      <button type="button" className="trail-entry-toggle" aria-expanded={isOpen} onClick={()=>setOpenId(isOpen?null:e.id)}>
       <span className="trail-entry-main">
@@ -2675,6 +2943,9 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut}){
       </span>
       <span className="trail-entry-chevron" aria-hidden="true">{isOpen?'−':'+'}</span>
      </button>
+     <div className="trail-entry-actions">
+      {canShare ? <button type="button" className="btn btn-secondary trail-entry-review-btn" onClick={()=>enterShareMode(e.id)}>{reviewMeta.entryActionLabel||'Share this reflection for review'}</button> : <span className="trail-entry-review-note">{reviewMeta.entryNotShareable||'This saved entry cannot be shared yet.'}</span>}
+     </div>
      {isDecode && <div className="decode-trail-card">
       <div className="decode-trail-header">
        <span className="pill">Alignment Reminder</span>
@@ -2785,7 +3056,7 @@ function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
   const entry={id:Date.now(),parentId,childId:dyad.childId,date:submittedAt.split('T')[0],phase,activity,
     cab,autoWords,markers,disc:dyad.disc,ethnicity:dyad.ethnicity,childDob:dyad.childDob,parentDob:dyad.parentDob,parentGender:dyad.parentGender,childGender:dyad.childGender,submittedAt};
   await DB.saveEntry(user.id, entry);
-  onDone();
+  onDone(entry);
  };
 
  const childAge=dyad.childDob?ageFrom(dyad.childDob,new Date().toISOString().split('T')[0]):null;
@@ -2931,8 +3202,89 @@ function toCounsellorEntry(raw){
  };
 }
 
+function buildCounsellorGrantGroups(grants,grantLinks,entries){
+ const entryById=Object.fromEntries((entries||[]).map(e=>[String(e.id),e]));
+ return (grants||[]).map(grant=>{
+  const linkIds=(grantLinks||[]).filter(l=>l.grant_id===grant.id).map(l=>String(l.journal_entry_id));
+  const grantEntries=linkIds.map(id=>entryById[id]).filter(Boolean);
+  const childrenMap={};
+  grantEntries.forEach(e=>{
+   const childId=safeChildId(e.childId||e.child_id||e.dyadId||e.dyad_id)||'Not saved';
+   if(!childrenMap[childId]){
+    childrenMap[childId]={
+     childId,
+     childGender:e.childGender||e.child_gender||'',
+     childDob:e.childDob||e.child_dob||'',
+     ethnicity:e.ethnicity||'',
+     disc:e.disc||'',
+     entryCount:0
+    };
+   }
+   childrenMap[childId].entryCount+=1;
+  });
+  const sample=grantEntries[0]||{};
+  return {
+   grant,
+   entries:grantEntries,
+   parentId:safeParentId(grant.parent_id||sample.parentId),
+   parentGender:sample.parentGender||sample.parent_gender||'',
+   parentDob:sample.parentDob||sample.parent_dob||'',
+   ethnicity:sample.ethnicity||'',
+   disc:sample.disc||'',
+   children:Object.values(childrenMap)
+  };
+ }).filter(g=>g.entries.length>0);
+}
+
+function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags}){
+ const fmtDate=(value)=>{
+  const dt=parseStoredDate(value);
+  return dt?dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'}):'-';
+ };
+ const parentAge=ageFrom(group.parentDob,group.entries[0]?.date);
+ const grantExpires=group.grant?.expires_at?fmtDate(group.grant.expires_at):'-';
+ return <div className="counsellor-grant-group card">
+  <div className="counsellor-grant-group-head">
+   <h3>{reviewMeta.contextProfileTitle||'Wayfinder review context'}</h3>
+   <span className="pill">{reviewMeta.grantExpiresLabel||'Review access expires'}: {grantExpires}</span>
+  </div>
+  <p className="counsellor-grant-context-note">{reviewMeta.contextProfileNote||'Parent-reported context only — for ALIGN/CAB reflection, not diagnosis or profiling.'}</p>
+  <div className="counsellor-grant-context-grid">
+   <div className="counsellor-grant-context-block">
+    <h4>{reviewMeta.parentContextLabel||'Parent context'}</h4>
+    <p><strong>{reviewMeta.parentWayfinderLabel||'Wayfinder Parent ID'}:</strong> {group.parentId||'Not saved'}</p>
+    <p>{reviewMeta.parentReportedLabel||'Parent-reported'}: {group.parentGender||'Gender not saved'}{parentAge?' · '+parentAge:''}{group.disc?' · DISC '+group.disc:''}{group.ethnicity?' · '+group.ethnicity:''}</p>
+   </div>
+   {group.children.map(child=>{
+    const childAge=ageFrom(child.childDob,group.entries[0]?.date);
+    return <div key={child.childId} className="counsellor-grant-context-block">
+     <h4>{reviewMeta.childContextLabel||'Child context'}</h4>
+     <p><strong>{reviewMeta.childWayfinderLabel||'Child ID'}:</strong> {child.childId}</p>
+     <p>{reviewMeta.parentReportedLabel||'Parent-reported'}: {child.childGender||'Gender not saved'}{childAge?' · '+childAge:''}{child.disc?' · DISC '+child.disc:''}{child.ethnicity?' · '+child.ethnicity:''}</p>
+     <p className="sub">{child.entryCount} {child.entryCount===1?'shared entry':'shared entries'}</p>
+    </div>;
+   })}
+  </div>
+  <div className="counsellor-grant-entries">
+   <h4>{reviewMeta.sharedEntriesLabel||'Parent-approved entries'}</h4>
+   {group.entries.map(e=>{
+    const isDecode=isBehaviourDecodeEntry(e);
+    const activityLabel=isDecode?'Decode a Moment · Alignment Reminder':e.activity;
+    const childAge=ageFrom(e.childDob,e.date);
+    return <button type="button" key={e._key} className="counsellor-grant-entry-row" onClick={()=>onOpenEntry(e._key)}>
+     <span className="counsellor-grant-entry-title">{activityLabel}</span>
+     <span className="counsellor-grant-entry-meta">{fmtDate(e.date)} · Child ID: {e.childId||'Not saved'}{childAge?' · '+childAge:''}</span>
+     {flags?.[e._key]&&<span className="counsellor-grant-entry-flag">{flags[e._key]}</span>}
+     <span className="counsellor-grant-entry-action">{reviewMeta.openEntryLabel||'Open for ALIGN/CAB review'}</span>
+    </button>;
+   })}
+  </div>
+ </div>;
+}
+
 function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [entries,setEntries]=useState([]);
+ const [grantGroups,setGrantGroups]=useState([]);
  const [openId,setOpenId]=useState(null);
  const [loadingEntries,setLoadingEntries]=useState(true);
  const [loadError,setLoadError]=useState('');
@@ -2942,6 +3294,8 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [counsellorStage,setCounsellorStage]=useState('reflections');
  const [editHostedEvent,setEditHostedEvent]=useState(null);
  const [hostingUnavailable,setHostingUnavailable]=useState(false);
+ const [reviewGrantsUnavailable,setReviewGrantsUnavailable]=useState(false);
+ const [usingLegacyJournalAccess,setUsingLegacyJournalAccess]=useState(false);
 
  const entryChildAge=(e)=>{
   if(!e.childDob||!e.date) return 'unknown';
@@ -2954,51 +3308,69 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
   setFlags({});
   setLongitudinalSummaries({});
   try{
-   const data=await DB.getAllEntries(user.id,authSession);
+   const grantResult=await DB.getCounsellorGrantedEntries(user.id,authSession);
+   let data=[];
+   let legacyAccess=false;
+   if(grantResult.unavailable){
+    setReviewGrantsUnavailable(true);
+    legacyAccess=true;
+    data=await DB.getAllEntries(user.id,authSession);
+   }else{
+    setReviewGrantsUnavailable(false);
+    data=grantResult.entries||[];
+   }
+   setUsingLegacyJournalAccess(legacyAccess);
    const withChildAge=data.map(e=>toCounsellorEntry({...e,childAge:entryChildAge(e)}));
    setEntries(withChildAge);
+   setGrantGroups(legacyAccess?[]:buildCounsellorGrantGroups(grantResult.grants,grantResult.grantLinks,withChildAge));
 
-   const flagResults=await Promise.all(
-    withChildAge.map(e=>
-     fetch('/api/counsellor-analysis',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({mode:'entry',entry:e})
-     })
-      .then(r=>r.json())
-      .then(d=>({id:e._key,flag:d.flag||''}))
-      .catch(()=>({id:e._key,flag:''}))
-    )
-   );
-   const flagMap={};
-   flagResults.forEach(f=>{flagMap[f.id]=f.flag;});
-   setFlags(flagMap);
-
-   const groupedByParent=withChildAge.reduce((acc,e)=>{
-    const key=e.parentId||'Parent ID unavailable';
-    if(!acc[key]) acc[key]=[];
-    acc[key].push(e);
-    return acc;
-   },{});
-   const longitudinalResults=await Promise.all(
-    Object.entries(groupedByParent)
-     .filter(([pid,parentEntries])=>pid!=='Parent ID unavailable'&&parentEntries.length>=2)
-     .map(([pid,parentEntries])=>
+   if(!legacyAccess && withChildAge.length>0){
+    const flagResults=await Promise.all(
+     withChildAge.map(e=>
       fetch('/api/counsellor-analysis',{
        method:'POST',
        headers:{'Content-Type':'application/json'},
-       body:JSON.stringify({mode:'longitudinal',parentId:pid,entries:parentEntries})
+       body:JSON.stringify({mode:'entry',entry:e})
       })
        .then(r=>r.json())
-       .then(d=>({parentId:pid,summary:d.recurringPatterns?d:null}))
-       .catch(()=>({parentId:pid,summary:null}))
+       .then(d=>({id:e._key,flag:d.flag||''}))
+       .catch(()=>({id:e._key,flag:''}))
      )
-   );
-   const longMap={};
-   longitudinalResults.forEach(r=>{if(r.summary) longMap[r.parentId]=r.summary;});
-   setLongitudinalSummaries(longMap);
+    );
+    const flagMap={};
+    flagResults.forEach(f=>{flagMap[f.id]=f.flag;});
+    setFlags(flagMap);
+
+    const groupedByParent=withChildAge.reduce((acc,e)=>{
+     const key=e.parentId||'Parent ID unavailable';
+     if(!acc[key]) acc[key]=[];
+     acc[key].push(e);
+     return acc;
+    },{});
+    const longitudinalResults=await Promise.all(
+     Object.entries(groupedByParent)
+      .filter(([pid,parentEntries])=>pid!=='Parent ID unavailable'&&parentEntries.length>=2)
+      .map(([pid,parentEntries])=>
+       fetch('/api/counsellor-analysis',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({mode:'longitudinal',parentId:pid,entries:parentEntries})
+       })
+        .then(r=>r.json())
+        .then(d=>({parentId:pid,summary:d.recurringPatterns?d:null}))
+        .catch(()=>({parentId:pid,summary:null}))
+      )
+    );
+    const longMap={};
+    longitudinalResults.forEach(r=>{if(r.summary) longMap[r.parentId]=r.summary;});
+    setLongitudinalSummaries(longMap);
+   }else{
+    setFlags({});
+    setLongitudinalSummaries({});
+   }
   }catch(err){
    setEntries([]);
+   setGrantGroups([]);
    setLoadError('We could not load counsellor records. Please refresh or contact the Wayfinder administrator.');
    AuthDebug.log('[counsellor] load failed:', { message: err?.message || String(err) });
   }finally{
@@ -3021,8 +3393,9 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  },[user.id,authSession?.access_token]);
  const open=entries.find(e=>e._key===openId);
  const hostingMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
+ const reviewMeta=typeof COUNSELLOR_REVIEW_SHARING!=='undefined'?COUNSELLOR_REVIEW_SHARING:{};
 
- if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession}/>;
+ if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession} aiEnabled={!usingLegacyJournalAccess}/>;
 
  if(counsellorStage==='hostForm') return <CounsellorHostEventForm user={user} authSession={authSession} eventId={editHostedEvent?.id||null} existingEvent={editHostedEvent} unavailable={hostingUnavailable} onBack={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}} onSaved={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}}/>;
 
@@ -3031,12 +3404,15 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  return <div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
   <div className="counsellor-nav">
-   <button type="button" className="counsellor-nav-btn counsellor-nav-btn--active">{hostingMeta.backToReflections||'Client reflections'}</button>
+   <button type="button" className="counsellor-nav-btn counsellor-nav-btn--active">{reviewMeta.title||hostingMeta.backToReflections||'Parent shared reflections'}</button>
    <button type="button" className="counsellor-nav-btn" onClick={()=>setCounsellorStage('hostedEvents')}>{hostingMeta.title||'Events hosting'}</button>
   </div>
   <div className="card">
-   <div className="topbar"><h2>Client reflections</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
-   <p className="sub" style={{marginBottom:16}}>Self-journals submitted by parents.</p>
+   <div className="topbar"><h2>{reviewMeta.title||'Parent shared reflections'}</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
+   <p className="sub" style={{marginBottom:16}}>{reviewMeta.subtitle||'Reflections a parent has chosen to share with you for time-limited ALIGN/CAB review.'}</p>
+   {reviewGrantsUnavailable && <div className="review-share-notice review-share-notice--legacy">{reviewMeta.legacyNotice||reviewMeta.setupUnavailable}</div>}
+   {!reviewGrantsUnavailable && !usingLegacyJournalAccess && <div className="review-share-notice">{reviewMeta.grantScopedNotice}</div>}
+   {!usingLegacyJournalAccess && <p className="review-share-ai-note">{reviewMeta.aiDisabledNotice}</p>}
 
    {Object.entries(longitudinalSummaries).length>0 && <div style={{marginBottom:18}}>
     <h3 style={{marginBottom:10}}>Longitudinal AI Reflections</h3>
@@ -3058,14 +3434,17 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
     ))}
    </div>}
 
-    {loadError && !loadingEntries ? <div className="empty">{loadError}</div> : loadingEntries ? <div className="empty">Loading entries...</div> : entries.length===0 ? <div className="empty">No reflections yet. Ask a parent to journal an activity - then refresh.</div> :
+    {loadError && !loadingEntries ? <div className="empty">{loadError}</div> : loadingEntries ? <div className="empty">Loading entries...</div> : entries.length===0 ? <div className="empty">{reviewGrantsUnavailable?(reviewMeta.setupUnavailable||'No reflections available.'):(reviewMeta.emptyList||'No parent has shared reflections with you yet.')}</div> :
+     !usingLegacyJournalAccess && grantGroups.length>0 ? grantGroups.map(group=><CounsellorReviewGrantGroup key={group.grant.id} group={group} reviewMeta={reviewMeta} flags={flags} onOpenEntry={setOpenId}/>) :
      entries.map(e=>{
       const childAge=ageFrom(e.childDob,e.date);
       const parentAge=ageFrom(e.parentDob,e.date);
       const fmt=d=>{const dt=parseStoredDate(d);return dt?dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'}):'-';};
       const phaseLabel=PHASES[e.phase]||e.phase||'Phase not saved';
+      const isDecode=isBehaviourDecodeEntry(e);
+      const activityLabel=isDecode?'Decode a Moment · Alignment Reminder':e.activity;
       return <div className="entry-row" key={e._key} onClick={()=>setOpenId(e._key)}>
-       <div className="er-top">{e.parentId} &amp; {e.childId} &middot; <span style={{fontWeight:400}}>{e.activity}</span></div>
+       <div className="er-top">{e.parentId} &amp; {e.childId} &middot; <span style={{fontWeight:400}}>{activityLabel}</span></div>
        <div className="er-sub" style={{marginTop:4}}>
         <span>{fmt(e.date)}</span>
         <span style={{margin:'0 8px'}}>&middot;</span>
@@ -3081,8 +3460,9 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
   </div>
  </div>;
 }
-function CounsellorReview({entry,back,user,authSession}){
+function CounsellorReview({entry,back,user,authSession,aiEnabled=true}){
  const TABS=['Review','AI Analysis','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative'];
+ const visibleTabs=aiEnabled?TABS:TABS.filter(t=>t!=='AI Analysis');
  const [tab,setTab]=useState('Review');
  const [aiAnalysis,setAiAnalysis]=useState(null);
  const [aiLoading,setAiLoading]=useState(false);
@@ -3189,7 +3569,7 @@ function CounsellorReview({entry,back,user,authSession}){
  return <div className="wrap">
   <Bar title={entry.parentId+' · '+entry.activity} back={back}/>
   <div className="card">
-   <div className="tab-row">{TABS.map(t=><div key={t} className={'tab'+((tab===t)||(t==='AI Analysis'&&tab==='aiAnalysis')?' on':'')} onClick={()=>selectTab(t)}>{t}</div>)}</div>
+   <div className="tab-row">{visibleTabs.map(t=><div key={t} className={'tab'+((tab===t)||(t==='AI Analysis'&&tab==='aiAnalysis')?' on':'')} onClick={()=>selectTab(t)}>{t}</div>)}</div>
    {reviewError&&<div style={{background:'#FDECEC',color:'#8A1F1F',padding:10,borderRadius:6,marginTop:12}}>{reviewError}</div>}
 
    {tab==='Review' && <>
