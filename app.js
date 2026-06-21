@@ -2688,7 +2688,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
     <p className="sub">{meta.consentBody}</p>
     <p className="review-share-expiry">{meta.consentExpiryNotice||'Shared access lasts 30 days unless you revoke it earlier.'}</p>
     <label className="review-share-consent-check">
-     <input type="checkbox" checked={consent} onChange={ev=>setConsent(ev.target.checked)}/>
+     <input type="checkbox" checked={consent} onChange={ev=>setConsent(ev.target.checked)} aria-label={meta.consentCheckbox||'I consent to share selected reflections for counsellor review'}/>
      <span>{meta.consentCheckbox}</span>
     </label>
    </div>
