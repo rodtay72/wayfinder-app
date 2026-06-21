@@ -395,8 +395,27 @@
   .activity-event-calendar-btns{display:flex;flex-wrap:wrap;gap:8px;}
   .btn-sm{padding:8px 12px;font-size:13px;}
   .activity-events-empty{text-align:center;padding:28px 20px;}
+  /* Counsellor Events hosting (Issue #45) */
+  .counsellor-hosting-wrap{max-width:980px;}
+  .counsellor-nav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;}
+  .counsellor-nav-btn{border:1px solid #D8E2D8;background:#fff;color:#40514b;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+  .counsellor-nav-btn--active{background:var(--sage);color:#fff;border-color:var(--sage);}
+  .counsellor-hosting-intro,.counsellor-hosting-form,.counsellor-hosting-setup{margin-bottom:14px;}
+  .counsellor-hosting-privacy{font-size:13px;line-height:1.6;color:#5d6c66;margin:10px 0 0;padding:12px 14px;background:#fff;border:1px solid #E0E8DC;border-radius:8px;border-left:4px solid var(--sage);}
+  .counsellor-hosting-activity-preview{margin:12px 0;padding:12px 14px;background:#F6F8F5;border:1px solid #E0E8DC;border-radius:8px;}
+  .counsellor-hosting-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .counsellor-hosting-error,.counsellor-hosting-error-card{color:#8B4513;margin:10px 0 0;}
+  .counsellor-hosted-list{display:grid;gap:12px;margin-bottom:14px;}
+  .counsellor-hosted-item h3{margin:8px 0;font-size:16px;color:#40514b;}
+  .counsellor-hosted-item-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .counsellor-hosted-status{font-size:11px;font-weight:800;letter-spacing:.35px;text-transform:uppercase;padding:4px 10px;border-radius:999px;}
+  .counsellor-hosted-status--draft{background:#F5EDE3;color:#7A5E42;}
+  .counsellor-hosted-status--published{background:#E8F0E8;color:var(--sage-deep);}
+  .counsellor-hosted-status--archived{background:#EEE;color:#666;}
+  .field-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
   @media(max-width:720px){
     .activity-event-meta div{grid-template-columns:1fr;}
     .activity-event-calendar-btns{flex-direction:column;}
     .activity-event-calendar-btns .btn,.activity-event-calendar-btns a.btn{width:100%;text-align:center;}
+    .field-row{grid-template-columns:1fr;}
   }
