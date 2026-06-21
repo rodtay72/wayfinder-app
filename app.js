@@ -1488,6 +1488,130 @@ function appVersionEntryStatus(entry){
  if(String(entry?.version||'').trim().toLowerCase()==='upcoming')return 'planned';
  return 'released';
 }
+function activityEventPad2(n){return String(n).padStart(2,'0');}
+function activityEventDateTimeParts(event){
+ const date=String(event?.date||'').trim();
+ const parts=date.split('-').map(Number);
+ const y=parts[0]||2026,m=parts[1]||1,d=parts[2]||1;
+ const st=String(event?.startTime||'10:00').split(':');
+ const et=String(event?.endTime||'11:00').split(':');
+ return {y,m,d,sh:Number(st[0]||10),sm:Number(st[1]||0),eh:Number(et[0]||11),em:Number(et[1]||0)};
+}
+function activityEventIcsStamp({y,m,d,h,min}){
+ return `${y}${activityEventPad2(m)}${activityEventPad2(d)}T${activityEventPad2(h)}${activityEventPad2(min)}00`;
+}
+function escapeIcsText(value){
+ return String(value||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+function buildActivityEventCalendarPayload(event){
+ const details=typeof enrichHostedActivityEvent==='function'?enrichHostedActivityEvent(event):event;
+ const p=activityEventDateTimeParts(event);
+ const start=activityEventIcsStamp({y:p.y,m:p.m,d:p.d,h:p.sh,min:p.sm});
+ const end=activityEventIcsStamp({y:p.y,m:p.m,d:p.d,h:p.eh,min:p.em});
+ const summary=String(details.activityTitle||'Wayfinder activity session');
+ const location=String(event.venueLabel||'').trim();
+ const feeLabel=event.feeType==='paid'?'Paid':'Free';
+ const description=[
+  details.practiceFocus?`Practice focus: ${details.practiceFocus}`:'',
+  details.possibleNeedContext?`Possible need context: ${details.possibleNeedContext}`:'',
+  `Fee: ${feeLabel}`,
+  `Hosted by: ${event.facilitatorLabel||'Wayfinder facilitator'}`,
+  'Privacy: Event logistics only. No child names, IDs, journal, or reflection content.'
+ ].filter(Boolean).join('\n');
+ return {summary,description,location,start,end,details};
+}
+function downloadActivityEventIcs(event){
+ const {summary,description,location,start,end}=buildActivityEventCalendarPayload(event);
+ const uid=`wf-hosted-${event.id}@wayfinder-modular.vercel.app`;
+ const dtstamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+ const lines=[
+  'BEGIN:VCALENDAR',
+  'VERSION:2.0',
+  'PRODID:-//Wayfinder//Events Listing//EN',
+  'CALSCALE:GREGORIAN',
+  'METHOD:PUBLISH',
+  'BEGIN:VEVENT',
+  `UID:${uid}`,
+  `DTSTAMP:${dtstamp}`,
+  `DTSTART:${start}`,
+  `DTEND:${end}`,
+  `SUMMARY:${escapeIcsText(summary)}`,
+  `DESCRIPTION:${escapeIcsText(description)}`
+ ];
+ if(location) lines.push(`LOCATION:${escapeIcsText(location)}`);
+ lines.push('END:VEVENT','END:VCALENDAR');
+ const blob=new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+ a.href=url;
+ a.download=`wayfinder-${event.id}.ics`;
+ document.body.appendChild(a);
+ a.click();
+ a.remove();
+ URL.revokeObjectURL(url);
+}
+function googleCalendarUrlForActivityEvent(event){
+ const {summary,description,location,start,end}=buildActivityEventCalendarPayload(event);
+ return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(summary)}&dates=${start}/${end}&details=${encodeURIComponent(description)}&location=${encodeURIComponent(location)}`;
+}
+function outlookCalendarUrlForActivityEvent(event){
+ const {summary,description,location,start,end}=buildActivityEventCalendarPayload(event);
+ const startDt=`${start.slice(0,4)}-${start.slice(4,6)}-${start.slice(6,8)}T${start.slice(9,11)}:${start.slice(11,13)}:00`;
+ const endDt=`${end.slice(0,4)}-${end.slice(4,6)}-${end.slice(6,8)}T${end.slice(9,11)}:${end.slice(11,13)}:00`;
+ return `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(summary)}&body=${encodeURIComponent(description)}&startdt=${encodeURIComponent(startDt)}&enddt=${encodeURIComponent(endDt)}&location=${encodeURIComponent(location)}`;
+}
+function formatHostedActivityEventDate(event){
+ const date=parseStoredDate(event?.date);
+ if(!date||isNaN(date)) return String(event?.date||'Date TBC');
+ return date.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function ActivityEventCard({event,pageMeta}){
+ const details=typeof enrichHostedActivityEvent==='function'?enrichHostedActivityEvent(event):event;
+ const feeLabel=event.feeType==='paid'?'Paid':'Free';
+ const regUrl=String(event.registrationUrl||event.eventbriteUrl||event.paymentUrl||'').trim();
+ const externalReg=regUrl&&/^https?:\/\//i.test(regUrl);
+ return <article className="activity-event-card">
+  <div className="activity-event-card-head">
+   <span className="pill">{details.alignStageLabel||details.alignStage||'ALIGN practice'}</span>
+   <span className={`activity-event-fee activity-event-fee--${event.feeType==='paid'?'paid':'free'}`}>{feeLabel}</span>
+  </div>
+  <h3 className="activity-event-title">{details.activityTitle}</h3>
+  {details.practiceFocus?<p className="activity-event-focus"><strong>Practice focus:</strong> {details.practiceFocus}</p>:null}
+  {details.possibleNeedContext?<p className="activity-event-context sub"><strong>Possible need context:</strong> {details.possibleNeedContext}</p>:null}
+  {details.cabDomain?<p className="activity-event-cab sub">CAB domain: {details.cabDomain}</p>:null}
+  <dl className="activity-event-meta">
+   <div><dt>Date</dt><dd>{formatHostedActivityEventDate(event)}</dd></div>
+   <div><dt>Time</dt><dd>{event.startTime||'—'} – {event.endTime||'—'} ({event.timezone||'Asia/Singapore'})</dd></div>
+   <div><dt>Venue</dt><dd>{event.venueType==='online'?'Online':'In person'} · {event.venueLabel}</dd></div>
+   <div><dt>Facilitator</dt><dd>{event.facilitatorLabel||'Wayfinder facilitator'}</dd></div>
+  </dl>
+  {externalReg?<p className="activity-event-register"><a href={regUrl} target="_blank" rel="noopener noreferrer" className="activity-event-link">{event.feeType==='paid'?'Registration / payment link':'Registration link'}</a></p>:null}
+  <div className="activity-event-calendar-actions">
+   <span className="activity-event-calendar-label">Add to calendar</span>
+   <div className="activity-event-calendar-btns">
+    <button type="button" className="btn btn-secondary btn-sm" onClick={()=>downloadActivityEventIcs(event)}>{pageMeta.calendarDownloadLabel||'Download .ics'}</button>
+    <a className="btn btn-secondary btn-sm" href={googleCalendarUrlForActivityEvent(event)} target="_blank" rel="noopener noreferrer">{pageMeta.googleCalendarLabel||'Google Calendar'}</a>
+    <a className="btn btn-secondary btn-sm" href={outlookCalendarUrlForActivityEvent(event)} target="_blank" rel="noopener noreferrer">{pageMeta.outlookCalendarLabel||'Outlook web'}</a>
+   </div>
+  </div>
+ </article>;
+}
+function ActivityEventsPage({back,onSignOut}){
+ const pageMeta=typeof ACTIVITY_EVENTS_PAGE!=='undefined'?ACTIVITY_EVENTS_PAGE:{};
+ const events=typeof getEnrichedHostedActivityEvents==='function'?getEnrichedHostedActivityEvents():[];
+ const pageTitle=String(pageMeta.title||'Events Listing').trim()||'Events Listing';
+ return <div className="wrap activity-events-wrap">
+  <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
+  <div className="card activity-events-intro">
+   <h1>{pageTitle}</h1>
+   <p className="sub activity-events-subtitle">{pageMeta.subtitle||''}</p>
+   <p className="activity-events-privacy">{pageMeta.privacyNote||''}</p>
+  </div>
+  {events.length===0?<div className="card activity-events-empty"><p className="sub">{pageMeta.emptyState||'No sessions listed.'}</p></div>:<div className="activity-events-grid">
+   {events.map(ev=><ActivityEventCard key={ev.id} event={ev} pageMeta={pageMeta}/>)}
+  </div>}
+ </div>;
+}
 function appVersionTagClass(tag,status){
  const t=String(tag||'').trim().toLowerCase();
  if(t.includes('privacy')||t.includes('consent'))return 'app-version-tag app-version-tag--privacy';
@@ -1882,7 +2006,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [aiInsight,setAiInsight]=useState('');
  const [insightLoading,setInsightLoading]=useState(false);
  const [discBars,setDiscBars]=useState(null);
- const [stage,setStage]=useState('loading'); // loading | dashboard | decode | selectChild | register | trail | appVersion | journal | done
+ const [stage,setStage]=useState('loading'); // loading | dashboard | decode | selectChild | register | trail | appVersion | events | journal | done
 
  const blankDyad=()=>({childId:'',parentDob:'',childDob:'',parentGender:'',childGender:'',disc:'',ethnicity:'Chinese'});
  const entryDateValue=(entry)=>firstStoredDateValue(entry?.timestamp,entry?.submittedAt,entry?.date,entry?.created_at);
@@ -2009,6 +2133,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch" onClick={startNewChild}>+ New child</button>
      <button className="switch" onClick={startNewEntry}>Start new activity</button>
      <button className="switch switch-trail" onClick={()=>setStage('trail')}>Journal trail</button>
+     <button className="switch switch-trail" onClick={()=>setStage('events')}>Events</button>
      <button className="switch switch-muted" onClick={()=>setStage('appVersion')}>App Version</button>
      <button className="switch switch-muted" onClick={onSignOut}>Sign out</button>
    </div>
@@ -2134,6 +2259,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  </div>;
 
  if(stage==='appVersion') return <AppVersionPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+
+ if(stage==='events') return <ActivityEventsPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
 if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 

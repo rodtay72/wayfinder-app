@@ -368,3 +368,35 @@
     .decode-trail-card{margin:0 8px 10px;padding:12px 14px 10px;}
     .trail-entry-toggle{padding:12px 14px;}
   }
+
+  /* Activity-based hosted sessions (v0.4 Day 2 — Issue #42) */
+  .activity-events-wrap{max-width:980px;}
+  .activity-events-intro{background:#F6F8F5;border-color:#D8E2D8;}
+  .activity-events-intro h1{margin:0 0 8px;font-size:24px;color:#40514b;}
+  .activity-events-subtitle{margin:0 0 12px;max-width:68ch;line-height:1.65;}
+  .activity-events-privacy{font-size:13px;line-height:1.65;color:#5d6c66;margin:0;padding:12px 14px;background:#fff;border:1px solid #E0E8DC;border-radius:8px;border-left:4px solid var(--sage);}
+  .activity-events-grid{display:grid;gap:14px;margin-bottom:14px;}
+  .activity-event-card{background:#fff;border:1px solid #E0E8DC;border-radius:12px;padding:18px 20px;}
+  .activity-event-card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+  .activity-event-title{font-size:17px;font-weight:800;color:#40514b;margin:0 0 10px;line-height:1.35;}
+  .activity-event-focus{font-size:14px;line-height:1.6;color:#40514b;margin:0 0 8px;}
+  .activity-event-context,.activity-event-cab{margin:0 0 8px;line-height:1.55;}
+  .activity-event-meta{display:grid;gap:8px;margin:14px 0;padding:12px 0;border-top:1px solid #E8E0D4;border-bottom:1px solid #E8E0D4;}
+  .activity-event-meta div{display:grid;grid-template-columns:88px 1fr;gap:8px;align-items:start;}
+  .activity-event-meta dt{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--sage-deep);margin:0;}
+  .activity-event-meta dd{font-size:14px;line-height:1.5;color:#40514b;margin:0;}
+  .activity-event-fee{font-size:11px;font-weight:800;letter-spacing:.35px;text-transform:uppercase;padding:4px 10px;border-radius:999px;}
+  .activity-event-fee--free{background:#E8F0E8;color:var(--sage-deep);}
+  .activity-event-fee--paid{background:#F5EDE3;color:#7A5E42;}
+  .activity-event-register{margin:12px 0 0;}
+  .activity-event-link{font-weight:700;color:var(--sage-deep);}
+  .activity-event-calendar-actions{margin-top:14px;}
+  .activity-event-calendar-label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--sage-deep);margin-bottom:8px;}
+  .activity-event-calendar-btns{display:flex;flex-wrap:wrap;gap:8px;}
+  .btn-sm{padding:8px 12px;font-size:13px;}
+  .activity-events-empty{text-align:center;padding:28px 20px;}
+  @media(max-width:720px){
+    .activity-event-meta div{grid-template-columns:1fr;}
+    .activity-event-calendar-btns{flex-direction:column;}
+    .activity-event-calendar-btns .btn,.activity-event-calendar-btns a.btn{width:100%;text-align:center;}
+  }
