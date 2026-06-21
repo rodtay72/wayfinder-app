@@ -1596,10 +1596,29 @@ function ActivityEventCard({event,pageMeta}){
   </div>
  </article>;
 }
-function ActivityEventsPage({back,onSignOut}){
+function ActivityEventsPage({back,onSignOut,authSession}){
  const pageMeta=typeof ACTIVITY_EVENTS_PAGE!=='undefined'?ACTIVITY_EVENTS_PAGE:{};
- const events=typeof getEnrichedHostedActivityEvents==='function'?getEnrichedHostedActivityEvents():[];
+ const [events,setEvents]=useState([]);
+ const [loading,setLoading]=useState(true);
  const pageTitle=String(pageMeta.title||'Events Listing').trim()||'Events Listing';
+ useEffect(()=>{
+  let cancelled=false;
+  (async()=>{
+   setLoading(true);
+   try{
+    const result=await DB.getPublishedHostedEvents(authSession);
+    if(cancelled)return;
+    const rows=(result?.events||[]).map(ev=>typeof enrichHostedActivityEvent==='function'?enrichHostedActivityEvent(ev):ev);
+    setEvents(rows);
+   }catch(err){
+    AuthDebug.log('[events] parent listing load failed:', { message: err?.message || String(err) });
+    if(!cancelled)setEvents([]);
+   }finally{
+    if(!cancelled)setLoading(false);
+   }
+  })();
+  return ()=>{cancelled=true;};
+ },[authSession?.access_token]);
  return <div className="wrap activity-events-wrap">
   <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
   <div className="card activity-events-intro">
@@ -1607,9 +1626,185 @@ function ActivityEventsPage({back,onSignOut}){
    <p className="sub activity-events-subtitle">{pageMeta.subtitle||''}</p>
    <p className="activity-events-privacy">{pageMeta.privacyNote||''}</p>
   </div>
-  {events.length===0?<div className="card activity-events-empty"><p className="sub">{pageMeta.emptyState||'No sessions listed.'}</p></div>:<div className="activity-events-grid">
+  {loading?<div className="card activity-events-empty"><p className="sub">Loading events…</p></div>:events.length===0?<div className="card activity-events-empty"><p className="sub">{pageMeta.emptyState||'No events are available yet. Check back when a facilitator publishes a hosted Wayfinder activity.'}</p></div>:<div className="activity-events-grid">
    {events.map(ev=><ActivityEventCard key={ev.id} event={ev} pageMeta={pageMeta}/>)}
   </div>}
+ </div>;
+}
+function hostedEventStatusLabel(status,pageMeta){
+ if(status==='published')return pageMeta.statusPublished||'Published';
+ if(status==='archived')return pageMeta.statusArchived||'Archived';
+ return pageMeta.statusDraft||'Draft';
+}
+function emptyCounsellorHostForm(){
+ return {activity_id:'',venue_type:'physical',venue_address_or_link:'',start_date:'',start_time:'10:00',end_time:'11:00',timezone:'Asia/Singapore',fee_type:'free',registration_url:'',eventbrite_url:''};
+}
+function CounsellorHostEventForm({user,authSession,eventId,existingEvent,unavailable,onBack,onSaved}){
+ const pageMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
+ const catalog=typeof ACTIVITY_PRACTICE_CATALOG!=='undefined'?ACTIVITY_PRACTICE_CATALOG:[];
+ const [form,setForm]=useState(()=>{
+  if(existingEvent){
+   return {activity_id:existingEvent.activity_id||'',venue_type:existingEvent.venueType==='online'?'online':'physical',venue_address_or_link:existingEvent.venueLabel||'',start_date:existingEvent.date||'',start_time:existingEvent.startTime||'10:00',end_time:existingEvent.endTime||'11:00',timezone:existingEvent.timezone||'Asia/Singapore',fee_type:existingEvent.feeType==='paid'?'paid':'free',registration_url:existingEvent.registrationUrl||'',eventbrite_url:existingEvent.eventbriteUrl||''};
+  }
+  return emptyCounsellorHostForm();
+ });
+ const [saving,setSaving]=useState(false);
+ const [saveError,setSaveError]=useState('');
+ const set=(key,val)=>setForm(prev=>({...prev,[key]:val}));
+ const selectedPractice=typeof getActivityPracticeById==='function'?getActivityPracticeById(form.activity_id):null;
+ const buildPayload=(status)=>{
+  const nowIso=new Date().toISOString();
+  const payload={
+   activity_id:String(form.activity_id||'').trim(),
+   venue_type:form.venue_type==='online'?'online':'physical',
+   venue_address_or_link:String(form.venue_address_or_link||'').trim(),
+   start_date:form.start_date,
+   start_time:form.start_time,
+   end_time:form.end_time||null,
+   timezone:form.timezone||'Asia/Singapore',
+   fee_type:form.fee_type==='paid'?'paid':'free',
+   registration_url:String(form.registration_url||'').trim()||null,
+   eventbrite_url:String(form.eventbrite_url||'').trim()||null,
+   status
+  };
+  if(status==='published')payload.published_at=nowIso;
+  return payload;
+ };
+ const save=async(status)=>{
+  setSaveError('');
+  if(unavailable){setSaveError(pageMeta.setupUnavailable||'Hosted events are not ready yet.');return;}
+  if(!form.activity_id){setSaveError('Please select a Wayfinder activity.');return;}
+  if(!form.start_date||!form.start_time||!form.venue_address_or_link){setSaveError('Please add venue, date, and start time.');return;}
+  setSaving(true);
+  try{
+   const payload=buildPayload(status);
+   const result=eventId
+    ?await DB.updateHostedEvent(user.id,eventId,payload,authSession)
+    :await DB.createHostedEvent(user.id,payload,authSession);
+   if(result?.unavailable){setSaveError(pageMeta.setupUnavailable||'Hosted events are not ready yet.');return;}
+   if(!result?.ok){setSaveError('We could not save this hosted event. Please try again.');return;}
+   onSaved(result.event);
+  }catch(err){
+   setSaveError('We could not save this hosted event. Please try again.');
+   AuthDebug.log('[counsellor] hosted event save failed:', { message: err?.message || String(err) });
+  }finally{
+   setSaving(false);
+  }
+ };
+ if(unavailable){
+  return <div className="wrap counsellor-hosting-wrap">
+   <Bar title={pageMeta.title||'Events hosting'} back={onBack}/>
+   <div className="card counsellor-hosting-setup"><p className="sub">{pageMeta.setupUnavailable||'Hosted events are not ready yet. The database setup still needs to be completed.'}</p></div>
+  </div>;
+ }
+ return <div className="wrap counsellor-hosting-wrap">
+  <Bar title={eventId?'Edit hosted event':pageMeta.newEventLabel||'Host new event'} back={onBack}/>
+  <div className="card counsellor-hosting-intro">
+   <p className="sub">{pageMeta.subtitle||''}</p>
+   <p className="counsellor-hosting-privacy">{pageMeta.privacyNote||''}</p>
+  </div>
+  <div className="card counsellor-hosting-form">
+   <div className="field"><label>{pageMeta.activityLabel||'Wayfinder activity'}</label>
+    <select value={form.activity_id} onChange={e=>set('activity_id',e.target.value)}>
+     <option value="">Select an activity…</option>
+     {catalog.map(item=><option key={item.activity_id} value={item.activity_id}>{item.activity_id} — {item.label}</option>)}
+    </select>
+   </div>
+   {selectedPractice?<div className="counsellor-hosting-activity-preview">
+    <p><strong>{selectedPractice.label}</strong></p>
+    <p className="sub">ALIGN: {typeof ALIGN_STAGE_LABELS!=='undefined'?ALIGN_STAGE_LABELS[selectedPractice.align_stage]||selectedPractice.align_stage:selectedPractice.align_stage}</p>
+    {selectedPractice.growth_capacity?<p className="sub"><strong>Practice focus:</strong> {selectedPractice.growth_capacity}</p>:null}
+    {selectedPractice.possible_need_context?<p className="sub"><strong>Possible need context:</strong> {selectedPractice.possible_need_context}</p>:null}
+   </div>:null}
+   <div className="field"><label>{pageMeta.venueTypeLabel||'Venue type'}</label>
+    <select value={form.venue_type} onChange={e=>set('venue_type',e.target.value)}>
+     <option value="physical">{pageMeta.venuePhysical||'Physical'}</option>
+     <option value="online">{pageMeta.venueOnline||'Online'}</option>
+    </select>
+   </div>
+   <div className="field"><label>{pageMeta.venueDetailLabel||'Venue address or online meeting note'}</label><textarea rows={2} value={form.venue_address_or_link} onChange={e=>set('venue_address_or_link',e.target.value)}/></div>
+   <div className="field-row">
+    <div className="field"><label>{pageMeta.dateLabel||'Date'}</label><input type="date" value={form.start_date} onChange={e=>set('start_date',e.target.value)}/></div>
+    <div className="field"><label>{pageMeta.startTimeLabel||'Start time'}</label><input type="time" value={form.start_time} onChange={e=>set('start_time',e.target.value)}/></div>
+    <div className="field"><label>{pageMeta.endTimeLabel||'End time'}</label><input type="time" value={form.end_time} onChange={e=>set('end_time',e.target.value)}/></div>
+   </div>
+   <div className="field"><label>{pageMeta.feeTypeLabel||'Fee type'}</label>
+    <select value={form.fee_type} onChange={e=>set('fee_type',e.target.value)}>
+     <option value="free">{pageMeta.feeFree||'Free'}</option>
+     <option value="paid">{pageMeta.feePaid||'Paid'}</option>
+    </select>
+   </div>
+   <div className="field"><label>{pageMeta.registrationUrlLabel||'Registration link (optional)'}</label><input type="url" value={form.registration_url} onChange={e=>set('registration_url',e.target.value)} placeholder="https://"/></div>
+   <div className="field"><label>{pageMeta.eventbriteUrlLabel||'Eventbrite link (optional)'}</label><input type="url" value={form.eventbrite_url} onChange={e=>set('eventbrite_url',e.target.value)} placeholder="https://"/></div>
+   {saveError?<p className="counsellor-hosting-error">{saveError}</p>:null}
+   <div className="counsellor-hosting-actions">
+    <button type="button" className="btn btn-secondary" disabled={saving} onClick={()=>save('draft')}>{saving?'Saving…':pageMeta.saveDraftLabel||'Save draft'}</button>
+    <button type="button" className="btn btn-primary" disabled={saving} onClick={()=>save('published')}>{saving?'Saving…':pageMeta.publishLabel||'Publish event'}</button>
+   </div>
+  </div>
+ </div>;
+}
+function CounsellorHostedEventsPage({user,authSession,onBack,onNew,onEdit,onSignOut}){
+ const pageMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
+ const [events,setEvents]=useState([]);
+ const [loading,setLoading]=useState(true);
+ const [unavailable,setUnavailable]=useState(false);
+ const [actionError,setActionError]=useState('');
+ const load=async()=>{
+  setLoading(true);
+  setActionError('');
+  try{
+   const result=await DB.getCounsellorHostedEvents(user.id,authSession);
+   setUnavailable(!!result?.unavailable);
+   setEvents(result?.events||[]);
+  }catch(err){
+   AuthDebug.log('[counsellor] hosted events load failed:', { message: err?.message || String(err) });
+   setEvents([]);
+   setUnavailable(false);
+  }finally{
+   setLoading(false);
+  }
+ };
+ useEffect(()=>{if(authSession?.access_token)load();},[user.id,authSession?.access_token]);
+ const updateStatus=async(event,status)=>{
+  setActionError('');
+  if(unavailable){setActionError(pageMeta.setupUnavailable||'Hosted events are not ready yet.');return;}
+  const payload={status};
+  if(status==='published')payload.published_at=new Date().toISOString();
+  if(status==='archived')payload.archived_at=new Date().toISOString();
+  const result=await DB.updateHostedEvent(user.id,event.id,payload,authSession);
+  if(result?.unavailable){setActionError(pageMeta.setupUnavailable||'Hosted events are not ready yet.');return;}
+  if(!result?.ok){setActionError('We could not update this hosted event.');return;}
+  load();
+ };
+ return <div className="wrap counsellor-hosting-wrap">
+  <Bar title={pageMeta.title||'Events hosting'} back={onBack} onSignOut={onSignOut}/>
+  <div className="card counsellor-hosting-intro">
+   <div className="topbar"><h2>{pageMeta.title||'Events hosting'}</h2><button className="btn btn-primary btn-sm" disabled={unavailable} onClick={onNew}>{pageMeta.newEventLabel||'Host new event'}</button></div>
+   <p className="sub">{pageMeta.subtitle||''}</p>
+  </div>
+  {unavailable?<div className="card counsellor-hosting-setup"><p className="sub">{pageMeta.setupUnavailable||'Hosted events are not ready yet. The database setup still needs to be completed.'}</p></div>:null}
+  {actionError?<div className="card counsellor-hosting-error-card"><p className="sub">{actionError}</p></div>:null}
+  {loading&&!unavailable?<div className="card activity-events-empty"><p className="sub">Loading hosted events…</p></div>:null}
+  {!loading&&!unavailable&&events.length===0?<div className="card activity-events-empty"><p className="sub">{pageMeta.emptyList||'No hosted events yet.'}</p></div>:null}
+  {!unavailable&&events.length>0?<div className="counsellor-hosted-list">
+   {events.map(ev=>{
+    const details=typeof enrichHostedActivityEvent==='function'?enrichHostedActivityEvent(ev):ev;
+    return <article key={ev.id} className="card counsellor-hosted-item">
+     <div className="counsellor-hosted-item-head">
+      <span className={`counsellor-hosted-status counsellor-hosted-status--${ev.status||'draft'}`}>{hostedEventStatusLabel(ev.status,pageMeta)}</span>
+      <span className="sub">{formatHostedActivityEventDate(ev)} · {ev.startTime||'—'}</span>
+     </div>
+     <h3>{details.activityTitle||ev.activity_id}</h3>
+     <p className="sub">{ev.venueType==='online'?'Online':'In person'} · {ev.venueLabel}</p>
+     <div className="counsellor-hosting-actions">
+      <button type="button" className="btn btn-secondary btn-sm" onClick={()=>onEdit(ev)}>{pageMeta.editLabel||'Edit'}</button>
+      {ev.status!=='published'?<button type="button" className="btn btn-primary btn-sm" onClick={()=>updateStatus(ev,'published')}>{pageMeta.publishLabel||'Publish event'}</button>:null}
+      {ev.status!=='archived'?<button type="button" className="btn btn-ghost btn-sm" onClick={()=>updateStatus(ev,'archived')}>{pageMeta.archiveLabel||'Archive'}</button>:null}
+     </div>
+    </article>;
+   })}
+  </div>:null}
  </div>;
 }
 function appVersionTagClass(tag,status){
@@ -2260,7 +2455,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
  if(stage==='appVersion') return <AppVersionPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
- if(stage==='events') return <ActivityEventsPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+ if(stage==='events') return <ActivityEventsPage back={()=>setStage('dashboard')} onSignOut={onSignOut} authSession={authSession}/>;
 
 if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={dyads} authSession={authSession} back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
@@ -2739,11 +2934,14 @@ function toCounsellorEntry(raw){
 function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [openId,setOpenId]=useState(null);
-  const [loadingEntries,setLoadingEntries]=useState(true);
+ const [loadingEntries,setLoadingEntries]=useState(true);
  const [loadError,setLoadError]=useState('');
  const [flags,setFlags]=useState({});
  const [longitudinalSummaries,setLongitudinalSummaries]=useState({});
  const [longitudinalOpen,setLongitudinalOpen]=useState({});
+ const [counsellorStage,setCounsellorStage]=useState('reflections');
+ const [editHostedEvent,setEditHostedEvent]=useState(null);
+ const [hostingUnavailable,setHostingUnavailable]=useState(false);
 
  const entryChildAge=(e)=>{
   if(!e.childDob||!e.date) return 'unknown';
@@ -2808,12 +3006,34 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
   }
  };
  useEffect(()=>{if(authSession?.access_token)refresh();},[user.id,authSession?.access_token]);
+ useEffect(()=>{
+  let cancelled=false;
+  (async()=>{
+   if(!authSession?.access_token)return;
+   try{
+    const result=await DB.getCounsellorHostedEvents(user.id,authSession);
+    if(!cancelled)setHostingUnavailable(!!result?.unavailable);
+   }catch(_){
+    if(!cancelled)setHostingUnavailable(false);
+   }
+  })();
+  return ()=>{cancelled=true;};
+ },[user.id,authSession?.access_token]);
  const open=entries.find(e=>e._key===openId);
+ const hostingMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
 
  if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession}/>;
 
+ if(counsellorStage==='hostForm') return <CounsellorHostEventForm user={user} authSession={authSession} eventId={editHostedEvent?.id||null} existingEvent={editHostedEvent} unavailable={hostingUnavailable} onBack={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}} onSaved={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}}/>;
+
+ if(counsellorStage==='hostedEvents') return <CounsellorHostedEventsPage user={user} authSession={authSession} onBack={()=>setCounsellorStage('reflections')} onNew={()=>{setEditHostedEvent(null);setCounsellorStage('hostForm');}} onEdit={(ev)=>{setEditHostedEvent(ev);setCounsellorStage('hostForm');}} onSignOut={onSignOut}/>;
+
  return <div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
+  <div className="counsellor-nav">
+   <button type="button" className="counsellor-nav-btn counsellor-nav-btn--active">{hostingMeta.backToReflections||'Client reflections'}</button>
+   <button type="button" className="counsellor-nav-btn" onClick={()=>setCounsellorStage('hostedEvents')}>{hostingMeta.title||'Events hosting'}</button>
+  </div>
   <div className="card">
    <div className="topbar"><h2>Client reflections</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
    <p className="sub" style={{marginBottom:16}}>Self-journals submitted by parents.</p>

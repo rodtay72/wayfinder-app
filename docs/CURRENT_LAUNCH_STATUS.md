@@ -6,9 +6,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-20
+**Last updated:** 2026-06-21
 
-**Last verified merge:** PR #39 — Production Incident Triage and Recovery Playbook (Day 16)
+**Last verified merge:** PR #43 — v0.4 Day 2 Events Listing (Issue #42); counsellor Babel fix merged on main
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -44,7 +44,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `feature/v0-4-events-calendar-mvp` | v0.4 Day 2: Activity-based hosted sessions + Add-to-Calendar (Issue #42) | In flight |
+| `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | In flight |
 
 ## Deferred / not started
 

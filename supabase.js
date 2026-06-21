@@ -217,6 +217,130 @@ const authenticatedSelect = async ({ table, query, userId = null, parentId = nul
   return Array.isArray(data) ? data : [];
 };
 
+const isHostedEventsUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('42p01')) return true;
+  if (text.includes('hosted_activity_events') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  return false;
+};
+
+const normalizeHostedEventRow = (row) => {
+  const venueType = row?.venue_type === 'online' ? 'online' : 'physical';
+  const venueLabel = String(row?.venue_address_or_link || '').trim();
+  const feeType = row?.fee_type === 'paid' ? 'paid' : 'free';
+  const registrationUrl = String(row?.registration_url || '').trim();
+  const eventbriteUrl = String(row?.eventbrite_url || '').trim();
+  return {
+    id: row?.id,
+    activity_id: row?.activity_id,
+    venueType,
+    venueLabel,
+    venueUrl: venueType === 'online' ? venueLabel : '',
+    date: row?.start_date,
+    startTime: row?.start_time || '',
+    endTime: row?.end_time || '',
+    timezone: row?.timezone || 'Asia/Singapore',
+    feeType,
+    registrationUrl,
+    eventbriteUrl,
+    paymentUrl: feeType === 'paid' ? (registrationUrl || eventbriteUrl) : '',
+    status: row?.status || 'draft',
+    facilitatorLabel: 'Wayfinder facilitator',
+    published_at: row?.published_at || null,
+    archived_at: row?.archived_at || null,
+    created_at: row?.created_at || null,
+    updated_at: row?.updated_at || null
+  };
+};
+
+const fetchHostedEventsSafe = async ({ query, userId, authSession, context }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const params = new URLSearchParams(query);
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/hosted_activity_events?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        Accept: 'application/json'
+      }
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isHostedEventsUnavailable(response.status, responseText)) {
+        AuthDebug.log('[db] hosted events table unavailable:', { context, status: response.status });
+        return { events: [], unavailable: true };
+      }
+      AuthDebug.log('[db] hosted events read failed:', { context, status: response.status, responseText });
+      return { events: [], unavailable: false };
+    }
+    let data = [];
+    try {
+      data = responseText ? JSON.parse(responseText) : [];
+    } catch {
+      data = [];
+    }
+    const events = (Array.isArray(data) ? data : []).map(normalizeHostedEventRow);
+    return { events, unavailable: false };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isHostedEventsUnavailable(0, message)) {
+      return { events: [], unavailable: true };
+    }
+    AuthDebug.log('[db] hosted events read exception:', { context, message });
+    return { events: [], unavailable: false };
+  }
+};
+
+const hostedEventWriteSafe = async ({ method, userId, authSession, context, body, eventId = null }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const url = eventId
+      ? `${SUPABASE_URL}/rest/v1/hosted_activity_events?id=eq.${encodeURIComponent(eventId)}`
+      : `${SUPABASE_URL}/rest/v1/hosted_activity_events`;
+    const response = await fetch(url, {
+      method,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation'
+      },
+      body: JSON.stringify(body)
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isHostedEventsUnavailable(response.status, responseText)) {
+        return { ok: false, unavailable: true, event: null };
+      }
+      AuthDebug.log('[db] hosted events write failed:', { context, status: response.status, responseText });
+      return { ok: false, unavailable: false, event: null };
+    }
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      data = null;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    return { ok: true, unavailable: false, event: row ? normalizeHostedEventRow(row) : null };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isHostedEventsUnavailable(0, message)) {
+      return { ok: false, unavailable: true, event: null };
+    }
+    AuthDebug.log('[db] hosted events write exception:', { context, message });
+    return { ok: false, unavailable: false, event: null };
+  }
+};
+
 const parseApiJson = async (response) => {
   const text = await response.text();
   if (!text) return {};
@@ -737,4 +861,50 @@ const DB = {
       throw new Error(`Authenticated saveReview failed with status ${response.status}: ${responseText || response.statusText}`);
     }
   },
+
+  getPublishedHostedEvents: async (authSession = null) => fetchHostedEventsSafe({
+    query: {
+      select: 'id,activity_id,facilitator_user_id,venue_type,venue_address_or_link,start_date,start_time,end_time,timezone,fee_type,registration_url,eventbrite_url,status,published_at,archived_at,created_at,updated_at',
+      status: 'eq.published',
+      order: 'start_date.asc,start_time.asc'
+    },
+    userId: authSession?.user?.id || null,
+    authSession,
+    context: 'getPublishedHostedEvents'
+  }),
+
+  getCounsellorHostedEvents: async (userId, authSession = null) => fetchHostedEventsSafe({
+    query: {
+      select: 'id,activity_id,facilitator_user_id,venue_type,venue_address_or_link,start_date,start_time,end_time,timezone,fee_type,registration_url,eventbrite_url,status,published_at,archived_at,created_at,updated_at',
+      facilitator_user_id: `eq.${userId}`,
+      order: 'start_date.desc,start_time.desc'
+    },
+    userId,
+    authSession,
+    context: 'getCounsellorHostedEvents'
+  }),
+
+  createHostedEvent: async (userId, payload, authSession = null) => hostedEventWriteSafe({
+    method: 'POST',
+    userId,
+    authSession,
+    context: 'createHostedEvent',
+    body: {
+      ...payload,
+      facilitator_user_id: userId,
+      updated_at: new Date().toISOString()
+    }
+  }),
+
+  updateHostedEvent: async (userId, eventId, payload, authSession = null) => hostedEventWriteSafe({
+    method: 'PATCH',
+    userId,
+    authSession,
+    context: 'updateHostedEvent',
+    eventId,
+    body: {
+      ...payload,
+      updated_at: new Date().toISOString()
+    }
+  })
 };
