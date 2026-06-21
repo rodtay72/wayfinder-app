@@ -104,6 +104,150 @@ const ACTIVITY_PRACTICE_BY_ID = Object.fromEntries(ACTIVITY_PRACTICE_CATALOG.map
 const getActivityPracticeByLabel = (label) => ACTIVITY_PRACTICE_BY_LABEL[String(label || '').trim()] || null;
 const getActivityPracticeById = (activityId) => ACTIVITY_PRACTICE_BY_ID[String(activityId || '').trim()] || null;
 
+// ACTIVITY-BASED HOSTED SESSIONS (Issue #42 — static config; no DB writes in Day 2 MVP)
+const ACTIVITY_EVENTS_PAGE = {
+  title: "Events Listing",
+  subtitle: "Browse hosted Wayfinder parent-child events drawn from the 52-day activity catalogue. Each listing shows the underlying activity practice focus plus venue, date, time, fee, and registration details added by an approved facilitator.",
+  privacyNote: "Calendar invites and add-to-calendar links contain event logistics only — activity title, date, time, venue or online meeting note, and fee type. They never include child names, Child IDs, Parent IDs, journal text, Decode content, therapist notes, or private reflection content.",
+  emptyState: "No events listed right now. Check back soon.",
+  calendarDownloadLabel: "Download .ics",
+  googleCalendarLabel: "Google Calendar",
+  outlookCalendarLabel: "Outlook web"
+};
+
+const ALIGN_STAGE_LABELS = {
+  A: "Awareness",
+  L: "Locate",
+  I: "Integrate",
+  G: "Growth",
+  N: "Navigate"
+};
+
+// Facilitator/counsellor hosting workflow (future — counsellor portal only, not parent app):
+// Approved facilitators will select an activity from this catalogue, add venue/date/time/fee/links,
+// and publish hosted sessions. Day 2 parent MVP uses static HOSTED_ACTIVITY_EVENTS config only.
+
+// Static hosted-session examples — each references activity_id from ACTIVITY_PRACTICE_CATALOG
+const HOSTED_ACTIVITY_EVENTS = [
+  {
+    id: "hosted-a04-jul",
+    activity_id: "A-04",
+    facilitatorLabel: "Wayfinder facilitator",
+    venueType: "online",
+    venueLabel: "Online session — meeting link shared after registration",
+    venueUrl: "",
+    date: "2026-07-12",
+    startTime: "10:00",
+    endTime: "11:30",
+    timezone: "Asia/Singapore",
+    feeType: "free",
+    paymentUrl: "",
+    eventbriteUrl: "",
+    registrationUrl: "https://wayfinder-modular.vercel.app"
+  },
+  {
+    id: "hosted-l09-jul",
+    activity_id: "L-09",
+    facilitatorLabel: "Wayfinder facilitator",
+    venueType: "physical",
+    venueLabel: "Wayfinder community studio — registration required for venue details",
+    venueUrl: "",
+    date: "2026-07-19",
+    startTime: "14:00",
+    endTime: "15:30",
+    timezone: "Asia/Singapore",
+    feeType: "free",
+    paymentUrl: "",
+    eventbriteUrl: "",
+    registrationUrl: "https://wayfinder-modular.vercel.app"
+  },
+  {
+    id: "hosted-i06-aug",
+    activity_id: "I-06",
+    facilitatorLabel: "Wayfinder facilitator",
+    venueType: "physical",
+    venueLabel: "Wayfinder community studio — registration required for venue details",
+    venueUrl: "",
+    date: "2026-08-02",
+    startTime: "09:30",
+    endTime: "11:00",
+    timezone: "Asia/Singapore",
+    feeType: "paid",
+    paymentUrl: "",
+    eventbriteUrl: "https://www.eventbrite.com",
+    registrationUrl: "https://www.eventbrite.com"
+  },
+  {
+    id: "hosted-g03-aug",
+    activity_id: "G-03",
+    facilitatorLabel: "Wayfinder facilitator",
+    venueType: "online",
+    venueLabel: "Online session — meeting link shared after registration",
+    venueUrl: "",
+    date: "2026-08-16",
+    startTime: "19:00",
+    endTime: "20:30",
+    timezone: "Asia/Singapore",
+    feeType: "free",
+    paymentUrl: "",
+    eventbriteUrl: "",
+    registrationUrl: "https://wayfinder-modular.vercel.app"
+  },
+  {
+    id: "hosted-n01-sep",
+    activity_id: "N-01",
+    facilitatorLabel: "Wayfinder facilitator",
+    venueType: "physical",
+    venueLabel: "Parent-child workshop space — registration required",
+    venueUrl: "",
+    date: "2026-09-06",
+    startTime: "15:00",
+    endTime: "17:00",
+    timezone: "Asia/Singapore",
+    feeType: "paid",
+    paymentUrl: "https://wayfinder-modular.vercel.app",
+    eventbriteUrl: "",
+    registrationUrl: "https://wayfinder-modular.vercel.app"
+  },
+  {
+    id: "hosted-a01-sep",
+    activity_id: "A-01",
+    facilitatorLabel: "Wayfinder facilitator",
+    venueType: "online",
+    venueLabel: "Online intro session — link shared after sign-up",
+    venueUrl: "",
+    date: "2026-09-20",
+    startTime: "11:00",
+    endTime: "12:00",
+    timezone: "Asia/Singapore",
+    feeType: "free",
+    paymentUrl: "",
+    eventbriteUrl: "",
+    registrationUrl: "https://wayfinder-modular.vercel.app"
+  }
+];
+
+const enrichHostedActivityEvent = (event) => {
+  const practice = getActivityPracticeById(event.activity_id);
+  const alignStage = practice?.align_stage || "";
+  return {
+    ...event,
+    activityTitle: practice?.label || event.activity_id,
+    alignStage,
+    alignStageLabel: ALIGN_STAGE_LABELS[alignStage] || alignStage,
+    practiceFocus: practice?.growth_capacity || "",
+    possibleNeedContext: practice?.possible_need_context || "",
+    cabDomain: practice?.cab_domain || ""
+  };
+};
+
+const getEnrichedHostedActivityEvents = () =>
+  HOSTED_ACTIVITY_EVENTS.map(enrichHostedActivityEvent).sort((a, b) => {
+    const da = String(a.date || "").localeCompare(String(b.date || ""));
+    if (da !== 0) return da;
+    return String(a.startTime || "").localeCompare(String(b.startTime || ""));
+  });
+
 // 6-PART EMOTIONAL STABILITY MARKERS
 // These are the "What I became aware of" checkboxes
 const MARKERS = [
@@ -300,6 +444,16 @@ const APP_VERSION_PAGE = {
 
 const WAYFINDER_APP_VERSIONS = [
   {
+    id: "v0-4-0-events-listing",
+    version: "v0.4.0",
+    date: "June 2026",
+    status: "released",
+    tag: "Events",
+    title: "Events Listing",
+    body: "You can now browse upcoming hosted parent-child events based on Wayfinder's 52-day activity catalogue. Each listing shows the activity practice focus, venue or online details, date and time, and whether it is free or paid. Add-to-calendar options include a privacy-safe download — calendar invites contain event logistics only, not child names, IDs, or reflection content.",
+    parentAction: "Open Events from your dashboard to explore the Events Listing and add an event to your calendar if helpful."
+  },
+  {
     id: "v0-3-2-align-journey",
     version: "v0.3.2",
     date: "June 2026",
@@ -389,6 +543,11 @@ if (typeof module !== 'undefined' && module.exports) {
     ACTIVITY_PRACTICE_CATALOG,
     getActivityPracticeByLabel,
     getActivityPracticeById,
+    ACTIVITY_EVENTS_PAGE,
+    HOSTED_ACTIVITY_EVENTS,
+    ALIGN_STAGE_LABELS,
+    enrichHostedActivityEvent,
+    getEnrichedHostedActivityEvents,
     MARKERS,
     CAB_FIELDS,
     VALUE_GROUPS,

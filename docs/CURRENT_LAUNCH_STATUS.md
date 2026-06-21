@@ -38,12 +38,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Launch Candidate Sign-Off | Day 14 launch candidate accepted (conditional) — Issue #33 | PR #35 |
 | 24/7 Launch Operations Handoff | Day 15 GitHub as 24/7 operating centre — Issue #36 | PR #37 |
 | Production Incident Triage and Recovery Playbook | Day 16 incident triage and recovery — Issue #38 | PR #39 |
+| v0.4 Implementation Contract | v0.4 Day 1 build plan and tier map — Issue #40 | PR #41 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `docs/v0-4-implementation-contract` | v0.4 Day 1: Implementation contract (Issue #40, docs-only) | In flight |
+| `feature/v0-4-events-calendar-mvp` | v0.4 Day 2: Activity-based hosted sessions + Add-to-Calendar (Issue #42) | In flight |
 
 ## Deferred / not started
 
@@ -63,6 +64,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 5. No parent email or Supabase UUID in normal UI.
 6. Decode a Moment and ALIGN Journey still usable if touched.
 7. Mobile layout readable.
+8. Events Listing page reachable (Dashboard → Events); event cards display; add-to-calendar privacy-safe (.ics contains logistics only).
 
 ## Agent ops notes
 
@@ -78,5 +80,6 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - Launch candidate sign-off: [docs/LAUNCH_CANDIDATE_SIGN_OFF.md](./LAUNCH_CANDIDATE_SIGN_OFF.md) — Day 14 (Issue #33, PR #35); **conditional** on Issue #28 and manual smoke remaining clear
 - 24/7 launch operations handoff: [docs/24_7_LAUNCH_OPERATIONS_HANDOFF.md](./24_7_LAUNCH_OPERATIONS_HANDOFF.md) — Day 15 (Issue #36, PR #37); GitHub as operating centre; always-post-report rule
 - Production incident playbook: [docs/PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md](./PRODUCTION_INCIDENT_TRIAGE_RECOVERY_PLAYBOOK.md) — Day 16 (Issue #38, PR #39); triage, recovery, and handoff for operational/data-safety events
-- **v0.4 implementation contract:** [docs/V0_4_IMPLEMENTATION_CONTRACT.md](./V0_4_IMPLEMENTATION_CONTRACT.md) — Day 1 of 7-day v0.4 product release train (Issue #40)
+- **v0.4 implementation contract:** [docs/V0_4_IMPLEMENTATION_CONTRACT.md](./V0_4_IMPLEMENTATION_CONTRACT.md) — Day 1 complete (Issue #40, PR #41)
+- **v0.4 Day 2:** Activity-based hosted sessions MVP (Issue #42) — parent browse + add-to-calendar only; facilitator hosting is future counsellor-portal workflow (not in parent app)
 - **Production Cycle 1:** Owner-confirmed PASS recorded on Issue #28 (non-sensitive reference only)
