@@ -341,6 +341,103 @@ const hostedEventWriteSafe = async ({ method, userId, authSession, context, body
   }
 };
 
+const isReviewGrantsUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('42p01')) return true;
+  if (text.includes('counsellor_review_grant') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  if (text.includes('resolve_counsellor_user_id') && text.includes('does not exist')) return true;
+  if (text.includes('list_available_counsellors') && text.includes('does not exist')) return true;
+  if (text.includes('create_parent_review_grant') && text.includes('does not exist')) return true;
+  if (text.includes('infinite recursion')) return true;
+  if (text.includes('parent_can_link_journal_entry_to_grant') && text.includes('does not exist')) return true;
+  return false;
+};
+
+const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, context }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const params = new URLSearchParams(query);
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        Accept: 'application/json'
+      }
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isReviewGrantsUnavailable(response.status, responseText)) {
+        AuthDebug.log('[db] review grants table unavailable:', { context, status: response.status });
+        return { rows: [], unavailable: true };
+      }
+      AuthDebug.log('[db] review grants read failed:', { context, status: response.status, responseText });
+      return { rows: [], unavailable: false };
+    }
+    let data = [];
+    try {
+      data = responseText ? JSON.parse(responseText) : [];
+    } catch {
+      data = [];
+    }
+    return { rows: Array.isArray(data) ? data : [], unavailable: false };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isReviewGrantsUnavailable(0, message)) {
+      return { rows: [], unavailable: true };
+    }
+    AuthDebug.log('[db] review grants read exception:', { context, message });
+    return { rows: [], unavailable: false };
+  }
+};
+
+const reviewGrantWriteSafe = async ({ method, userId, authSession, context, body, table = 'counsellor_review_grants', query = '' }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const url = `${SUPABASE_URL}/rest/v1/${table}${query ? `?${query}` : ''}`;
+    const response = await fetch(url, {
+      method,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        Prefer: method === 'POST' ? 'return=representation' : 'return=representation'
+      },
+      body: JSON.stringify(body)
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isReviewGrantsUnavailable(response.status, responseText)) {
+        return { ok: false, unavailable: true, rows: null };
+      }
+      AuthDebug.log('[db] review grants write failed:', { context, status: response.status, responseText });
+      return { ok: false, unavailable: false, rows: null, responseText };
+    }
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      data = null;
+    }
+    const rows = Array.isArray(data) ? data : (data ? [data] : []);
+    return { ok: true, unavailable: false, rows };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isReviewGrantsUnavailable(0, message)) {
+      return { ok: false, unavailable: true, rows: null };
+    }
+    AuthDebug.log('[db] review grants write exception:', { context, message });
+    return { ok: false, unavailable: false, rows: null, responseText: message };
+  }
+};
+
 const parseApiJson = async (response) => {
   const text = await response.text();
   if (!text) return {};
@@ -906,5 +1003,290 @@ const DB = {
       ...payload,
       updated_at: new Date().toISOString()
     }
-  })
+  }),
+
+  resolveCounsellorUserId: async (wayfinderId, authSession = null) => {
+    try {
+      const session = await getAuthenticatedReadSession(null, 'resolveCounsellorUserId', authSession);
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/resolve_counsellor_user_id`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_wayfinder_id: String(wayfinderId || '').trim() })
+      });
+      const responseText = await response.text();
+      if (!response.ok) {
+        if (isReviewGrantsUnavailable(response.status, responseText)) {
+          return { userId: null, unavailable: true };
+        }
+        return { userId: null, unavailable: false };
+      }
+      const userId = responseText ? JSON.parse(responseText) : null;
+      return { userId: userId || null, unavailable: false };
+    } catch (err) {
+      const message = String(err?.message || err);
+      if (isReviewGrantsUnavailable(0, message)) {
+        return { userId: null, unavailable: true };
+      }
+      return { userId: null, unavailable: false };
+    }
+  },
+
+  listAvailableCounsellors: async (authSession = null) => {
+    try {
+      const session = await getAuthenticatedReadSession(null, 'listAvailableCounsellors', authSession);
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/list_available_counsellors`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+      const responseText = await response.text();
+      if (!response.ok) {
+        if (isReviewGrantsUnavailable(response.status, responseText)) {
+          return { rows: [], unavailable: true };
+        }
+        return { rows: [], unavailable: false };
+      }
+      let data = [];
+      try {
+        data = responseText ? JSON.parse(responseText) : [];
+      } catch {
+        data = [];
+      }
+      return { rows: Array.isArray(data) ? data : [], unavailable: false };
+    } catch (err) {
+      const message = String(err?.message || err);
+      if (isReviewGrantsUnavailable(0, message)) {
+        return { rows: [], unavailable: true };
+      }
+      return { rows: [], unavailable: false };
+    }
+  },
+
+  getParentReviewGrants: async (userId, authSession = null) => fetchReviewGrantsSafe({
+    table: 'counsellor_review_grants',
+    query: {
+      select: 'id,parent_id,counsellor_wayfinder_id,status,consent_version,created_at,expires_at,revoked_at',
+      parent_user_id: `eq.${userId}`,
+      order: 'created_at.desc'
+    },
+    userId,
+    authSession,
+    context: 'getParentReviewGrants'
+  }),
+
+  createReviewGrant: async (userId, parentId, payload, entryIds, authSession = null) => {
+    const entryIdList = (entryIds || []).map((id) => String(id)).filter(Boolean);
+    if (!entryIdList.length) {
+      return { ok: false, unavailable: false, grant: null, errorStage: 'entries' };
+    }
+
+    try {
+      const session = await getAuthenticatedReadSession(userId, 'createReviewGrant', authSession);
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_parent_review_grant`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          p_parent_id: parentId,
+          p_counsellor_wayfinder_id: payload.counsellor_wayfinder_id,
+          p_consent_version: payload.consent_version,
+          p_consent_text_snapshot: payload.consent_text_snapshot,
+          p_expires_at: payload.expires_at,
+          p_journal_entry_ids: entryIdList
+        })
+      });
+      const responseText = await response.text();
+      if (response.ok) {
+        let grantId = null;
+        try {
+          grantId = responseText ? JSON.parse(responseText) : null;
+        } catch {
+          grantId = responseText || null;
+        }
+        return {
+          ok: true,
+          unavailable: false,
+          grant: grantId ? { id: grantId, ...payload } : { ...payload },
+          errorStage: null
+        };
+      }
+      if (isReviewGrantsUnavailable(response.status, responseText)) {
+        return { ok: false, unavailable: true, grant: null, errorStage: 'rpc' };
+      }
+      AuthDebug.log('[db] createReviewGrant RPC failed:', { status: response.status, responseText });
+    } catch (err) {
+      const message = String(err?.message || err);
+      if (isReviewGrantsUnavailable(0, message)) {
+        return { ok: false, unavailable: true, grant: null, errorStage: 'rpc' };
+      }
+      AuthDebug.log('[db] createReviewGrant RPC exception:', { message });
+    }
+
+    const grantResult = await reviewGrantWriteSafe({
+      method: 'POST',
+      userId,
+      authSession,
+      context: 'createReviewGrant',
+      body: payload
+    });
+    if (grantResult.unavailable || !grantResult.ok || !grantResult.rows?.[0]?.id) {
+      AuthDebug.log('[db] createReviewGrant grant insert failed:', {
+        unavailable: !!grantResult.unavailable,
+        responseText: grantResult.responseText || null
+      });
+      return {
+        ok: false,
+        unavailable: !!grantResult.unavailable,
+        grant: null,
+        errorStage: 'grant'
+      };
+    }
+    const grant = grantResult.rows[0];
+    const rows = entryIdList.map((journalEntryId) => ({
+      grant_id: grant.id,
+      journal_entry_id: journalEntryId
+    }));
+    const entriesResult = await reviewGrantWriteSafe({
+      method: 'POST',
+      userId,
+      authSession,
+      context: 'createReviewGrantEntries',
+      table: 'counsellor_review_grant_entries',
+      body: rows
+    });
+    if (entriesResult.unavailable || !entriesResult.ok) {
+      AuthDebug.log('[db] createReviewGrant entry insert failed:', {
+        unavailable: !!entriesResult.unavailable,
+        responseText: entriesResult.responseText || null,
+        grantId: grant.id
+      });
+      await reviewGrantWriteSafe({
+        method: 'PATCH',
+        userId,
+        authSession,
+        context: 'createReviewGrantRollback',
+        query: `id=eq.${encodeURIComponent(grant.id)}`,
+        body: {
+          status: 'revoked',
+          revoked_at: new Date().toISOString()
+        }
+      });
+      return {
+        ok: false,
+        unavailable: !!entriesResult.unavailable,
+        grant: null,
+        errorStage: 'entries'
+      };
+    }
+    return { ok: true, unavailable: false, grant, errorStage: null };
+  },
+
+  revokeReviewGrant: async (userId, grantId, authSession = null) => reviewGrantWriteSafe({
+    method: 'PATCH',
+    userId,
+    authSession,
+    context: 'revokeReviewGrant',
+    query: `id=eq.${encodeURIComponent(grantId)}`,
+    body: {
+      status: 'revoked',
+      revoked_at: new Date().toISOString()
+    }
+  }).then((result) => ({
+    ok: !!result.ok,
+    unavailable: !!result.unavailable
+  })),
+
+  getCounsellorGrantedEntries: async (userId, authSession = null) => {
+    const grantsResult = await fetchReviewGrantsSafe({
+      table: 'counsellor_review_grants',
+      query: {
+        select: 'id,parent_id,counsellor_wayfinder_id,expires_at,created_at',
+        counsellor_user_id: `eq.${userId}`,
+        status: 'eq.active',
+        expires_at: `gt.${new Date().toISOString()}`,
+        order: 'created_at.desc'
+      },
+      userId,
+      authSession,
+      context: 'getCounsellorGrantedEntries grants'
+    });
+    if (grantsResult.unavailable) {
+      return { entries: [], grants: [], grantLinks: [], unavailable: true };
+    }
+    const grantIds = (grantsResult.rows || []).map((g) => g.id).filter(Boolean);
+    if (!grantIds.length) {
+      return { entries: [], grants: [], grantLinks: [], unavailable: false };
+    }
+    const linksResult = await fetchReviewGrantsSafe({
+      table: 'counsellor_review_grant_entries',
+      query: {
+        select: 'grant_id,journal_entry_id',
+        grant_id: `in.(${grantIds.map((id) => `"${id}"`).join(',')})`
+      },
+      userId,
+      authSession,
+      context: 'getCounsellorGrantedEntries links'
+    });
+    if (linksResult.unavailable) {
+      return { entries: [], grants: [], grantLinks: [], unavailable: true };
+    }
+    const entryIds = [...new Set((linksResult.rows || []).map((r) => r.journal_entry_id).filter(Boolean))];
+    if (!entryIds.length) {
+      return { entries: [], grants: grantsResult.rows || [], grantLinks: linksResult.rows || [], unavailable: false };
+    }
+    try {
+      const session = await getAuthenticatedReadSession(userId, 'getCounsellorGrantedEntries journal', authSession);
+      const params = new URLSearchParams({
+        select: 'id,parent_id,data,created_at',
+        id: `in.(${entryIds.map((id) => `"${String(id).replace(/"/g, '\\"')}"`).join(',')})`,
+        order: 'id.desc'
+      });
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/journal_entries?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          Accept: 'application/json'
+        }
+      });
+      const responseText = await response.text();
+      if (!response.ok) {
+        if (isReviewGrantsUnavailable(response.status, responseText)) {
+          return { entries: [], grants: [], grantLinks: [], unavailable: true };
+        }
+        AuthDebug.log('[db] granted journal read failed:', { status: response.status, responseText });
+        return { entries: [], grants: grantsResult.rows || [], grantLinks: linksResult.rows || [], unavailable: false };
+      }
+      let data = [];
+      try {
+        data = responseText ? JSON.parse(responseText) : [];
+      } catch {
+        data = [];
+      }
+      const entries = (Array.isArray(data) ? data : []).map((r) => normalizeJournalEntryRow(r));
+      return {
+        entries,
+        grants: grantsResult.rows || [],
+        grantLinks: linksResult.rows || [],
+        unavailable: false
+      };
+    } catch (err) {
+      const message = String(err?.message || err);
+      if (isReviewGrantsUnavailable(0, message)) {
+        return { entries: [], grants: [], grantLinks: [], unavailable: true };
+      }
+      return { entries: [], grants: [], grantLinks: [], unavailable: false };
+    }
+  }
 };

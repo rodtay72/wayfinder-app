@@ -44,7 +44,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | In flight |
+| `feature/parent-selected-counsellor-review` | Issue #48 PR A: parent-selected counsellor review grants (schema + runtime + graceful degradation) | In flight |
+| `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
 
