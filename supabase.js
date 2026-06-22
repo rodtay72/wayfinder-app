@@ -360,7 +360,114 @@ const isReviewGrantsUnavailable = (status, responseText) => {
   return false;
 };
 
-const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, context }) => {
+const isReviewResponsesUnavailable = (status, responseText) => {
+  if (isReviewGrantsUnavailable(status, responseText)) return true;
+  const text = String(responseText || '').toLowerCase();
+  if (text.includes('counsellor_review_responses') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  if (text.includes('publish_counsellor_review_response') && text.includes('does not exist')) return true;
+  if (text.includes('revoke_counsellor_review_response') && text.includes('does not exist')) return true;
+  if (text.includes('get_parent_published_review_responses') && text.includes('does not exist')) return true;
+  if (text.includes('counsellor_review_grant_is_writable') && text.includes('does not exist')) return true;
+  if (text.includes('parent_can_read_published_review_response') && text.includes('does not exist')) return true;
+  return false;
+};
+
+const normalizeCounsellorReviewResponseRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    id: row.id || null,
+    grantId: row.grant_id || row.grantId || null,
+    counsellorUserId: row.counsellor_user_id || row.counsellorUserId || null,
+    parentUserId: row.parent_user_id || row.parentUserId || null,
+    parentId: row.parent_id || row.parentId || '',
+    counsellorWayfinderId: row.counsellor_wayfinder_id || row.counsellorWayfinderId || '',
+    status: row.status || 'draft',
+    responseSections: row.response_sections || row.responseSections || {},
+    parentFacingText: row.parent_facing_text || row.parentFacingText || '',
+    aiDraftJson: row.ai_draft_json ?? row.aiDraftJson ?? null,
+    counsellorWorkingNotes: row.counsellor_working_notes ?? row.counsellorWorkingNotes ?? null,
+    publishedAt: row.published_at || row.publishedAt || null,
+    revokedAt: row.revoked_at || row.revokedAt || null,
+    createdAt: row.created_at || row.createdAt || null,
+    updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
+const normalizeParentPublishedReviewResponseRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    responseId: row.response_id || row.responseId || row.id || null,
+    grantId: row.grant_id || row.grantId || null,
+    counsellorWayfinderId: row.counsellor_wayfinder_id || row.counsellorWayfinderId || '',
+    parentFacingText: row.parent_facing_text || row.parentFacingText || '',
+    publishedAt: row.published_at || row.publishedAt || null
+  };
+};
+
+const fetchReviewResponsesSafe = async ({ query, userId, authSession, context }) => fetchReviewGrantsSafe({
+  table: 'counsellor_review_responses',
+  query,
+  userId,
+  authSession,
+  context,
+  unavailableCheck: isReviewResponsesUnavailable
+});
+
+const reviewResponseWriteSafe = async ({ method, userId, authSession, context, body, query = '' }) => reviewGrantWriteSafe({
+  method,
+  userId,
+  authSession,
+  context,
+  body,
+  query,
+  table: 'counsellor_review_responses',
+  unavailableCheck: isReviewResponsesUnavailable
+});
+
+const callReviewResponseRpcSafe = async ({ rpcName, userId, authSession, context, body = {} }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isReviewResponsesUnavailable(response.status, responseText)) {
+        AuthDebug.log('[db] review responses RPC unavailable:', { context, rpcName, status: response.status });
+        return { ok: false, unavailable: true, data: null, responseText };
+      }
+      AuthDebug.log('[db] review responses RPC failed:', { context, rpcName, status: response.status, responseText });
+      return { ok: false, unavailable: false, data: null, responseText };
+    }
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      data = responseText || null;
+    }
+    return { ok: true, unavailable: false, data, responseText };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isReviewResponsesUnavailable(0, message)) {
+      return { ok: false, unavailable: true, data: null, responseText: message };
+    }
+    AuthDebug.log('[db] review responses RPC exception:', { context, rpcName, message });
+    return { ok: false, unavailable: false, data: null, responseText: message };
+  }
+};
+
+const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, context, unavailableCheck = isReviewGrantsUnavailable }) => {
   try {
     const session = await getAuthenticatedReadSession(userId, context, authSession);
     const params = new URLSearchParams(query);
@@ -374,7 +481,7 @@ const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, contex
     });
     const responseText = await response.text();
     if (!response.ok) {
-      if (isReviewGrantsUnavailable(response.status, responseText)) {
+      if (unavailableCheck(response.status, responseText)) {
         AuthDebug.log('[db] review grants table unavailable:', { context, status: response.status });
         return { rows: [], unavailable: true };
       }
@@ -390,7 +497,7 @@ const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, contex
     return { rows: Array.isArray(data) ? data : [], unavailable: false };
   } catch (err) {
     const message = String(err?.message || err);
-    if (isReviewGrantsUnavailable(0, message)) {
+    if (unavailableCheck(0, message)) {
       return { rows: [], unavailable: true };
     }
     AuthDebug.log('[db] review grants read exception:', { context, message });
@@ -398,7 +505,16 @@ const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, contex
   }
 };
 
-const reviewGrantWriteSafe = async ({ method, userId, authSession, context, body, table = 'counsellor_review_grants', query = '' }) => {
+const reviewGrantWriteSafe = async ({
+  method,
+  userId,
+  authSession,
+  context,
+  body,
+  table = 'counsellor_review_grants',
+  query = '',
+  unavailableCheck = isReviewGrantsUnavailable
+}) => {
   try {
     const session = await getAuthenticatedReadSession(userId, context, authSession);
     const url = `${SUPABASE_URL}/rest/v1/${table}${query ? `?${query}` : ''}`;
@@ -414,7 +530,7 @@ const reviewGrantWriteSafe = async ({ method, userId, authSession, context, body
     });
     const responseText = await response.text();
     if (!response.ok) {
-      if (isReviewGrantsUnavailable(response.status, responseText)) {
+      if (unavailableCheck(response.status, responseText)) {
         return { ok: false, unavailable: true, rows: null };
       }
       AuthDebug.log('[db] review grants write failed:', { context, status: response.status, responseText });
@@ -430,7 +546,7 @@ const reviewGrantWriteSafe = async ({ method, userId, authSession, context, body
     return { ok: true, unavailable: false, rows };
   } catch (err) {
     const message = String(err?.message || err);
-    if (isReviewGrantsUnavailable(0, message)) {
+    if (unavailableCheck(0, message)) {
       return { ok: false, unavailable: true, rows: null };
     }
     AuthDebug.log('[db] review grants write exception:', { context, message });
@@ -1288,5 +1404,190 @@ const DB = {
       }
       return { entries: [], grants: [], grantLinks: [], unavailable: false };
     }
+  },
+
+  getCounsellorReviewResponseForGrant: async (userId, grantId, authSession = null) => {
+    const grantKey = String(grantId || '').trim();
+    if (!grantKey) {
+      return { response: null, unavailable: false };
+    }
+    const result = await fetchReviewResponsesSafe({
+      query: {
+        select: 'id,grant_id,counsellor_user_id,parent_user_id,parent_id,counsellor_wayfinder_id,status,response_sections,parent_facing_text,ai_draft_json,counsellor_working_notes,published_at,revoked_at,created_at,updated_at',
+        grant_id: `eq.${grantKey}`,
+        counsellor_user_id: `eq.${userId}`
+      },
+      userId,
+      authSession,
+      context: 'getCounsellorReviewResponseForGrant'
+    });
+    if (result.unavailable) {
+      return { response: null, unavailable: true };
+    }
+    const row = (result.rows || [])[0];
+    return {
+      response: row ? normalizeCounsellorReviewResponseRow(row) : null,
+      unavailable: false
+    };
+  },
+
+  saveCounsellorReviewResponseDraft: async (userId, grantMeta, draftPayload, authSession = null) => {
+    const grantId = String(grantMeta?.grantId || grantMeta?.grant_id || '').trim();
+    if (!grantId) {
+      return { ok: false, unavailable: false, response: null, errorStage: 'grant' };
+    }
+    const parentUserId = grantMeta?.parentUserId || grantMeta?.parent_user_id;
+    const parentId = grantMeta?.parentId || grantMeta?.parent_id;
+    const counsellorWayfinderId = grantMeta?.counsellorWayfinderId || grantMeta?.counsellor_wayfinder_id;
+    if (!parentUserId || !parentId || !counsellorWayfinderId) {
+      return { ok: false, unavailable: false, response: null, errorStage: 'grantMeta' };
+    }
+
+    const existing = await fetchReviewResponsesSafe({
+      query: {
+        select: 'id,status',
+        grant_id: `eq.${grantId}`,
+        counsellor_user_id: `eq.${userId}`
+      },
+      userId,
+      authSession,
+      context: 'saveCounsellorReviewResponseDraft lookup'
+    });
+    if (existing.unavailable) {
+      return { ok: false, unavailable: true, response: null, errorStage: 'lookup' };
+    }
+
+    const body = {
+      response_sections: draftPayload?.responseSections ?? draftPayload?.response_sections ?? {},
+      parent_facing_text: draftPayload?.parentFacingText ?? draftPayload?.parent_facing_text ?? '',
+      counsellor_working_notes: draftPayload?.counsellorWorkingNotes ?? draftPayload?.counsellor_working_notes ?? null,
+      updated_at: new Date().toISOString()
+    };
+    const aiDraft = draftPayload?.aiDraftJson ?? draftPayload?.ai_draft_json;
+    if (aiDraft !== undefined) body.ai_draft_json = aiDraft;
+
+    const existingRow = (existing.rows || [])[0];
+    if (existingRow?.id) {
+      if (existingRow.status !== 'draft') {
+        return { ok: false, unavailable: false, response: null, errorStage: 'notDraft' };
+      }
+      const updateResult = await reviewResponseWriteSafe({
+        method: 'PATCH',
+        userId,
+        authSession,
+        context: 'saveCounsellorReviewResponseDraft update',
+        query: `id=eq.${encodeURIComponent(existingRow.id)}`,
+        body
+      });
+      if (updateResult.unavailable) {
+        return { ok: false, unavailable: true, response: null, errorStage: 'update' };
+      }
+      if (!updateResult.ok || !updateResult.rows?.[0]) {
+        return { ok: false, unavailable: false, response: null, errorStage: 'update' };
+      }
+      return {
+        ok: true,
+        unavailable: false,
+        response: normalizeCounsellorReviewResponseRow(updateResult.rows[0]),
+        errorStage: null
+      };
+    }
+
+    const insertResult = await reviewResponseWriteSafe({
+      method: 'POST',
+      userId,
+      authSession,
+      context: 'saveCounsellorReviewResponseDraft insert',
+      body: {
+        grant_id: grantId,
+        counsellor_user_id: userId,
+        parent_user_id: parentUserId,
+        parent_id: parentId,
+        counsellor_wayfinder_id: counsellorWayfinderId,
+        status: 'draft',
+        ...body
+      }
+    });
+    if (insertResult.unavailable) {
+      return { ok: false, unavailable: true, response: null, errorStage: 'insert' };
+    }
+    if (!insertResult.ok || !insertResult.rows?.[0]) {
+      return { ok: false, unavailable: false, response: null, errorStage: 'insert' };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      response: normalizeCounsellorReviewResponseRow(insertResult.rows[0]),
+      errorStage: null
+    };
+  },
+
+  publishCounsellorReviewResponse: async (userId, responseId, authSession = null) => {
+    const id = String(responseId || '').trim();
+    if (!id) {
+      return { ok: false, unavailable: false, responseId: null };
+    }
+    const result = await callReviewResponseRpcSafe({
+      rpcName: 'publish_counsellor_review_response',
+      userId,
+      authSession,
+      context: 'publishCounsellorReviewResponse',
+      body: { p_response_id: id }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, responseId: null };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, responseId: null };
+    }
+    const publishedId = result.data ? String(result.data).replace(/^"|"$/g, '') : id;
+    return { ok: true, unavailable: false, responseId: publishedId || id };
+  },
+
+  revokeCounsellorReviewResponse: async (userId, responseId, authSession = null) => {
+    const id = String(responseId || '').trim();
+    if (!id) {
+      return { ok: false, unavailable: false, responseId: null };
+    }
+    const result = await callReviewResponseRpcSafe({
+      rpcName: 'revoke_counsellor_review_response',
+      userId,
+      authSession,
+      context: 'revokeCounsellorReviewResponse',
+      body: { p_response_id: id }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, responseId: null };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, responseId: null };
+    }
+    const revokedId = result.data ? String(result.data).replace(/^"|"$/g, '') : id;
+    return { ok: true, unavailable: false, responseId: revokedId || id };
+  },
+
+  getParentPublishedReviewResponses: async (userId, grantId = null, authSession = null) => {
+    const body = {};
+    const grantKey = grantId ? String(grantId).trim() : '';
+    if (grantKey) body.p_grant_id = grantKey;
+
+    const result = await callReviewResponseRpcSafe({
+      rpcName: 'get_parent_published_review_responses',
+      userId,
+      authSession,
+      context: 'getParentPublishedReviewResponses',
+      body
+    });
+    if (result.unavailable) {
+      return { rows: [], unavailable: true };
+    }
+    if (!result.ok) {
+      return { rows: [], unavailable: false };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    return {
+      rows: rows.map(normalizeParentPublishedReviewResponseRow).filter(Boolean),
+      unavailable: false
+    };
   }
 };
