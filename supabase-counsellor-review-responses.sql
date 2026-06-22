@@ -13,10 +13,10 @@
 -- Does NOT run supabase-counsellor-review-grants-tighten-rls.sql (PR B — after runtime smoke).
 --
 -- Visibility rules:
---   Parent: SELECT published responses only; remains readable after grant expiry;
---           hidden when parent revokes the grant (grant.status = 'revoked').
---   Counsellor: INSERT/UPDATE drafts and publish only while grant is active, assigned,
---               unexpired, and not revoked; may revoke an already-published response later.
+--   Parent: RPC get_parent_published_review_responses only (no base-table SELECT);
+--           published remains readable after grant expiry; hidden when grant revoked.
+--   Counsellor: INSERT/UPDATE drafts and publish only while grant is writable;
+--               SELECT drafts only while grant writable; published/revoked readable after expiry.
 
 -- Grant is writable by assigned counsellor (draft/edit/publish/source-entry parity window).
 create or replace function public.counsellor_review_grant_is_writable(p_grant_id uuid)
@@ -208,44 +208,39 @@ $$;
 revoke all on function public.revoke_counsellor_review_response(uuid) from public;
 grant execute on function public.revoke_counsellor_review_response(uuid) to authenticated;
 
+-- Parent-safe read path: no direct SELECT on base table (column-level privacy).
+-- Returns only parent-facing fields for published, non-revoked-grant responses.
+create or replace function public.get_parent_published_review_responses(p_grant_id uuid default null)
+returns table(
+  response_id uuid,
+  grant_id uuid,
+  counsellor_wayfinder_id text,
+  parent_facing_text text,
+  published_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    r.id as response_id,
+    r.grant_id,
+    r.counsellor_wayfinder_id,
+    r.parent_facing_text,
+    r.published_at
+  from public.counsellor_review_responses r
+  where r.parent_user_id = auth.uid()
+    and r.status = 'published'
+    and public.parent_can_read_published_review_response(r.grant_id)
+    and (p_grant_id is null or r.grant_id = p_grant_id);
+$$;
+
+revoke all on function public.get_parent_published_review_responses(uuid) from public;
+grant execute on function public.get_parent_published_review_responses(uuid) to authenticated;
+
 do $$
 begin
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public' and tablename = 'counsellor_review_responses'
-      and policyname = 'Counsellors read own review responses'
-  ) then
-    create policy "Counsellors read own review responses"
-      on public.counsellor_review_responses
-      for select
-      to authenticated
-      using (
-        public.is_wayfinder_counsellor()
-        and counsellor_user_id = auth.uid()
-        and exists (
-          select 1 from public.counsellor_review_grants g
-          where g.id = grant_id
-            and g.counsellor_user_id = auth.uid()
-        )
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public' and tablename = 'counsellor_review_responses'
-      and policyname = 'Parents read published review responses'
-  ) then
-    create policy "Parents read published review responses"
-      on public.counsellor_review_responses
-      for select
-      to authenticated
-      using (
-        parent_user_id = auth.uid()
-        and status = 'published'
-        and public.parent_can_read_published_review_response(grant_id)
-      );
-  end if;
-
   if not exists (
     select 1 from pg_policies
     where schemaname = 'public' and tablename = 'counsellor_review_responses'
@@ -300,12 +295,38 @@ begin
 end;
 $$;
 
+-- Privacy/RLS corrections (PR #53 review):
+--   - Parents must not SELECT base table (row-level RLS cannot hide columns).
+--   - Counsellor draft/private rows hidden after grant expiry.
+drop policy if exists "Parents read published review responses" on public.counsellor_review_responses;
+drop policy if exists "Counsellors read own review responses" on public.counsellor_review_responses;
+
+create policy "Counsellors read own review responses"
+  on public.counsellor_review_responses
+  for select
+  to authenticated
+  using (
+    public.is_wayfinder_counsellor()
+    and counsellor_user_id = auth.uid()
+    and exists (
+      select 1 from public.counsellor_review_grants g
+      where g.id = grant_id
+        and g.counsellor_user_id = auth.uid()
+    )
+    and (
+      public.counsellor_review_grant_is_writable(grant_id)
+      or status in ('published', 'revoked')
+    )
+  );
+
 -- ============================================================
 -- Notes for runtime (Phase 2b — not in this file):
---   - Publish via RPC publish_counsellor_review_response
---   - Revoke via RPC revoke_counsellor_review_response
---   - Draft save via REST INSERT/UPDATE on draft rows only
---   - ai_draft_json and counsellor_working_notes are counsellor-only (no parent SELECT policy)
---   - Parent SELECT does not filter on grant.expires_at (published survives expiry)
---   - Parent SELECT blocked when grant.status = 'revoked'
+--   - Counsellor: REST INSERT/UPDATE draft rows; RPC publish/revoke
+--   - Parent: RPC get_parent_published_review_responses only (no base-table SELECT)
+--   - Parent RPC returns: response_id, grant_id, counsellor_wayfinder_id,
+--     parent_facing_text, published_at
+--   - Counsellor-only columns never exposed to parents:
+--     response_sections, ai_draft_json, counsellor_working_notes
+--   - Parent published read survives grant expiry; blocked when grant revoked
+--   - Counsellor draft read/edit requires writable grant; published/revoked readable after expiry
 -- ============================================================
