@@ -450,11 +450,30 @@
   .review-share-notice{font-size:13px;line-height:1.55;padding:10px 12px;border-radius:8px;margin:0 0 12px;background:#E8F0E8;color:#40514b;border:1px solid #D8E2D8;}
   .review-share-notice--legacy{background:#FFF8E7;color:#7A5E42;border-color:#E8D9B5;}
   .review-share-ai-note{font-size:12px;color:#777;margin:-8px 0 14px;line-height:1.5;}
-  .counsellor-grant-group{margin-bottom:16px;border-color:#D8E2D8;}
+  .counsellor-section-title{margin:0 0 8px;font-size:16px;color:#40514b;}
+  .counsellor-section-note{margin:0 0 12px;font-size:13px;line-height:1.5;}
+  .counsellor-longitudinal-section{margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid rgba(94,122,104,.12);}
+  .counsellor-longitudinal-item{border:1px solid #E8D9B5;background:#FFFDF7;border-radius:8px;padding:12px;margin-bottom:10px;}
+  .counsellor-longitudinal-toggle{display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:0;margin:0;font:inherit;font-weight:700;font-size:14px;color:#40514b;cursor:pointer;text-align:left;}
+  .counsellor-longitudinal-toggle-icon{display:inline-block;width:14px;color:var(--sage-deep);font-size:13px;line-height:1;flex:0 0 14px;}
+  .counsellor-longitudinal-body{margin-top:10px;font-size:14px;line-height:1.5;color:#40514b;}
+  .counsellor-longitudinal-body p{margin:0 0 8px;}
+  .counsellor-longitudinal-unavailable{margin:10px 0 0;}
+  .counsellor-review-context-section{display:grid;gap:0;}
+  .counsellor-grant-group{margin-bottom:16px;border-color:#D8E2D8;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;}
   .counsellor-grant-group-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
-  .counsellor-grant-group-head h3{margin:0;font-size:17px;color:#40514b;}
+  .counsellor-grant-toggle{display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:0;margin:0;font:inherit;font-weight:700;font-size:17px;color:#40514b;cursor:pointer;text-align:left;min-width:0;flex:1 1 auto;}
+  .counsellor-grant-toggle-icon{display:inline-block;width:14px;color:var(--sage-deep);font-size:13px;line-height:1;flex:0 0 14px;}
+  .counsellor-grant-toggle-title{min-width:0;word-break:break-word;}
+  .counsellor-grant-collapsed-summary{padding:0 0 4px;}
+  .counsellor-grant-collapsed-note{font-size:12px;line-height:1.5;color:#777;margin:0 0 10px;}
+  .counsellor-grant-summary-line{font-size:13px;line-height:1.55;color:#40514b;padding:6px 0 6px 22px;border-top:1px solid rgba(94,122,104,.08);word-break:break-word;overflow-wrap:anywhere;}
+  .counsellor-grant-summary-line:first-of-type{border-top:0;padding-top:0;}
+  .counsellor-grant-summary-line strong{font-weight:700;color:var(--sage-deep);}
   .counsellor-grant-context-note{font-size:13px;line-height:1.55;color:#5d6c66;margin:0 0 12px;padding:10px 12px;background:#F6F8F5;border-radius:8px;border-left:3px solid var(--sage);}
   .counsellor-grant-context-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px;}
+  .counsellor-grant-child-group{margin-top:14px;padding-top:14px;border-top:1px solid rgba(94,122,104,.12);}
+  .counsellor-grant-child-group:first-of-type{border-top:0;padding-top:0;margin-top:0;}
   .counsellor-grant-context-block{padding:12px 14px;background:#FAFCFA;border:1px solid #E0E8DC;border-radius:8px;}
   .counsellor-grant-context-block h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.35px;color:var(--sage-deep);}
   .counsellor-grant-context-block p{margin:0 0 6px;font-size:13px;line-height:1.5;color:#40514b;}

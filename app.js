@@ -110,6 +110,7 @@ const parseStoredDate=(value)=>{
 const firstStoredDateValue=(...values)=>values.find(v=>parseStoredDate(v))||values.find(Boolean)||null;
 const toIsoTimestampOrNull=(value)=>{const date=parseStoredDate(value);return date?date.toISOString():null;};
 const ageFrom=(dob,at)=>{if(!dob)return null;const b=new Date(dob),r=at?new Date(at):new Date();if(isNaN(b))return null;const totalMonths=Math.floor((r.getFullYear()-b.getFullYear())*12+(r.getMonth()-b.getMonth())-(r.getDate()<b.getDate()?1:0));if(totalMonths<0)return null;const y=Math.floor(totalMonths/12);const m=totalMonths%12;if(y===0)return m===1?'1 month':`${m} months`;if(m===0)return y===1?'1 year':`${y} years`;return y===1?(m===1?'1 year 1 month':`1 year ${m} months`):(m===1?`${y} years 1 month`:`${y} years ${m} months`);};
+const ageCompact=(dob,at)=>{if(!dob)return null;const b=new Date(dob),r=at?new Date(at):new Date();if(isNaN(b))return null;const totalMonths=Math.floor((r.getFullYear()-b.getFullYear())*12+(r.getMonth()-b.getMonth())-(r.getDate()<b.getDate()?1:0));if(totalMonths<0)return null;const y=Math.floor(totalMonths/12);const m=totalMonths%12;if(y===0)return `${m}m`;if(m===0)return `${y}y`;return `${y}y ${m}m`;};
 const fmtAge=(y)=>y===null||y===undefined?'—':y;
 const genId=(p)=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=c[Math.floor(Math.random()*c.length)];return p+'-'+s;};
 const yearsFrom=(dob,at)=>{if(!dob)return null;const b=new Date(dob),r=at?new Date(at):new Date();if(isNaN(b)||isNaN(r))return null;let y=r.getFullYear()-b.getFullYear();const beforeBirthday=r.getMonth()<b.getMonth()||(r.getMonth()===b.getMonth()&&r.getDate()<b.getDate());if(beforeBirthday)y-=1;return y>=0?y:null;};
@@ -3237,48 +3238,117 @@ function buildCounsellorGrantGroups(grants,grantLinks,entries){
 }
 
 function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags}){
+ const [expanded,setExpanded]=useState(false);
  const fmtDate=(value)=>{
   const dt=parseStoredDate(value);
   return dt?dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'}):'-';
  };
- const parentAge=ageFrom(group.parentDob,group.entries[0]?.date);
+ const referenceDate=group.entries[0]?.date;
+ const parentAgeCompact=ageCompact(group.parentDob,referenceDate);
  const grantExpires=group.grant?.expires_at?fmtDate(group.grant.expires_at):'-';
+ const entryMatchesChild=(entry,childId)=>safeChildId(entry.childId||entry.child_id||entry.dyadId||entry.dyad_id)===childId;
+ const parentReportedParts=(gender,ageText,ethnicity,disc)=>{
+  const parts=[];
+  if(gender)parts.push(gender);
+  if(ageText)parts.push(ageText);
+  if(ethnicity)parts.push(ethnicity);
+  if(disc)parts.push('DISC '+disc);
+  return parts.length?parts.join(' · '):'Not saved';
+ };
  return <div className="counsellor-grant-group card">
   <div className="counsellor-grant-group-head">
-   <h3>{reviewMeta.contextProfileTitle||'Wayfinder review context'}</h3>
+   <button type="button" className="counsellor-grant-toggle" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>
+    <span className="counsellor-grant-toggle-icon" aria-hidden="true">{expanded?'v':'>'}</span>
+    <span className="counsellor-grant-toggle-title">{reviewMeta.contextProfileTitle||'Wayfinder review context'}</span>
+   </button>
    <span className="pill">{reviewMeta.grantExpiresLabel||'Review access expires'}: {grantExpires}</span>
   </div>
-  <p className="counsellor-grant-context-note">{reviewMeta.contextProfileNote||'Parent-reported context only — for ALIGN/CAB reflection, not diagnosis or profiling.'}</p>
-  <div className="counsellor-grant-context-grid">
-   <div className="counsellor-grant-context-block">
-    <h4>{reviewMeta.parentContextLabel||'Parent context'}</h4>
-    <p><strong>{reviewMeta.parentWayfinderLabel||'Wayfinder Parent ID'}:</strong> {group.parentId||'Not saved'}</p>
-    <p>{reviewMeta.parentReportedLabel||'Parent-reported'}: {group.parentGender||'Gender not saved'}{parentAge?' · '+parentAge:''}{group.disc?' · DISC '+group.disc:''}{group.ethnicity?' · '+group.ethnicity:''}</p>
+  {!expanded && <div className="counsellor-grant-collapsed-summary">
+   <p className="counsellor-grant-collapsed-note">{reviewMeta.contextProfileNote||'Parent-reported context only — for ALIGN/CAB review, not diagnosis or profiling.'}</p>
+   <div className="counsellor-grant-summary-line"><strong>{reviewMeta.parentSummaryLabel||'Parent'}</strong> {group.parentId||'Not saved'}{parentAgeCompact?' · '+parentAgeCompact:''}</div>
+   {group.children.map(child=>{
+    const childAgeCompact=ageCompact(child.childDob,referenceDate);
+    const entryLabel=child.entryCount===1?(reviewMeta.entryCountSingular||'entry'):(reviewMeta.entryCountPlural||'entries');
+    return <div key={child.childId} className="counsellor-grant-summary-line"><strong>{reviewMeta.childSummaryLabel||'Child'}</strong> {child.childId}{childAgeCompact?' · '+childAgeCompact:''} · {child.entryCount} {entryLabel}</div>;
+   })}
+  </div>}
+  {expanded && <>
+   <p className="counsellor-grant-context-note">{reviewMeta.contextProfileNote||'Parent-reported context only — for ALIGN/CAB review, not diagnosis or profiling.'}</p>
+   <div className="counsellor-grant-context-grid">
+    <div className="counsellor-grant-context-block">
+     <h4>{reviewMeta.parentContextLabel||'Parent context'}</h4>
+     <p><strong>{reviewMeta.parentWayfinderLabel||'Wayfinder Parent ID'}:</strong> {group.parentId||'Not saved'}</p>
+     <p>{reviewMeta.parentReportedLabel||'Parent-reported'}: {parentReportedParts(group.parentGender,ageFrom(group.parentDob,referenceDate),group.ethnicity,group.disc)}</p>
+    </div>
    </div>
    {group.children.map(child=>{
-    const childAge=ageFrom(child.childDob,group.entries[0]?.date);
-    return <div key={child.childId} className="counsellor-grant-context-block">
-     <h4>{reviewMeta.childContextLabel||'Child context'}</h4>
-     <p><strong>{reviewMeta.childWayfinderLabel||'Child ID'}:</strong> {child.childId}</p>
-     <p>{reviewMeta.parentReportedLabel||'Parent-reported'}: {child.childGender||'Gender not saved'}{childAge?' · '+childAge:''}{child.disc?' · DISC '+child.disc:''}{child.ethnicity?' · '+child.ethnicity:''}</p>
-     <p className="sub">{child.entryCount} {child.entryCount===1?'shared entry':'shared entries'}</p>
+    const childAge=ageFrom(child.childDob,referenceDate);
+    const childEntries=group.entries.filter(e=>entryMatchesChild(e,child.childId));
+    return <div key={child.childId} className="counsellor-grant-child-group">
+     <div className="counsellor-grant-context-block">
+      <h4>{reviewMeta.childContextLabel||'Child context'}</h4>
+      <p><strong>{reviewMeta.childWayfinderLabel||'Child ID'}:</strong> {child.childId}</p>
+      <p>{reviewMeta.parentReportedLabel||'Parent-reported'}: {parentReportedParts(child.childGender,childAge,child.ethnicity,child.disc)}</p>
+      <p className="sub">{child.entryCount} {child.entryCount===1?(reviewMeta.entryCountSingular||'shared entry'):(reviewMeta.entryCountPluralShared||'shared entries')}</p>
+     </div>
+     <div className="counsellor-grant-entries">
+      <h4>{reviewMeta.sharedEntriesLabel||'Parent-approved entries'}</h4>
+      {childEntries.map(e=>{
+       const isDecode=isBehaviourDecodeEntry(e);
+       const activityLabel=isDecode?'Decode a Moment · Alignment Reminder':e.activity;
+       const entryChildAge=ageFrom(e.childDob,e.date);
+       return <button type="button" key={e._key} className="counsellor-grant-entry-row" onClick={()=>onOpenEntry(e._key)}>
+        <span className="counsellor-grant-entry-title">{activityLabel}</span>
+        <span className="counsellor-grant-entry-meta">{fmtDate(e.date)}{entryChildAge?' · '+entryChildAge:''}</span>
+        {flags?.[e._key]&&<span className="counsellor-grant-entry-flag">{flags[e._key]}</span>}
+        <span className="counsellor-grant-entry-action">{reviewMeta.openEntryLabel||'Open for ALIGN/CAB review'}</span>
+       </button>;
+      })}
+     </div>
     </div>;
    })}
-  </div>
-  <div className="counsellor-grant-entries">
-   <h4>{reviewMeta.sharedEntriesLabel||'Parent-approved entries'}</h4>
-   {group.entries.map(e=>{
-    const isDecode=isBehaviourDecodeEntry(e);
-    const activityLabel=isDecode?'Decode a Moment · Alignment Reminder':e.activity;
-    const childAge=ageFrom(e.childDob,e.date);
-    return <button type="button" key={e._key} className="counsellor-grant-entry-row" onClick={()=>onOpenEntry(e._key)}>
-     <span className="counsellor-grant-entry-title">{activityLabel}</span>
-     <span className="counsellor-grant-entry-meta">{fmtDate(e.date)} · Child ID: {e.childId||'Not saved'}{childAge?' · '+childAge:''}</span>
-     {flags?.[e._key]&&<span className="counsellor-grant-entry-flag">{flags[e._key]}</span>}
-     <span className="counsellor-grant-entry-action">{reviewMeta.openEntryLabel||'Open for ALIGN/CAB review'}</span>
-    </button>;
-   })}
-  </div>
+  </>}
+ </div>;
+}
+
+function counsellorLongitudinalParentIds(entries,summaries){
+ const counts=(entries||[]).reduce((acc,e)=>{
+  const pid=safeParentId(e.parentId||e.parent_id);
+  if(!pid)return acc;
+  acc[pid]=(acc[pid]||0)+1;
+  return acc;
+ },{});
+ const eligible=Object.keys(counts).filter(pid=>counts[pid]>=2);
+ const withSummary=Object.keys(summaries||{});
+ return [...new Set([...eligible,...withSummary])];
+}
+
+function CounsellorLongitudinalSection({entries,summaries,openState,onToggle,reviewMeta}){
+ const parentIds=counsellorLongitudinalParentIds(entries,summaries);
+ if(!parentIds.length)return null;
+ return <div className="counsellor-longitudinal-section">
+  <h3 className="counsellor-section-title">{reviewMeta.longitudinalTitle||'Longitudinal AI Reflections'}</h3>
+  <p className="counsellor-section-note sub">{reviewMeta.longitudinalNote||'Assistive reflection across parent-granted entries — for ALIGN/CAB review support, not diagnosis or profiling.'}</p>
+  {parentIds.map(pid=>{
+   const summary=summaries?.[pid];
+   const isOpen=!!openState[pid];
+   return <div key={pid} className="counsellor-longitudinal-item">
+    <button type="button" className="counsellor-longitudinal-toggle" aria-expanded={isOpen} onClick={()=>onToggle(pid)}>
+     <span className="counsellor-longitudinal-toggle-icon" aria-hidden="true">{isOpen?'v':'>'}</span>
+     <span>Parent {pid}</span>
+    </button>
+    {isOpen && summary && <div className="counsellor-longitudinal-body">
+     <p><strong>Recurring Patterns:</strong> {summary.recurringPatterns}</p>
+     <p><strong>Coping Evolution:</strong> {summary.copingEvolution}</p>
+     <p><strong>DISC Pattern:</strong> {summary.discPatternAcrossEntries}</p>
+     <p><strong>Blind Spots:</strong> {summary.blindSpots}</p>
+     <p><strong>Protective Factors:</strong> {summary.protectiveFactors}</p>
+     <p><strong>Developmental Considerations:</strong> {summary.developmentalConsiderations}</p>
+     <p><strong>Counsellor Focus:</strong> {summary.counsellorFocus}</p>
+    </div>}
+    {isOpen && !summary && <p className="sub counsellor-longitudinal-unavailable">{reviewMeta.longitudinalUnavailable||'Assistive reflection is not available for this parent right now.'}</p>}
+   </div>;
+  })}
  </div>;
 }
 
@@ -3414,28 +3484,12 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
    {!reviewGrantsUnavailable && !usingLegacyJournalAccess && <div className="review-share-notice">{reviewMeta.grantScopedNotice}</div>}
    {!usingLegacyJournalAccess && <p className="review-share-ai-note">{reviewMeta.aiDisabledNotice}</p>}
 
-   {Object.entries(longitudinalSummaries).length>0 && <div style={{marginBottom:18}}>
-    <h3 style={{marginBottom:10}}>Longitudinal AI Reflections</h3>
-    {Object.entries(longitudinalSummaries).map(([pid,summary])=>(
-     <div key={pid} style={{border:'1px solid #E8D9B5',background:'#FFFDF7',borderRadius:8,padding:12,marginBottom:10}}>
-      <button type="button" onClick={()=>setLongitudinalOpen(prev=>({...prev,[pid]:!prev[pid]}))} style={{background:'transparent',border:0,padding:0,fontWeight:700,cursor:'pointer'}}>
-       {longitudinalOpen[pid]?'v':'>'} Parent {pid}
-      </button>
-      {longitudinalOpen[pid] && <div style={{marginTop:10,fontSize:14,lineHeight:1.5}}>
-       <p><strong>Recurring Patterns:</strong> {summary.recurringPatterns}</p>
-       <p><strong>Coping Evolution:</strong> {summary.copingEvolution}</p>
-       <p><strong>DISC Pattern:</strong> {summary.discPatternAcrossEntries}</p>
-       <p><strong>Blind Spots:</strong> {summary.blindSpots}</p>
-       <p><strong>Protective Factors:</strong> {summary.protectiveFactors}</p>
-       <p><strong>Developmental Considerations:</strong> {summary.developmentalConsiderations}</p>
-       <p><strong>Counsellor Focus:</strong> {summary.counsellorFocus}</p>
-      </div>}
-     </div>
-    ))}
-   </div>}
-
-    {loadError && !loadingEntries ? <div className="empty">{loadError}</div> : loadingEntries ? <div className="empty">Loading entries...</div> : entries.length===0 ? <div className="empty">{reviewGrantsUnavailable?(reviewMeta.setupUnavailable||'No reflections available.'):(reviewMeta.emptyList||'No parent has shared reflections with you yet.')}</div> :
-     !usingLegacyJournalAccess && grantGroups.length>0 ? grantGroups.map(group=><CounsellorReviewGrantGroup key={group.grant.id} group={group} reviewMeta={reviewMeta} flags={flags} onOpenEntry={setOpenId}/>) :
+   {loadError && !loadingEntries ? <div className="empty">{loadError}</div> : loadingEntries ? <div className="empty">Loading entries...</div> : entries.length===0 ? <div className="empty">{reviewGrantsUnavailable?(reviewMeta.setupUnavailable||'No reflections available.'):(reviewMeta.emptyList||'No parent has shared reflections with you yet.')}</div> :
+    <>
+     {!usingLegacyJournalAccess && <CounsellorLongitudinalSection entries={entries} summaries={longitudinalSummaries} openState={longitudinalOpen} onToggle={pid=>setLongitudinalOpen(prev=>({...prev,[pid]:!prev[pid]}))} reviewMeta={reviewMeta}/>}
+     {!usingLegacyJournalAccess && grantGroups.length>0 ? <div className="counsellor-review-context-section">
+      {grantGroups.map(group=><CounsellorReviewGrantGroup key={group.grant.id} group={group} reviewMeta={reviewMeta} flags={flags} onOpenEntry={setOpenId}/>)}
+     </div> :
      entries.map(e=>{
       const childAge=ageFrom(e.childDob,e.date);
       const parentAge=ageFrom(e.parentDob,e.date);
@@ -3455,7 +3509,8 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
       {flags[e._key] && <div style={{fontSize:12,color:'#8B6914',background:'#FFF8E7',borderRadius:4,padding:'3px 8px',marginTop:6,display:'inline-block'}}>{flags[e._key]}</div>}
       <div className="er-sub" style={{marginTop:2,fontSize:12,color:'#999'}}>{phaseLabel} &middot; {(e.autoWords||[]).length} trait words &middot; {Object.values(e.markers||{}).filter(m=>m&&m.claimed).length}/6 markers</div>
      </div>;
-    })
+    })}
+    </>
    }
   </div>
  </div>;

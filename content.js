@@ -166,7 +166,12 @@ const COUNSELLOR_REVIEW_SHARING = {
   aiDisabledNotice: "Assistive AI runs only on parent-granted entries. It supports reflection structure — it does not diagnose, score, or decide for you.",
   grantScopedNotice: "You are viewing only entries a parent selected and consented to share. Use ALIGN/CAB tools to explore — not to label the child or parent.",
   contextProfileTitle: "Wayfinder review context",
-  contextProfileNote: "Parent-reported context only — for ALIGN/CAB reflection, not diagnosis or profiling.",
+  contextProfileNote: "Parent-reported context only — for ALIGN/CAB review, not diagnosis or profiling.",
+  parentSummaryLabel: "Parent",
+  childSummaryLabel: "Child",
+  entryCountSingular: "entry",
+  entryCountPlural: "entries",
+  entryCountPluralShared: "shared entries",
   parentContextLabel: "Parent context",
   childContextLabel: "Child context",
   sharedEntriesLabel: "Parent-approved entries",
@@ -174,7 +179,10 @@ const COUNSELLOR_REVIEW_SHARING = {
   parentWayfinderLabel: "Wayfinder Parent ID",
   childWayfinderLabel: "Child ID",
   parentReportedLabel: "Parent-reported",
-  openEntryLabel: "Open for ALIGN/CAB review"
+  openEntryLabel: "Open for ALIGN/CAB review",
+  longitudinalTitle: "Longitudinal AI Reflections",
+  longitudinalNote: "Assistive reflection across parent-granted entries — for ALIGN/CAB review support, not diagnosis or profiling.",
+  longitudinalUnavailable: "Assistive reflection is not available for this parent right now. Try refreshing after more shared entries are granted."
 };
 
 const COUNSELLOR_EVENTS_HOSTING = {
