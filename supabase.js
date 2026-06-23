@@ -1327,7 +1327,7 @@ const DB = {
     const grantsResult = await fetchReviewGrantsSafe({
       table: 'counsellor_review_grants',
       query: {
-        select: 'id,parent_id,counsellor_wayfinder_id,expires_at,created_at',
+        select: 'id,parent_user_id,parent_id,counsellor_wayfinder_id,expires_at,created_at',
         counsellor_user_id: `eq.${userId}`,
         status: 'eq.active',
         expires_at: `gt.${new Date().toISOString()}`,

@@ -3228,6 +3228,7 @@ function buildCounsellorGrantGroups(grants,grantLinks,entries){
    grant,
    entries:grantEntries,
    parentId:safeParentId(grant.parent_id||sample.parentId),
+   parentUserId:grant.parent_user_id||null,
    parentGender:sample.parentGender||sample.parent_gender||'',
    parentDob:sample.parentDob||sample.parent_dob||'',
    ethnicity:sample.ethnicity||'',
@@ -3237,7 +3238,256 @@ function buildCounsellorGrantGroups(grants,grantLinks,entries){
  }).filter(g=>g.entries.length>0);
 }
 
-function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags}){
+const REVIEW_RESPONSE_SECTION_KEYS=[
+ {key:'noticed',label:'What I noticed',placeholder:'Parent-approved moments you observed — use cautious, non-diagnostic language.'},
+ {key:'possibleChildNeed',label:'Possible child need',placeholder:'A possible need that may have been emerging in the shared reflections.'},
+ {key:'parentCabPattern',label:'Parent CAB pattern',placeholder:'What may have been happening in the parent’s thinking, feeling, and doing.'},
+ {key:'alignmentGap',label:'Possible alignment gap',placeholder:'Where parent CAB may or may not have met the emerging need.'},
+ {key:'repairAlignmentStrength',label:'What supports repair/alignment',placeholder:'What the parent may already be practising that supports repair or alignment.'},
+ {key:'growthEdge',label:'Parent growth edge',placeholder:'One growth edge that might support emotional regulation — not a score or label.'},
+ {key:'reflectionQuestion',label:'One reflection question',placeholder:'A curious question the parent might sit with.'},
+ {key:'nextAction',label:'One next action / repair step',placeholder:'One specific, doable next step or repair idea.'}
+];
+
+const emptyReviewResponseSections=()=>Object.fromEntries(REVIEW_RESPONSE_SECTION_KEYS.map(s=>[s.key,'']));
+
+const reviewSectionsFromRecord=(record)=>{
+ const source=record?.responseSections||record?.response_sections||{};
+ return {
+  noticed:source.noticed||source.approved_observations||'',
+  possibleChildNeed:source.possibleChildNeed||source.possible_child_need||'',
+  parentCabPattern:source.parentCabPattern||source.parent_cab_pattern||source.parent_cab_evidence||'',
+  alignmentGap:source.alignmentGap||source.alignment_gap||source.alignment_check||'',
+  repairAlignmentStrength:source.repairAlignmentStrength||source.existing_capacity||source.repair_alignment_strength||'',
+  growthEdge:source.growthEdge||source.growth_edge||'',
+  reflectionQuestion:source.reflectionQuestion||source.reflection_question||'',
+  nextAction:source.nextAction||source.next_action||source.repair_or_next_action||''
+ };
+};
+
+const reviewSectionsToPayload=(sections)=>({
+ noticed:sections.noticed||'',
+ possible_child_need:sections.possibleChildNeed||'',
+ parent_cab_pattern:sections.parentCabPattern||'',
+ alignment_gap:sections.alignmentGap||'',
+ repair_alignment_strength:sections.repairAlignmentStrength||'',
+ growth_edge:sections.growthEdge||'',
+ reflection_question:sections.reflectionQuestion||'',
+ next_action:sections.nextAction||''
+});
+
+const buildParentFacingPreview=(sections)=>{
+ const s=sections||{};
+ const lines=[];
+ lines.push('Counsellor reflection for your ALIGN/CAB review');
+ lines.push('');
+ lines.push('Parent-reported reflections you chose to share · for reflection, not diagnosis');
+ lines.push('');
+ if(s.noticed?.trim()) lines.push('What stood out\nThis may suggest '+s.noticed.trim());
+ if(s.possibleChildNeed?.trim()) lines.push('\nA possible need that may have been emerging\nA possible need could be '+s.possibleChildNeed.trim());
+ if(s.parentCabPattern?.trim()) lines.push('\nYour CAB in that moment\nThis may suggest a parent CAB pattern of '+s.parentCabPattern.trim());
+ if(s.alignmentGap?.trim()) lines.push('\nAlignment check\nThis may suggest a possible alignment gap: '+s.alignmentGap.trim());
+ if(s.repairAlignmentStrength?.trim()) lines.push('\nWhat you may already be practising\nYou may already be practising '+s.repairAlignmentStrength.trim());
+ if(s.growthEdge?.trim()) lines.push('\nA possible growth edge\nOne growth edge might be '+s.growthEdge.trim());
+ if(s.reflectionQuestion?.trim()) lines.push('\nOne reflection question\n'+s.reflectionQuestion.trim());
+ if(s.nextAction?.trim()) lines.push('\nOne next step or repair idea\n'+s.nextAction.trim());
+ lines.push('');
+ lines.push('This reflection supports your ALIGN/CAB pathway. It is not a diagnosis of you or your child.');
+ return lines.join('\n').trim();
+};
+
+function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta}){
+ const grantId=group?.grant?.id;
+ const [sections,setSections]=useState(emptyReviewResponseSections());
+ const [responseRecord,setResponseRecord]=useState(null);
+ const [uiState,setUiState]=useState('loading');
+ const [error,setError]=useState('');
+ const [previewOpen,setPreviewOpen]=useState(false);
+ const parentFacingPreview=useMemo(()=>buildParentFacingPreview(sections),[sections]);
+ const status=responseRecord?.status||'none';
+ const isDraftEditable=status==='draft'||status==='none';
+ const canPublish=isDraftEditable&&!!parentFacingPreview.trim();
+ const canRevoke=status==='published';
+
+ const loadResponse=async()=>{
+  if(!grantId||!user?.id||!authSession?.access_token){
+   setUiState('error');
+   setError('Review response could not be loaded.');
+   return;
+  }
+  setUiState('loading');
+  setError('');
+  try{
+   const result=await DB.getCounsellorReviewResponseForGrant(user.id,grantId,authSession);
+   if(result.unavailable){
+    setUiState('unavailable');
+    setResponseRecord(null);
+    return;
+   }
+   if(result.response){
+    setResponseRecord(result.response);
+    setSections(reviewSectionsFromRecord(result.response));
+    setUiState(result.response.status==='published'?'published':result.response.status==='revoked'?'revoked':'draft');
+   }else{
+    setResponseRecord(null);
+    setSections(emptyReviewResponseSections());
+    setUiState('none');
+   }
+  }catch(err){
+   setUiState('error');
+   setError('Review response could not be loaded.');
+   AuthDebug.log('[counsellor] review response load failed:', { message: err?.message || String(err) });
+  }
+ };
+
+ useEffect(()=>{loadResponse();},[user?.id,grantId,authSession?.access_token]);
+
+ const grantMeta=()=>({
+  grantId,
+  parentUserId:responseRecord?.parentUserId||group?.parentUserId||group?.grant?.parent_user_id||null,
+  parentId:group?.parentId||group?.grant?.parent_id,
+  counsellorWayfinderId:group?.grant?.counsellor_wayfinder_id||responseRecord?.counsellorWayfinderId
+ });
+
+ const handleSaveDraft=async()=>{
+  if(!isDraftEditable)return;
+  const meta=grantMeta();
+  if(!meta.grantId||!meta.parentUserId||!meta.parentId||!meta.counsellorWayfinderId){
+   setError('Grant context is incomplete. Save is not available right now.');
+   return;
+  }
+  setUiState('saving');
+  setError('');
+  try{
+   const result=await DB.saveCounsellorReviewResponseDraft(user.id,meta,{
+    responseSections:reviewSectionsToPayload(sections),
+    parentFacingText:parentFacingPreview
+   },authSession);
+   if(result.unavailable){
+    setUiState('unavailable');
+    return;
+   }
+   if(!result.ok||!result.response){
+    setUiState(status==='none'?'none':'draft');
+    setError(result.errorStage==='notDraft'?'This response is no longer a draft.':'Draft could not be saved. Please try again.');
+    return;
+   }
+   setResponseRecord(result.response);
+   setSections(reviewSectionsFromRecord(result.response));
+   setUiState('draft');
+  }catch(err){
+   setUiState(status==='none'?'none':'draft');
+   setError('Draft could not be saved. Please try again.');
+   AuthDebug.log('[counsellor] review response save failed:', { message: err?.message || String(err) });
+  }
+ };
+
+ const handlePublish=async()=>{
+  if(!canPublish)return;
+  setUiState('publishing');
+  setError('');
+  try{
+   const saveResult=await DB.saveCounsellorReviewResponseDraft(user.id,grantMeta(),{
+    responseSections:reviewSectionsToPayload(sections),
+    parentFacingText:parentFacingPreview
+   },authSession);
+   if(saveResult.unavailable){
+    setUiState('unavailable');
+    return;
+   }
+   if(!saveResult.ok||!saveResult.response?.id){
+    setUiState('draft');
+    setError('Response could not be prepared for publishing.');
+    return;
+   }
+   const publishResult=await DB.publishCounsellorReviewResponse(user.id,saveResult.response.id,authSession);
+   if(publishResult.unavailable){
+    setUiState('unavailable');
+    return;
+   }
+   if(!publishResult.ok){
+    setUiState('draft');
+    setError('Response could not be published. The grant may no longer be active.');
+    return;
+   }
+   await loadResponse();
+  }catch(err){
+   setUiState('draft');
+   setError('Response could not be published. Please try again.');
+   AuthDebug.log('[counsellor] review response publish failed:', { message: err?.message || String(err) });
+  }
+ };
+
+ const handleRevoke=async()=>{
+  if(!responseRecord?.id||!canRevoke)return;
+  setUiState('revoking');
+  setError('');
+  try{
+   const result=await DB.revokeCounsellorReviewResponse(user.id,responseRecord.id,authSession);
+   if(result.unavailable){
+    setUiState('unavailable');
+    return;
+   }
+   if(!result.ok){
+    setUiState('published');
+    setError('Published response could not be revoked.');
+    return;
+   }
+   await loadResponse();
+  }catch(err){
+   setUiState('published');
+   setError('Published response could not be revoked.');
+   AuthDebug.log('[counsellor] review response revoke failed:', { message: err?.message || String(err) });
+  }
+ };
+
+ if(uiState==='unavailable') return <div className="counsellor-response-composer counsellor-response-composer--unavailable">
+  <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>
+  <p className="sub">{reviewMeta?.responseComposerUnavailable||'Counsellor response storage is not available yet. Existing grant review remains available.'}</p>
+ </div>;
+
+ if(uiState==='loading') return <div className="counsellor-response-composer">
+  <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>
+  <p className="sub">Loading response…</p>
+ </div>;
+
+ return <div className="counsellor-response-composer">
+  <div className="counsellor-response-composer-head">
+   <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>
+   <span className={'counsellor-response-status counsellor-response-status--'+((uiState==='saving'||uiState==='publishing'||uiState==='revoking')?status:uiState)}>
+    {uiState==='saving'?'Saving draft…':uiState==='publishing'?'Publishing…':uiState==='revoking'?'Revoking…':
+     status==='published'?'Published':status==='revoked'?'Revoked':status==='draft'?'Draft saved':'No response yet'}
+   </span>
+  </div>
+  <p className="counsellor-response-note sub">{reviewMeta?.responseComposerNote||'Draft a bounded, non-diagnostic reflection for the parent. You remain responsible for what is shared.'}</p>
+  {error&&<p className="counsellor-response-error">{error}</p>}
+  <div className="counsellor-response-fields">
+   {REVIEW_RESPONSE_SECTION_KEYS.map(field=><label key={field.key} className="counsellor-response-field">
+    <span className="counsellor-response-field-label">{field.label}</span>
+    <textarea
+     rows={3}
+     value={sections[field.key]||''}
+     placeholder={field.placeholder}
+     disabled={!isDraftEditable||uiState==='saving'||uiState==='publishing'||uiState==='revoking'}
+     onChange={ev=>setSections(prev=>({...prev,[field.key]:ev.target.value}))}
+    />
+   </label>)}
+  </div>
+  <div className="counsellor-response-preview-wrap">
+   <button type="button" className="counsellor-response-preview-toggle" aria-expanded={previewOpen} onClick={()=>setPreviewOpen(v=>!v)}>
+    {previewOpen?'Hide':'Show'} parent-facing preview
+   </button>
+   {previewOpen&&<pre className="counsellor-response-preview">{parentFacingPreview||'Complete the fields above to generate a cautious parent-facing preview.'}</pre>}
+  </div>
+  <div className="counsellor-response-actions">
+   <button type="button" className="btn btn-ghost" disabled={!isDraftEditable||uiState==='saving'||uiState==='publishing'||uiState==='revoking'} onClick={handleSaveDraft}>Save draft</button>
+   <button type="button" className="btn btn-primary" disabled={!canPublish||uiState==='saving'||uiState==='publishing'||uiState==='revoking'} onClick={handlePublish}>Publish response</button>
+   <button type="button" className="btn btn-ghost" disabled={!canRevoke||uiState==='revoking'||uiState==='publishing'} onClick={handleRevoke}>Revoke response</button>
+  </div>
+ </div>;
+}
+
+function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags,user,authSession}){
  const [expanded,setExpanded]=useState(false);
  const fmtDate=(value)=>{
   const dt=parseStoredDate(value);
@@ -3307,6 +3557,7 @@ function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags}){
      </div>
     </div>;
    })}
+   <CounsellorReviewResponseComposer user={user} authSession={authSession} group={group} reviewMeta={reviewMeta}/>
   </>}
  </div>;
 }
@@ -3488,7 +3739,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
     <>
      {!usingLegacyJournalAccess && <CounsellorLongitudinalSection entries={entries} summaries={longitudinalSummaries} openState={longitudinalOpen} onToggle={pid=>setLongitudinalOpen(prev=>({...prev,[pid]:!prev[pid]}))} reviewMeta={reviewMeta}/>}
      {!usingLegacyJournalAccess && grantGroups.length>0 ? <div className="counsellor-review-context-section">
-      {grantGroups.map(group=><CounsellorReviewGrantGroup key={group.grant.id} group={group} reviewMeta={reviewMeta} flags={flags} onOpenEntry={setOpenId}/>)}
+      {grantGroups.map(group=><CounsellorReviewGrantGroup key={group.grant.id} group={group} reviewMeta={reviewMeta} flags={flags} onOpenEntry={setOpenId} user={user} authSession={authSession}/>)}
      </div> :
      entries.map(e=>{
       const childAge=ageFrom(e.childDob,e.date);
