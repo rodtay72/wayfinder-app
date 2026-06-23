@@ -2764,8 +2764,9 @@ if(stage==='trail') return <JournalTrail user={user} parentId={parentId} dyads={
  return <ClientJournal parentId={parentId} dyad={dyad} onDone={(entry)=>{setLastSavedEntryId(entry?.id||null);setStage('done');}} back={()=>setStage('dashboard')} user={user} onSignOut={onSignOut}/>;
 }
 
-function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,entryDateValue,fmt,focusEntryId,scrollIntoView,onScrollHandled}){
+function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,entryDateValue,fmt,focusEntryId,scrollIntoView,onScrollHandled,entryLocks={},feedbackMeta:feedbackMetaProp}){
  const meta=typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING:{};
+ const feedbackMeta=feedbackMetaProp||parentCounsellorFeedbackMeta();
  const panelRef=useRef(null);
  const [highlight,setHighlight]=useState(false);
  const [unavailable,setUnavailable]=useState(false);
@@ -2783,7 +2784,11 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
  const [revoking,setRevoking]=useState(null);
  const shareableEntries=entries.filter(e=>e.id!==undefined&&e.id!==null&&e.id!=='');
  const entryIdMatches=(a,b)=>String(a)===String(b);
- const toggleId=(id)=>setSelectedIds(prev=>prev.some(x=>entryIdMatches(x,id))?prev.filter(x=>!entryIdMatches(x,id)):[...prev,id]);
+ const isEntryLocked=(id)=>!!entryLocks[String(id)]?.isLocked;
+ const toggleId=(id)=>{
+  if(isEntryLocked(id)) return;
+  setSelectedIds(prev=>prev.some(x=>entryIdMatches(x,id))?prev.filter(x=>!entryIdMatches(x,id)):[...prev,id]);
+ };
  const previewSnippet=(text,max=140)=>{
   const clean=String(text||'').trim();
   if(!clean) return '';
@@ -2808,7 +2813,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
  };
  useEffect(()=>{
   if(!focusEntryId&&!scrollIntoView) return;
-  if(focusEntryId&&shareableEntries.some(e=>entryIdMatches(e.id,focusEntryId))){
+  if(focusEntryId&&shareableEntries.some(e=>entryIdMatches(e.id,focusEntryId)&&!isEntryLocked(e.id))){
    setSelectedIds(prev=>prev.some(id=>entryIdMatches(id,focusEntryId))?prev:[...prev,focusEntryId]);
   }
   if(scrollIntoView&&panelRef.current){
@@ -2818,7 +2823,14 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
    onScrollHandled?.();
    return ()=>clearTimeout(timer);
   }
- },[focusEntryId,scrollIntoView,entries.length]);
+ },[focusEntryId,scrollIntoView,entries.length,entryLocks]);
+
+ useEffect(()=>{
+  setSelectedIds(prev=>{
+   const next=prev.filter(id=>!isEntryLocked(id));
+   return next.length===prev.length?prev:next;
+  });
+ },[entryLocks]);
  const loadGrants=async()=>{
   setLoadingGrants(true);
   const r=await DB.getParentReviewGrants(user.id,authSession);
@@ -2849,6 +2861,8 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
   if(!counsellors.length){setError(meta.noCounsellorsAvailable);return;}
   if(!consent){setError(meta.consentRequired||'Please confirm consent before sharing.');return;}
   if(!selectedIds.length){setError(meta.noEntriesSelected||'Select at least one entry to share.');return;}
+  const grantEntryIds=selectedIds.filter(id=>!isEntryLocked(id));
+  if(!grantEntryIds.length){setError(meta.noEntriesSelected||'Select at least one entry to share.');return;}
   const wid=String(counsellorId||'').trim();
   if(!wid){setError(meta.counsellorRequired||'Please choose a counsellor before sharing.');return;}
   setSubmitting(true);
@@ -2867,7 +2881,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
     consent_text_snapshot:meta.consentBody||'',
     expires_at:new Date(Date.now()+expiryDays*24*60*60*1000).toISOString()
    };
-   const result=await DB.createReviewGrant(user.id,parentId,payload,selectedIds,authSession);
+   const result=await DB.createReviewGrant(user.id,parentId,payload,grantEntryIds,authSession);
    if(result.unavailable){setError(meta.setupUnavailable);return;}
    if(!result.ok){
     AuthDebug.log('[review] grant failed:', { errorStage: result.errorStage || 'unknown', unavailable: !!result.unavailable });
@@ -2905,13 +2919,15 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
     <div className="review-share-entry-list">
      {shareableEntries.map(e=>{
       const id=e.id;
-      const checked=selectedIds.some(x=>entryIdMatches(x,id));
+      const locked=isEntryLocked(id);
+      const checked=!locked&&selectedIds.some(x=>entryIdMatches(x,id));
       const isDecode=isBehaviourDecodeEntry(e);
-      return <label key={id} className={'review-share-entry'+(checked?' is-selected':'')}>
-       <input type="checkbox" checked={checked} onChange={()=>toggleId(id)} aria-label={'Share '+entryTitle(e)+' for counsellor review'}/>
+      return <label key={id} className={'review-share-entry'+(checked?' is-selected':'')+(locked?' is-locked':'')}>
+       <input type="checkbox" checked={checked} disabled={locked} onChange={()=>toggleId(id)} aria-label={'Share '+entryTitle(e)+' for counsellor review'}/>
        <span className="review-share-entry-text">
         <span className="review-share-entry-title">{entryTitle(e)}</span>
         <span className="review-share-entry-meta">{fmt(entryDateValue(e))}{isDecode?' · Decode a Moment':' · Activity journal'}</span>
+        {locked ? <span className="parent-feedback-lock-note review-share-lock-note">{feedbackMeta.entryLockNotice||feedbackMeta.entryLockedShareNote}</span> : null}
        </span>
       </label>;
      })}
@@ -3091,7 +3107,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
 
  if(shareMode) return <div className="wrap review-share-mode-wrap">
   <Bar title={reviewMeta.title||'Share for counsellor review'} back={exitShareMode} onSignOut={onSignOut}/>
-  <ParentReviewSharePanel user={user} parentId={parentId} entries={entries} authSession={authSession} entryTitle={entryTitle} entryDateValue={entryDateValue} fmt={fmt} focusEntryId={shareFocusEntryId} scrollIntoView={shareScroll} onScrollHandled={()=>setShareScroll(false)}/>
+  <ParentReviewSharePanel user={user} parentId={parentId} entries={entries} authSession={authSession} entryTitle={entryTitle} entryDateValue={entryDateValue} fmt={fmt} focusEntryId={shareFocusEntryId} scrollIntoView={shareScroll} onScrollHandled={()=>setShareScroll(false)} entryLocks={entryLocks} feedbackMeta={feedbackMeta}/>
   <button type="button" className="btn btn-ghost review-share-exit" onClick={exitShareMode}>{reviewMeta.browseTrailLink||'View full journal trail'}</button>
  </div>;
 
