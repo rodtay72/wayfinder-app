@@ -157,6 +157,34 @@ const PARENT_REVIEW_SHARING = {
   shareModeIntro: "Choose entries, preview what will be shared, select your counsellor, and confirm consent."
 };
 
+const PARENT_COUNSELLOR_FEEDBACK = {
+  notificationTitle: "Counsellor feedback to review",
+  notificationSubtitle: "Your counsellor has shared a contextual reflection on entries you chose to share. This is for your private parent-development use.",
+  notificationBadgeSingular: "1 unread reflection",
+  notificationBadgePlural: " unread reflections",
+  openFeedbackButton: "Read counsellor feedback",
+  readerTitle: "Counsellor feedback",
+  readerIntro: "This reflection relates only to the Wayfinder entries you chose to share. It is not a diagnosis of you or your child.",
+  counsellorLabelPrefix: "Counsellor",
+  publishedLabel: "Published",
+  markReadButton: "Mark as read",
+  markReadHelper: "Mark as read only when you have reviewed this feedback. This preserves the shared context and clears the dashboard notice.",
+  markReadSaving: "Marking as read…",
+  markReadDone: "Marked as read",
+  reflectionSectionTitle: "Reflections linked to your shared entries",
+  reflectionLabel: "My reflection after reading this feedback",
+  reflectionPlaceholder: "Your private notes — only you can see this unless a future share-back feature is added.",
+  reflectionSaveButton: "Save my reflection",
+  reflectionSaving: "Saving…",
+  reflectionSaved: "Saved",
+  confidentialityNotice: "This response is provided only in relation to the specific Wayfinder reflections and activities you chose to share. It is a contextual parent-reflection response, not a diagnosis, clinical report, legal opinion, expert assessment, admission, or general statement about you or your child. It should not be taken out of context, shared publicly, or treated as a standalone record beyond the specific shared Wayfinder activity. It is intended for your private reflection and parent-development use. You are responsible for keeping it confidential. It is not created for public use, legal proceedings, evidence, or admissions, subject always to applicable law or lawful orders.",
+  unavailable: "Counsellor feedback is not available yet. Your journal and shared reflections remain unchanged.",
+  detailUnavailable: "This counsellor feedback could not be loaded right now.",
+  entryLockNotice: "This reflection has been locked because counsellor feedback has been published or read. This preserves the original context of the shared review.",
+  entryLockedShareNote: "This entry is locked for review integrity and cannot be shared again.",
+  sharedEntryFallbackLabel: "Shared reflection"
+};
+
 const COUNSELLOR_REVIEW_SHARING = {
   title: "Parent shared reflections",
   subtitle: "Reflections a parent has chosen to share with you for time-limited ALIGN/CAB review. You may not diagnose the child, score the parent, or label behaviour.",
@@ -546,6 +574,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getActivityPracticeById,
     ACTIVITY_EVENTS_PAGE,
     PARENT_REVIEW_SHARING,
+    PARENT_COUNSELLOR_FEEDBACK,
     COUNSELLOR_REVIEW_SHARING,
     COUNSELLOR_EVENTS_HOSTING,
     HOSTED_ACTIVITY_EVENTS,
