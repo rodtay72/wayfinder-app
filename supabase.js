@@ -609,6 +609,8 @@ const normalizeParentPublishedReviewResponseRow = (row) => {
   return {
     responseId: row.response_id || row.responseId || row.id || null,
     grantId: row.grant_id || row.grantId || null,
+    grantEntryId: row.grant_entry_id || row.grantEntryId || null,
+    journalEntryId: row.journal_entry_id || row.journalEntryId || null,
     counsellorWayfinderId: row.counsellor_wayfinder_id || row.counsellorWayfinderId || '',
     parentFacingText: row.parent_facing_text || row.parentFacingText || '',
     publishedAt: row.published_at || row.publishedAt || null
