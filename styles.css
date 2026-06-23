@@ -536,6 +536,8 @@
   .parent-feedback-reflection-field textarea{width:100%;max-width:100%;box-sizing:border-box;min-height:96px;resize:vertical;line-height:1.5;}
   .parent-feedback-reflection-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;}
   .parent-feedback-reflection-status{font-size:13px;color:var(--sage-deep);font-weight:650;}
+  .parent-feedback-reflection-status--error{color:#8A1F1F;}
+  .parent-feedback-linked-entry{margin:0 0 14px;}
   .parent-feedback-unavailable,.parent-feedback-error{color:#7A5E42;font-size:14px;line-height:1.55;}
   .parent-feedback-lock-note{margin:0;padding:10px 12px;background:#FFF8E7;border:1px solid #E8D9B5;border-radius:8px;font-size:13px;line-height:1.5;color:#5d4a32;}
   .trail-entry.is-locked .trail-entry-toggle{border-color:#E8D9B5;}
