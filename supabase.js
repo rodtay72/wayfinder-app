@@ -377,6 +377,133 @@ const isReviewResponsesUnavailable = (status, responseText) => {
   return false;
 };
 
+const isParentFeedbackUnavailable = (status, responseText) => {
+  if (isReviewResponsesUnavailable(status, responseText)) return true;
+  const text = String(responseText || '').toLowerCase();
+  const rpcOrTableMissing = (name) => text.includes(name) && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  );
+  if (rpcOrTableMissing('parent_counsellor_feedback_reads')) return true;
+  if (rpcOrTableMissing('parent_counsellor_feedback_reflections')) return true;
+  if (rpcOrTableMissing('parent_counsellor_grant_entry_locks')) return true;
+  if (rpcOrTableMissing('parent_owns_published_feedback_response')) return true;
+  if (rpcOrTableMissing('get_parent_unread_counsellor_feedback_count')) return true;
+  if (rpcOrTableMissing('get_parent_unread_counsellor_feedback_summary')) return true;
+  if (rpcOrTableMissing('get_parent_counsellor_feedback_detail')) return true;
+  if (rpcOrTableMissing('mark_parent_counsellor_feedback_read')) return true;
+  if (rpcOrTableMissing('save_parent_counsellor_feedback_reflection')) return true;
+  if (rpcOrTableMissing('get_parent_counsellor_feedback_reflection')) return true;
+  if (rpcOrTableMissing('get_parent_entry_review_lock_map')) return true;
+  return false;
+};
+
+const parentFeedbackUnavailableReason = (responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  ) {
+    return 'feedback_data_contract_not_applied';
+  }
+  return 'feedback_request_failed';
+};
+
+const parseParentFeedbackRpcCount = (data) => {
+  if (typeof data === 'number' && Number.isFinite(data)) return Math.max(0, Math.trunc(data));
+  if (typeof data === 'string') {
+    const trimmed = data.trim().replace(/^"|"$/g, '');
+    if (trimmed === '') return 0;
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) return Math.max(0, Math.trunc(parsed));
+  }
+  return 0;
+};
+
+const normalizeParentFeedbackSummaryRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    responseId: row.response_id || row.responseId || null,
+    grantId: row.grant_id || row.grantId || null,
+    counsellorWayfinderId: row.counsellor_wayfinder_id || row.counsellorWayfinderId || '',
+    publishedAt: row.published_at || row.publishedAt || null,
+    contextLabel: row.context_label || row.contextLabel || ''
+  };
+};
+
+const normalizeLinkedGrantEntries = (value) => {
+  let source = value;
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      source = [];
+    }
+  }
+  if (!Array.isArray(source)) return [];
+  return source.map((item) => {
+    if (!item || typeof item !== 'object') return null;
+    const grantEntryId = item.grant_entry_id || item.grantEntryId || null;
+    const journalEntryId = item.journal_entry_id || item.journalEntryId || null;
+    if (!grantEntryId || !journalEntryId) return null;
+    return { grantEntryId, journalEntryId };
+  }).filter(Boolean);
+};
+
+const normalizeParentFeedbackDetailRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  const linkedJournalEntryIds = Array.isArray(row.linked_journal_entry_ids)
+    ? row.linked_journal_entry_ids.map(String)
+    : (Array.isArray(row.linkedJournalEntryIds) ? row.linkedJournalEntryIds.map(String) : []);
+  return {
+    responseId: row.response_id || row.responseId || null,
+    grantId: row.grant_id || row.grantId || null,
+    counsellorWayfinderId: row.counsellor_wayfinder_id || row.counsellorWayfinderId || '',
+    parentFacingText: row.parent_facing_text || row.parentFacingText || '',
+    publishedAt: row.published_at || row.publishedAt || null,
+    isRead: !!(row.is_read ?? row.isRead),
+    readAt: row.read_at || row.readAt || null,
+    linkedJournalEntryIds,
+    linkedGrantEntries: normalizeLinkedGrantEntries(row.linked_grant_entries ?? row.linkedGrantEntries)
+  };
+};
+
+const normalizeParentFeedbackReadRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    responseId: row.response_id || row.responseId || null,
+    grantId: row.grant_id || row.grantId || null,
+    readAt: row.read_at || row.readAt || null,
+    entriesLocked: !!(row.entries_locked ?? row.entriesLocked)
+  };
+};
+
+const normalizeParentFeedbackReflectionRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    reflectionId: row.reflection_id || row.reflectionId || row.id || null,
+    journalEntryId: row.journal_entry_id || row.journalEntryId || null,
+    reflectionText: row.reflection_text || row.reflectionText || '',
+    updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
+const normalizeParentEntryReviewLockRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    journalEntryId: row.journal_entry_id || row.journalEntryId || null,
+    isLocked: !!(row.is_locked ?? row.isLocked),
+    lockReason: row.lock_reason || row.lockReason || null,
+    lockedAt: row.locked_at || row.lockedAt || null
+  };
+};
+
+const parentFeedbackRpcRows = (data) => (Array.isArray(data) ? data : (data ? [data] : []));
+
 const normalizeCounsellorReviewResponseRow = (row) => {
   if (!row || typeof row !== 'object') return null;
   return {
@@ -429,7 +556,14 @@ const reviewResponseWriteSafe = async ({ method, userId, authSession, context, b
   unavailableCheck: isReviewResponsesUnavailable
 });
 
-const callReviewResponseRpcSafe = async ({ rpcName, userId, authSession, context, body = {} }) => {
+const callReviewResponseRpcSafe = async ({
+  rpcName,
+  userId,
+  authSession,
+  context,
+  body = {},
+  unavailableCheck = isReviewResponsesUnavailable
+}) => {
   try {
     const session = await getAuthenticatedReadSession(userId, context, authSession);
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
@@ -443,7 +577,7 @@ const callReviewResponseRpcSafe = async ({ rpcName, userId, authSession, context
     });
     const responseText = await response.text();
     if (!response.ok) {
-      if (isReviewResponsesUnavailable(response.status, responseText)) {
+      if (unavailableCheck(response.status, responseText)) {
         AuthDebug.log('[db] review responses RPC unavailable:', { context, rpcName, status: response.status });
         return { ok: false, unavailable: true, data: null, responseText };
       }
@@ -459,13 +593,18 @@ const callReviewResponseRpcSafe = async ({ rpcName, userId, authSession, context
     return { ok: true, unavailable: false, data, responseText };
   } catch (err) {
     const message = String(err?.message || err);
-    if (isReviewResponsesUnavailable(0, message)) {
+    if (unavailableCheck(0, message)) {
       return { ok: false, unavailable: true, data: null, responseText: message };
     }
     AuthDebug.log('[db] review responses RPC exception:', { context, rpcName, message });
     return { ok: false, unavailable: false, data: null, responseText: message };
   }
 };
+
+const callParentFeedbackRpcSafe = (args) => callReviewResponseRpcSafe({
+  ...args,
+  unavailableCheck: isParentFeedbackUnavailable
+});
 
 const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, context, unavailableCheck = isReviewGrantsUnavailable }) => {
   try {
@@ -1588,6 +1727,269 @@ const DB = {
     return {
       rows: rows.map(normalizeParentPublishedReviewResponseRow).filter(Boolean),
       unavailable: false
+    };
+  },
+
+  getParentUnreadCounsellorFeedbackCount: async (userId, authSession = null) => {
+    const result = await callParentFeedbackRpcSafe({
+      rpcName: 'get_parent_unread_counsellor_feedback_count',
+      userId,
+      authSession,
+      context: 'getParentUnreadCounsellorFeedbackCount',
+      body: {}
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        count: 0,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    if (!result.ok) {
+      return {
+        available: false,
+        count: 0,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    return {
+      available: true,
+      count: parseParentFeedbackRpcCount(result.data)
+    };
+  },
+
+  getParentUnreadCounsellorFeedbackSummary: async (userId, authSession = null) => {
+    const result = await callParentFeedbackRpcSafe({
+      rpcName: 'get_parent_unread_counsellor_feedback_summary',
+      userId,
+      authSession,
+      context: 'getParentUnreadCounsellorFeedbackSummary',
+      body: {}
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        rows: [],
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    if (!result.ok) {
+      return {
+        available: false,
+        rows: [],
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    return {
+      available: true,
+      rows: parentFeedbackRpcRows(result.data).map(normalizeParentFeedbackSummaryRow).filter(Boolean)
+    };
+  },
+
+  getParentCounsellorFeedbackDetail: async (userId, responseId, authSession = null) => {
+    const id = String(responseId || '').trim();
+    if (!id) {
+      return { available: false, detail: null, reason: 'feedback_response_id_required' };
+    }
+    const result = await callParentFeedbackRpcSafe({
+      rpcName: 'get_parent_counsellor_feedback_detail',
+      userId,
+      authSession,
+      context: 'getParentCounsellorFeedbackDetail',
+      body: { p_response_id: id }
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        detail: null,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    if (!result.ok) {
+      return {
+        available: false,
+        detail: null,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    const detail = normalizeParentFeedbackDetailRow(parentFeedbackRpcRows(result.data)[0]);
+    return {
+      available: true,
+      detail
+    };
+  },
+
+  markParentCounsellorFeedbackRead: async (userId, responseId, authSession = null) => {
+    const id = String(responseId || '').trim();
+    if (!id) {
+      return {
+        available: false,
+        ok: false,
+        responseId: null,
+        grantId: null,
+        readAt: null,
+        entriesLocked: false,
+        reason: 'feedback_response_id_required'
+      };
+    }
+    const result = await callParentFeedbackRpcSafe({
+      rpcName: 'mark_parent_counsellor_feedback_read',
+      userId,
+      authSession,
+      context: 'markParentCounsellorFeedbackRead',
+      body: { p_response_id: id }
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        ok: false,
+        responseId: null,
+        grantId: null,
+        readAt: null,
+        entriesLocked: false,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    if (!result.ok) {
+      return {
+        available: false,
+        ok: false,
+        responseId: null,
+        grantId: null,
+        readAt: null,
+        entriesLocked: false,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    const row = normalizeParentFeedbackReadRow(parentFeedbackRpcRows(result.data)[0]);
+    return {
+      available: true,
+      ok: true,
+      responseId: row?.responseId || id,
+      grantId: row?.grantId || null,
+      readAt: row?.readAt || null,
+      entriesLocked: !!row?.entriesLocked
+    };
+  },
+
+  saveParentCounsellorFeedbackReflection: async (userId, responseId, grantEntryId, reflectionText, authSession = null) => {
+    const responseKey = String(responseId || '').trim();
+    const grantEntryKey = String(grantEntryId || '').trim();
+    if (!responseKey || !grantEntryKey) {
+      return {
+        available: false,
+        ok: false,
+        reflection: null,
+        reason: 'feedback_reflection_context_required'
+      };
+    }
+    const result = await callParentFeedbackRpcSafe({
+      rpcName: 'save_parent_counsellor_feedback_reflection',
+      userId,
+      authSession,
+      context: 'saveParentCounsellorFeedbackReflection',
+      body: {
+        p_response_id: responseKey,
+        p_grant_entry_id: grantEntryKey,
+        p_reflection_text: reflectionText ?? ''
+      }
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        ok: false,
+        reflection: null,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    if (!result.ok) {
+      return {
+        available: false,
+        ok: false,
+        reflection: null,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    const reflection = normalizeParentFeedbackReflectionRow(parentFeedbackRpcRows(result.data)[0]);
+    return {
+      available: true,
+      ok: !!reflection,
+      reflection
+    };
+  },
+
+  getParentCounsellorFeedbackReflection: async (userId, responseId, grantEntryId, authSession = null) => {
+    const responseKey = String(responseId || '').trim();
+    const grantEntryKey = String(grantEntryId || '').trim();
+    if (!responseKey || !grantEntryKey) {
+      return {
+        available: false,
+        reflection: null,
+        reason: 'feedback_reflection_context_required'
+      };
+    }
+    const result = await callParentFeedbackRpcSafe({
+      rpcName: 'get_parent_counsellor_feedback_reflection',
+      userId,
+      authSession,
+      context: 'getParentCounsellorFeedbackReflection',
+      body: {
+        p_response_id: responseKey,
+        p_grant_entry_id: grantEntryKey
+      }
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        reflection: null,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    if (!result.ok) {
+      return {
+        available: false,
+        reflection: null,
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    const reflection = normalizeParentFeedbackReflectionRow(parentFeedbackRpcRows(result.data)[0]);
+    return {
+      available: true,
+      reflection
+    };
+  },
+
+  getParentEntryReviewLockMap: async (userId, journalEntryIds, authSession = null) => {
+    const ids = [...new Set((Array.isArray(journalEntryIds) ? journalEntryIds : [])
+      .map((id) => String(id || '').trim())
+      .filter(Boolean))];
+    if (!ids.length) {
+      return { available: true, locks: [] };
+    }
+    const result = await callParentFeedbackRpcSafe({
+      rpcName: 'get_parent_entry_review_lock_map',
+      userId,
+      authSession,
+      context: 'getParentEntryReviewLockMap',
+      body: { p_journal_entry_ids: ids }
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        locks: [],
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    if (!result.ok) {
+      return {
+        available: false,
+        locks: [],
+        reason: parentFeedbackUnavailableReason(result.responseText)
+      };
+    }
+    return {
+      available: true,
+      locks: parentFeedbackRpcRows(result.data).map(normalizeParentEntryReviewLockRow).filter(Boolean)
     };
   }
 };
