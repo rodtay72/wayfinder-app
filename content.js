@@ -217,7 +217,8 @@ const COUNSELLOR_REVIEW_SHARING = {
   responseComposerUnavailable: "Counsellor response storage is not available yet. Existing grant review remains available.",
   responsePrefillNote: "Draft fields may be prefilled from your review tabs and this shared entry. Edit everything before publishing.",
   responseRegeneratePrefill: "Regenerate draft from review context",
-  responseGrantRequired: "Parent-facing response is available when you open a parent-approved grant entry."
+  responseGrantRequired: "Parent-facing response is available when you open a parent-approved grant entry.",
+  responseEntryLinkRequired: "Parent-facing response is available when this approved entry has a review grant link."
 };
 
 const COUNSELLOR_EVENTS_HOSTING = {

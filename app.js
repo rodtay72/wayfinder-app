@@ -3506,8 +3506,18 @@ function toCounsellorEntry(raw){
 function buildCounsellorGrantGroups(grants,grantLinks,entries){
  const entryById=Object.fromEntries((entries||[]).map(e=>[String(e.id),e]));
  return (grants||[]).map(grant=>{
-  const linkIds=(grantLinks||[]).filter(l=>l.grant_id===grant.id).map(l=>String(l.journal_entry_id));
-  const grantEntries=linkIds.map(id=>entryById[id]).filter(Boolean);
+  const links=(grantLinks||[]).filter(l=>(l.grant_id||l.grantId)===grant.id);
+  const grantEntries=links.map(link=>{
+   const journalId=String(link.journal_entry_id||link.journalEntryId||'');
+   const base=entryById[journalId];
+   if(!base) return null;
+   return {
+    ...base,
+    grantId:grant.id,
+    grantEntryId:link.grantEntryId||link.id||link.grant_entry_id||null,
+    journalEntryId:journalId
+   };
+  }).filter(Boolean);
   const childrenMap={};
   grantEntries.forEach(e=>{
    const childId=safeChildId(e.childId||e.child_id||e.dyadId||e.dyad_id)||'Not saved';
@@ -3687,8 +3697,10 @@ const buildParentFacingPreview=(sections)=>{
  return lines.join('\n').trim();
 };
 
-function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,prefillContext,embedded=false}){
- const grantId=group?.grant?.id;
+function CounsellorReviewResponseComposer({user,authSession,grantContext,reviewMeta,prefillContext,embedded=false}){
+ const grantId=grantContext?.grantId;
+ const grantEntryId=grantContext?.grantEntryId;
+ const journalEntryId=grantContext?.journalEntryId;
  const [sections,setSections]=useState(emptyReviewResponseSections());
  const [responseRecord,setResponseRecord]=useState(null);
  const [uiState,setUiState]=useState('loading');
@@ -3697,6 +3709,7 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
  const prefillAppliedRef=useRef(false);
  const parentFacingPreview=useMemo(()=>buildParentFacingPreview(sections),[sections]);
  const status=responseRecord?.status||'none';
+ const responseRowId=responseRecord?.id||responseRecord?.responseId||null;
  const isDraftEditable=status==='draft'||status==='none';
  const canPublish=isDraftEditable&&!!parentFacingPreview.trim();
  const canRevoke=status==='published';
@@ -3708,7 +3721,7 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
  };
 
  const loadResponse=async()=>{
-  if(!grantId||!user?.id||!authSession?.access_token){
+  if(!grantEntryId||!user?.id||!authSession?.access_token){
    setUiState('error');
    setError('Review response could not be loaded.');
    return;
@@ -3716,7 +3729,7 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
   setUiState('loading');
   setError('');
   try{
-   const result=await DB.getCounsellorReviewResponseForGrant(user.id,grantId,authSession);
+   const result=await DB.getCounsellorReviewResponseForGrantEntry(user.id,grantEntryId,authSession);
    if(result.unavailable){
     setUiState('unavailable');
     setResponseRecord(null);
@@ -3742,7 +3755,7 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
   }
  };
 
- useEffect(()=>{prefillAppliedRef.current=false;loadResponse();},[user?.id,grantId,authSession?.access_token]);
+ useEffect(()=>{prefillAppliedRef.current=false;loadResponse();},[user?.id,grantEntryId,authSession?.access_token]);
 
  const handleRegeneratePrefill=()=>{
   if(!isDraftEditable)return;
@@ -3755,16 +3768,18 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
 
  const grantMeta=()=>({
   grantId,
-  parentUserId:responseRecord?.parentUserId||group?.parentUserId||group?.grant?.parent_user_id||null,
-  parentId:group?.parentId||group?.grant?.parent_id,
-  counsellorWayfinderId:group?.grant?.counsellor_wayfinder_id||responseRecord?.counsellorWayfinderId
+  grantEntryId,
+  journalEntryId,
+  parentUserId:responseRecord?.parentUserId||grantContext?.parentUserId||null,
+  parentId:responseRecord?.parentId||grantContext?.parentId||null,
+  counsellorWayfinderId:responseRecord?.counsellorWayfinderId||grantContext?.counsellorWayfinderId||null
  });
 
  const handleSaveDraft=async()=>{
   if(!isDraftEditable)return;
   const meta=grantMeta();
-  if(!meta.grantId||!meta.parentUserId||!meta.parentId||!meta.counsellorWayfinderId){
-   setError('Grant context is incomplete. Save is not available right now.');
+  if(!meta.grantId||!meta.grantEntryId||!meta.journalEntryId||!meta.parentUserId||!meta.parentId||!meta.counsellorWayfinderId){
+   setError('Grant entry context is incomplete. Save is not available right now.');
    return;
   }
   setUiState('saving');
@@ -3780,7 +3795,15 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
    }
    if(!result.ok||!result.response){
     setUiState(status==='none'?'none':'draft');
-    setError(result.errorStage==='notDraft'?'This response is no longer a draft.':'Draft could not be saved. Please try again.');
+    const perEntryStage=String(result.errorStage||'').startsWith('perEntry');
+    setError(
+     result.errorStage==='notDraft'
+      ? 'This response is no longer a draft.'
+      : perEntryStage
+       ? (reviewMeta?.responseComposerUnavailable||'Counsellor response storage is not available yet. Existing grant review remains available.')
+       : 'Draft could not be saved. Please try again.'
+    );
+    if(perEntryStage) setUiState('unavailable');
     return;
    }
    setResponseRecord(result.response);
@@ -3806,12 +3829,18 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
     setUiState('unavailable');
     return;
    }
-   if(!saveResult.ok||!saveResult.response?.id){
+   if(!saveResult.ok||!(saveResult.response?.id||saveResult.response?.responseId)){
     setUiState('draft');
-    setError('Response could not be prepared for publishing.');
+    const perEntryStage=String(saveResult.errorStage||'').startsWith('perEntry');
+    setError(
+     perEntryStage
+      ? (reviewMeta?.responseComposerUnavailable||'Counsellor response storage is not available yet. Existing grant review remains available.')
+      : 'Response could not be prepared for publishing.'
+    );
+    if(perEntryStage) setUiState('unavailable');
     return;
    }
-   const publishResult=await DB.publishCounsellorReviewResponse(user.id,saveResult.response.id,authSession);
+   const publishResult=await DB.publishCounsellorReviewResponse(user.id,saveResult.response.id||saveResult.response.responseId,authSession);
    if(publishResult.unavailable){
     setUiState('unavailable');
     return;
@@ -3830,11 +3859,11 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,pre
  };
 
  const handleRevoke=async()=>{
-  if(!responseRecord?.id||!canRevoke)return;
+  if(!responseRowId||!canRevoke)return;
   setUiState('revoking');
   setError('');
   try{
-   const result=await DB.revokeCounsellorReviewResponse(user.id,responseRecord.id,authSession);
+   const result=await DB.revokeCounsellorReviewResponse(user.id,responseRowId,authSession);
    if(result.unavailable){
     setUiState('unavailable');
     return;
@@ -4182,6 +4211,21 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
 }
 function CounsellorReview({entry,back,user,authSession,aiEnabled=true,grantGroup=null,reviewMeta={}}){
  const responseTabLabel=reviewMeta.responseTabLabel||'Parent-Facing Response';
+ const entryGrantContext=useMemo(()=>{
+  if(!entry||!grantGroup) return null;
+  const grantId=entry.grantId||entry.grant_id||grantGroup.grant?.id||null;
+  const grantEntryId=entry.grantEntryId||entry.grant_entry_id||null;
+  const journalEntryId=entry.journalEntryId||entry.journal_entry_id||String(entry.id||'');
+  if(!grantId||!grantEntryId||!journalEntryId) return null;
+  return {
+   grantId,
+   grantEntryId,
+   journalEntryId,
+   parentUserId:grantGroup.parentUserId||grantGroup.grant?.parent_user_id||null,
+   parentId:grantGroup.parentId||grantGroup.grant?.parent_id||entry.parentId||null,
+   counsellorWayfinderId:grantGroup.grant?.counsellor_wayfinder_id||null
+  };
+ },[entry,grantGroup]);
  const TABS=['Review','AI Analysis','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative',responseTabLabel];
  const visibleTabs=aiEnabled?TABS:TABS.filter(t=>t!=='AI Analysis');
  const [tab,setTab]=useState('Review');
@@ -4414,9 +4458,9 @@ function CounsellorReview({entry,back,user,authSession,aiEnabled=true,grantGroup
    </>}
 
    <div style={{display:tab===responseTabLabel?'block':'none'}}>
-    {grantGroup
-     ? <CounsellorReviewResponseComposer user={user} authSession={authSession} group={grantGroup} reviewMeta={reviewMeta} prefillContext={{entry,rv,aiAnalysis}} embedded/>
-     : <p className="sub counsellor-response-grant-required">{reviewMeta.responseGrantRequired||'Parent-facing response is available when you open a parent-approved grant entry.'}</p>}
+    {entryGrantContext
+     ? <CounsellorReviewResponseComposer user={user} authSession={authSession} grantContext={entryGrantContext} reviewMeta={reviewMeta} prefillContext={{entry,rv,aiAnalysis}} embedded/>
+     : <p className="sub counsellor-response-grant-required">{grantGroup?(reviewMeta.responseEntryLinkRequired||'Parent-facing response is available when this approved entry has a review grant link.'):(reviewMeta.responseGrantRequired||'Parent-facing response is available when you open a parent-approved grant entry.')}</p>}
    </div>
   </div>
  </div>;
