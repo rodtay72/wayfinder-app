@@ -210,7 +210,14 @@ const COUNSELLOR_REVIEW_SHARING = {
   openEntryLabel: "Open for ALIGN/CAB review",
   longitudinalTitle: "Longitudinal AI Reflections",
   longitudinalNote: "Assistive reflection across parent-granted entries — for ALIGN/CAB review support, not diagnosis or profiling.",
-  longitudinalUnavailable: "Assistive reflection is not available for this parent right now. Try refreshing after more shared entries are granted."
+  longitudinalUnavailable: "Assistive reflection is not available for this parent right now. Try refreshing after more shared entries are granted.",
+  responseTabLabel: "Parent-Facing Response",
+  responseComposerTitle: "Parent-facing response",
+  responseComposerNote: "Draft a bounded, non-diagnostic reflection for the parent. You remain responsible for what is shared.",
+  responseComposerUnavailable: "Counsellor response storage is not available yet. Existing grant review remains available.",
+  responsePrefillNote: "Draft fields may be prefilled from your review tabs and this shared entry. Edit everything before publishing.",
+  responseRegeneratePrefill: "Regenerate draft from review context",
+  responseGrantRequired: "Parent-facing response is available when you open a parent-approved grant entry."
 };
 
 const COUNSELLOR_EVENTS_HOSTING = {

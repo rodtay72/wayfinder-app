@@ -3551,6 +3551,97 @@ const REVIEW_RESPONSE_SECTION_KEYS=[
 
 const emptyReviewResponseSections=()=>Object.fromEntries(REVIEW_RESPONSE_SECTION_KEYS.map(s=>[s.key,'']));
 
+const reviewResponseSectionsHaveContent=(sections)=>REVIEW_RESPONSE_SECTION_KEYS.some((s)=>(sections?.[s.key]||'').trim());
+
+const buildReviewResponsePrefillFromContext=({entry,rv,aiAnalysis})=>{
+ const sections=emptyReviewResponseSections();
+ if(!entry) return sections;
+ const cab=entry.cab||{};
+ const trim=(value)=>String(value||'').trim();
+ const joinParts=(parts)=>parts.map(trim).filter(Boolean).join(' ');
+ const childYears=yearsFrom(entry.childDob,entry.date);
+ const need=childYears!==null?childNeed(childYears):null;
+ const moments=(rv?.moments||[]);
+ const incongruent=moments.filter((m)=>m.congruence==='incongruent');
+ const stanceKey=rv?.stance||'';
+ const stancePhrase=stanceKey==='critical'
+  ? 'a more directing or controlling parent response may have been present'
+  : stanceKey==='rescuing'
+   ? 'a rescuing or over-functioning parent response may have been present'
+   : stanceKey==='nurturing'
+    ? 'a nurturing, alongside presence may have been present'
+    : '';
+
+ if(isBehaviourDecodeEntry(entry)){
+  const reminder=decodeReminderFromEntry(entry);
+  const observed=trim(reminder.observed_behaviour||reminder.moment_noticed);
+  const possibleNeed=trim(decodeDisplayText(reminder.possible_need_worth_staying_curious_about));
+  const alignmentGap=trim(decodeDisplayText(reminder.possible_alignment_gap));
+  const growth=trim(decodeDisplayText(reminder.stabilising_response_to_practise));
+  const nextAction=trim(decodeDisplayText(reminder.next_action||reminder.repair_intention));
+  if(observed) sections.noticed=`In this Decode a Moment reflection, the parent noticed ${observed}.`;
+  if(possibleNeed) sections.possibleChildNeed=`A possible need worth staying curious about may be ${possibleNeed}.`;
+  sections.parentCabPattern=joinParts([
+   trim(reminder.thinking)?`The parent may have been thinking: "${trim(reminder.thinking)}"`:'',
+   trim(reminder.feelings)?`They may have been feeling: "${trim(reminder.feelings)}"`:'',
+   trim(reminder.behaviour_what_i_did)?`They may have responded by: "${trim(reminder.behaviour_what_i_did)}"`:''
+  ]);
+  if(alignmentGap) sections.alignmentGap=`This may suggest a possible alignment gap: ${alignmentGap}.`;
+  if(trim(reminder.repair_intention)) sections.repairAlignmentStrength=`They may already be practising ${trim(reminder.repair_intention)}.`;
+  if(growth) sections.growthEdge=`One growth edge might be ${growth}.`;
+  if(trim(reminder.what_i_will_observe_next_time)) sections.reflectionQuestion=trim(reminder.what_i_will_observe_next_time);
+  if(nextAction) sections.nextAction=nextAction;
+  return sections;
+ }
+
+ const noticedParts=[];
+ if(trim(cab.thoughts)||trim(cab.feelings)||trim(cab.actions)){
+  noticedParts.push('In this shared reflection, the parent described their thinking, feelings, and actions in the moment.');
+ }
+ if(trim(cab.meaning)) noticedParts.push(`They may have made meaning of it this way: "${trim(cab.meaning)}".`);
+ if(aiAnalysis?.cabCongruence) noticedParts.push(`This may suggest ${trim(aiAnalysis.cabCongruence)}`);
+ if(incongruent.length) noticedParts.push('There may have been a moment where cognition, affect, and behaviour did not fully align.');
+ sections.noticed=joinParts(noticedParts);
+
+ if(need?.need) sections.possibleChildNeed=`A possible need worth staying curious about may be ${need.need.toLowerCase()}.`;
+ if(aiAnalysis?.developmentalConsiderations) sections.possibleChildNeed=joinParts([sections.possibleChildNeed, trim(aiAnalysis.developmentalConsiderations)]);
+
+ sections.parentCabPattern=joinParts([
+  stancePhrase?`This may suggest ${stancePhrase}.`:'',
+  trim(cab.thoughts)?`Thinking: "${trim(cab.thoughts)}"`:'',
+  trim(cab.feelings)?`Feelings: "${trim(cab.feelings)}"`:'',
+  trim(cab.actions)?`Behaviour: "${trim(cab.actions)}"`:'',
+  trim(rv?.satir?.instinct)?`They may have been thinking: "${trim(rv.satir.instinct)}"`:''
+ ]);
+
+ sections.alignmentGap=joinParts([
+  trim(rv?.gap)?trim(rv.gap):'',
+  aiAnalysis?.possibleCopingPattern?`This may suggest ${trim(aiAnalysis.possibleCopingPattern)}`:''
+ ]);
+
+ sections.repairAlignmentStrength=joinParts([
+  aiAnalysis?.protectiveFactors?trim(aiAnalysis.protectiveFactors):'',
+  trim(rv?.satir?.congruent)?`They may already be practising: "${trim(rv.satir.congruent)}"`:'',
+  trim(entry.cab?.meaning)?`They may already be noticing their own meaning-making: "${trim(entry.cab.meaning)}"`:''
+ ]);
+
+ sections.growthEdge=joinParts([
+  trim(rv?.gap)?trim(rv.gap):'',
+  aiAnalysis?.counsellorReflectionFocus?trim(aiAnalysis.counsellorReflectionFocus):''
+ ]);
+
+ const reflectionQ=incongruent.map((m)=>trim(m.question)).find(Boolean);
+ if(reflectionQ) sections.reflectionQuestion=reflectionQ;
+
+ sections.nextAction=joinParts([
+  trim(rv?.satir?.cultural)?trim(rv.satir.cultural):'',
+  trim(rv?.satir?.congruent)?trim(rv.satir.congruent):'',
+  trim(rv?.gap)?trim(rv.gap):''
+ ]);
+
+ return sections;
+};
+
 const reviewSectionsFromRecord=(record)=>{
  const source=record?.responseSections||record?.response_sections||{};
  return {
@@ -3596,18 +3687,25 @@ const buildParentFacingPreview=(sections)=>{
  return lines.join('\n').trim();
 };
 
-function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta}){
+function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta,prefillContext,embedded=false}){
  const grantId=group?.grant?.id;
  const [sections,setSections]=useState(emptyReviewResponseSections());
  const [responseRecord,setResponseRecord]=useState(null);
  const [uiState,setUiState]=useState('loading');
  const [error,setError]=useState('');
  const [previewOpen,setPreviewOpen]=useState(false);
+ const prefillAppliedRef=useRef(false);
  const parentFacingPreview=useMemo(()=>buildParentFacingPreview(sections),[sections]);
  const status=responseRecord?.status||'none';
  const isDraftEditable=status==='draft'||status==='none';
  const canPublish=isDraftEditable&&!!parentFacingPreview.trim();
  const canRevoke=status==='published';
+ const composerClass='counsellor-response-composer'+(embedded?' counsellor-response-composer--embedded':'')+(uiState==='unavailable'?' counsellor-response-composer--unavailable':'');
+
+ const applyPrefillFromContext=()=>{
+  if(!prefillContext) return emptyReviewResponseSections();
+  return buildReviewResponsePrefillFromContext(prefillContext);
+ };
 
  const loadResponse=async()=>{
   if(!grantId||!user?.id||!authSession?.access_token){
@@ -3627,10 +3725,14 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta}){
    if(result.response){
     setResponseRecord(result.response);
     setSections(reviewSectionsFromRecord(result.response));
+    prefillAppliedRef.current=true;
     setUiState(result.response.status==='published'?'published':result.response.status==='revoked'?'revoked':'draft');
    }else{
     setResponseRecord(null);
-    setSections(emptyReviewResponseSections());
+    const prefill=applyPrefillFromContext();
+    const hasPrefill=reviewResponseSectionsHaveContent(prefill);
+    setSections(hasPrefill?prefill:emptyReviewResponseSections());
+    prefillAppliedRef.current=hasPrefill;
     setUiState('none');
    }
   }catch(err){
@@ -3640,7 +3742,16 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta}){
   }
  };
 
- useEffect(()=>{loadResponse();},[user?.id,grantId,authSession?.access_token]);
+ useEffect(()=>{prefillAppliedRef.current=false;loadResponse();},[user?.id,grantId,authSession?.access_token]);
+
+ const handleRegeneratePrefill=()=>{
+  if(!isDraftEditable)return;
+  const prefill=applyPrefillFromContext();
+  if(!reviewResponseSectionsHaveContent(prefill)) return;
+  setSections(prefill);
+  prefillAppliedRef.current=true;
+  if(uiState!=='saving'&&uiState!=='publishing'&&uiState!=='revoking') setUiState(status==='draft'?'draft':'none');
+ };
 
  const grantMeta=()=>({
   grantId,
@@ -3741,26 +3852,29 @@ function CounsellorReviewResponseComposer({user,authSession,group,reviewMeta}){
   }
  };
 
- if(uiState==='unavailable') return <div className="counsellor-response-composer counsellor-response-composer--unavailable">
-  <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>
+ if(uiState==='unavailable') return <div className={composerClass}>
+  {!embedded && <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>}
   <p className="sub">{reviewMeta?.responseComposerUnavailable||'Counsellor response storage is not available yet. Existing grant review remains available.'}</p>
  </div>;
 
- if(uiState==='loading') return <div className="counsellor-response-composer">
-  <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>
+ if(uiState==='loading') return <div className={composerClass}>
+  {!embedded && <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>}
   <p className="sub">Loading response…</p>
  </div>;
 
- return <div className="counsellor-response-composer">
+ return <div className={composerClass}>
   <div className="counsellor-response-composer-head">
-   <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>
+   {!embedded && <h4>{reviewMeta?.responseComposerTitle||'Parent-facing response'}</h4>}
    <span className={'counsellor-response-status counsellor-response-status--'+((uiState==='saving'||uiState==='publishing'||uiState==='revoking')?status:uiState)}>
     {uiState==='saving'?'Saving draft…':uiState==='publishing'?'Publishing…':uiState==='revoking'?'Revoking…':
      status==='published'?'Published':status==='revoked'?'Revoked':status==='draft'?'Draft saved':'No response yet'}
    </span>
   </div>
-  <p className="counsellor-response-note sub">{reviewMeta?.responseComposerNote||'Draft a bounded, non-diagnostic reflection for the parent. You remain responsible for what is shared.'}</p>
+  <p className="counsellor-response-note sub">{embedded?(reviewMeta?.responsePrefillNote||reviewMeta?.responseComposerNote):reviewMeta?.responseComposerNote||'Draft a bounded, non-diagnostic reflection for the parent. You remain responsible for what is shared.'}</p>
   {error&&<p className="counsellor-response-error">{error}</p>}
+  {isDraftEditable&&prefillContext&&<div className="counsellor-response-regenerate-wrap">
+   <button type="button" className="btn btn-ghost counsellor-response-regenerate" disabled={uiState==='saving'||uiState==='publishing'||uiState==='revoking'} onClick={handleRegeneratePrefill}>{reviewMeta?.responseRegeneratePrefill||'Regenerate draft from review context'}</button>
+  </div>}
   <div className="counsellor-response-fields">
    {REVIEW_RESPONSE_SECTION_KEYS.map(field=><label key={field.key} className="counsellor-response-field">
     <span className="counsellor-response-field-label">{field.label}</span>
@@ -3857,7 +3971,6 @@ function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags,user,aut
      </div>
     </div>;
    })}
-   <CounsellorReviewResponseComposer user={user} authSession={authSession} group={group} reviewMeta={reviewMeta}/>
   </>}
  </div>;
 }
@@ -4013,10 +4126,11 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
   return ()=>{cancelled=true;};
  },[user.id,authSession?.access_token]);
  const open=entries.find(e=>e._key===openId);
+ const openGrantGroup=open?grantGroups.find((g)=>(g.entries||[]).some((e)=>e._key===open._key)):null;
  const hostingMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
  const reviewMeta=typeof COUNSELLOR_REVIEW_SHARING!=='undefined'?COUNSELLOR_REVIEW_SHARING:{};
 
- if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession} aiEnabled={!usingLegacyJournalAccess}/>;
+ if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession} aiEnabled={!usingLegacyJournalAccess} grantGroup={openGrantGroup} reviewMeta={reviewMeta}/>;
 
  if(counsellorStage==='hostForm') return <CounsellorHostEventForm user={user} authSession={authSession} eventId={editHostedEvent?.id||null} existingEvent={editHostedEvent} unavailable={hostingUnavailable} onBack={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}} onSaved={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}}/>;
 
@@ -4066,8 +4180,9 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
   </div>
  </div>;
 }
-function CounsellorReview({entry,back,user,authSession,aiEnabled=true}){
- const TABS=['Review','AI Analysis','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative'];
+function CounsellorReview({entry,back,user,authSession,aiEnabled=true,grantGroup=null,reviewMeta={}}){
+ const responseTabLabel=reviewMeta.responseTabLabel||'Parent-Facing Response';
+ const TABS=['Review','AI Analysis','Congruence','DISC Shift','Congruent Response','Stance','Gap & Narrative',responseTabLabel];
  const visibleTabs=aiEnabled?TABS:TABS.filter(t=>t!=='AI Analysis');
  const [tab,setTab]=useState('Review');
  const [aiAnalysis,setAiAnalysis]=useState(null);
@@ -4152,6 +4267,11 @@ function CounsellorReview({entry,back,user,authSession,aiEnabled=true}){
  }
  const selectTab=(t)=>{
   if(t==='AI Analysis'){setTab('aiAnalysis');loadAiAnalysis();return;}
+  if(t===responseTabLabel){
+   setTab(responseTabLabel);
+   if(aiEnabled&&!aiAnalysis&&!aiLoading) loadAiAnalysis();
+   return;
+  }
   setTab(t);
  };
 
@@ -4292,6 +4412,12 @@ function CounsellorReview({entry,back,user,authSession,aiEnabled=true}){
      <p className="hint">Edit into your own voice. Growth reads as "becoming more emotionally present," never "performing better." Replace [parent's name] before sharing.</p>
     </>}
    </>}
+
+   <div style={{display:tab===responseTabLabel?'block':'none'}}>
+    {grantGroup
+     ? <CounsellorReviewResponseComposer user={user} authSession={authSession} group={grantGroup} reviewMeta={reviewMeta} prefillContext={{entry,rv,aiAnalysis}} embedded/>
+     : <p className="sub counsellor-response-grant-required">{reviewMeta.responseGrantRequired||'Parent-facing response is available when you open a parent-approved grant entry.'}</p>}
+   </div>
   </div>
  </div>;
 }
