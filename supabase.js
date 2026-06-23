@@ -372,10 +372,52 @@ const isReviewResponsesUnavailable = (status, responseText) => {
   if (text.includes('publish_counsellor_review_response') && text.includes('does not exist')) return true;
   if (text.includes('revoke_counsellor_review_response') && text.includes('does not exist')) return true;
   if (text.includes('get_parent_published_review_responses') && text.includes('does not exist')) return true;
+  if (text.includes('get_counsellor_review_response_for_grant_entry') && text.includes('does not exist')) return true;
   if (text.includes('counsellor_review_grant_is_writable') && text.includes('does not exist')) return true;
   if (text.includes('parent_can_read_published_review_response') && text.includes('does not exist')) return true;
+  if (text.includes('grant_entry_id') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('schema cache') ||
+    text.includes('column')
+  )) return true;
   return false;
 };
+
+const isRpcSignatureUnavailable = (responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  return (
+    text.includes('function') ||
+    text.includes('procedure')
+  ) && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('no function matches') ||
+    text.includes('function matching') ||
+    text.includes('argument') ||
+    text.includes('parameter')
+  );
+};
+
+const isAuthSessionLike = (value) => !!(value && typeof value === 'object' && value.access_token);
+
+const parseParentFeedbackReflectionArgs = (arg3, arg4, arg5) => {
+  if (isAuthSessionLike(arg3) || (typeof arg3 === 'string' && (arg4 === undefined || isAuthSessionLike(arg4)))) {
+    return {
+      grantEntryId: null,
+      reflectionText: typeof arg3 === 'string' ? arg3 : '',
+      authSession: isAuthSessionLike(arg4) ? arg4 : (isAuthSessionLike(arg3) ? arg3 : null)
+    };
+  }
+  return {
+    grantEntryId: arg3,
+    reflectionText: typeof arg4 === 'string' ? arg4 : '',
+    authSession: isAuthSessionLike(arg5) ? arg5 : (isAuthSessionLike(arg4) ? arg4 : null)
+  };
+};
+
+const COUNSELLOR_REVIEW_RESPONSE_LEGACY_SELECT = 'id,grant_id,counsellor_user_id,parent_user_id,parent_id,counsellor_wayfinder_id,status,response_sections,parent_facing_text,ai_draft_json,counsellor_working_notes,published_at,revoked_at,created_at,updated_at';
 
 const isParentFeedbackUnavailable = (status, responseText) => {
   if (isReviewResponsesUnavailable(status, responseText)) return true;
@@ -429,6 +471,8 @@ const normalizeParentFeedbackSummaryRow = (row) => {
   return {
     responseId: row.response_id || row.responseId || null,
     grantId: row.grant_id || row.grantId || null,
+    grantEntryId: row.grant_entry_id || row.grantEntryId || null,
+    journalEntryId: row.journal_entry_id || row.journalEntryId || null,
     counsellorWayfinderId: row.counsellor_wayfinder_id || row.counsellorWayfinderId || '',
     publishedAt: row.published_at || row.publishedAt || null,
     contextLabel: row.context_label || row.contextLabel || ''
@@ -456,19 +500,34 @@ const normalizeLinkedGrantEntries = (value) => {
 
 const normalizeParentFeedbackDetailRow = (row) => {
   if (!row || typeof row !== 'object') return null;
-  const linkedJournalEntryIds = Array.isArray(row.linked_journal_entry_ids)
+  const grantEntryId = row.grant_entry_id || row.grantEntryId || null;
+  const journalEntryId = row.journal_entry_id || row.journalEntryId || null;
+  let linkedJournalEntryIds = Array.isArray(row.linked_journal_entry_ids)
     ? row.linked_journal_entry_ids.map(String)
     : (Array.isArray(row.linkedJournalEntryIds) ? row.linkedJournalEntryIds.map(String) : []);
+  let linkedGrantEntries = normalizeLinkedGrantEntries(row.linked_grant_entries ?? row.linkedGrantEntries);
+  if (grantEntryId && journalEntryId) {
+    if (!linkedGrantEntries.length) {
+      linkedGrantEntries = [{ grantEntryId, journalEntryId }];
+    }
+    if (!linkedJournalEntryIds.length) {
+      linkedJournalEntryIds = [String(journalEntryId)];
+    }
+  } else if (linkedGrantEntries.length) {
+    // Legacy bundled detail rows remain available until per-entry SQL is applied.
+  }
   return {
     responseId: row.response_id || row.responseId || null,
     grantId: row.grant_id || row.grantId || null,
+    grantEntryId: grantEntryId || linkedGrantEntries[0]?.grantEntryId || null,
+    journalEntryId: journalEntryId || linkedGrantEntries[0]?.journalEntryId || null,
     counsellorWayfinderId: row.counsellor_wayfinder_id || row.counsellorWayfinderId || '',
     parentFacingText: row.parent_facing_text || row.parentFacingText || '',
     publishedAt: row.published_at || row.publishedAt || null,
     isRead: !!(row.is_read ?? row.isRead),
     readAt: row.read_at || row.readAt || null,
     linkedJournalEntryIds,
-    linkedGrantEntries: normalizeLinkedGrantEntries(row.linked_grant_entries ?? row.linkedGrantEntries)
+    linkedGrantEntries
   };
 };
 
@@ -506,9 +565,13 @@ const parentFeedbackRpcRows = (data) => (Array.isArray(data) ? data : (data ? [d
 
 const normalizeCounsellorReviewResponseRow = (row) => {
   if (!row || typeof row !== 'object') return null;
+  const responseId = row.response_id || row.responseId || row.id || null;
   return {
-    id: row.id || null,
+    id: responseId,
+    responseId,
     grantId: row.grant_id || row.grantId || null,
+    grantEntryId: row.grant_entry_id || row.grantEntryId || null,
+    journalEntryId: row.journal_entry_id || row.journalEntryId || null,
     counsellorUserId: row.counsellor_user_id || row.counsellorUserId || null,
     parentUserId: row.parent_user_id || row.parentUserId || null,
     parentId: row.parent_id || row.parentId || '',
@@ -522,6 +585,22 @@ const normalizeCounsellorReviewResponseRow = (row) => {
     revokedAt: row.revoked_at || row.revokedAt || null,
     createdAt: row.created_at || row.createdAt || null,
     updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
+const normalizeCounsellorGrantLinkRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  const grantEntryId = row.id || row.grant_entry_id || row.grantEntryId || null;
+  const journalEntryId = row.journal_entry_id || row.journalEntryId || null;
+  const grantId = row.grant_id || row.grantId || null;
+  if (!grantEntryId || !journalEntryId || !grantId) return null;
+  return {
+    id: grantEntryId,
+    grant_id: grantId,
+    grantEntryId,
+    grantId,
+    journal_entry_id: journalEntryId,
+    journalEntryId
   };
 };
 
@@ -1486,7 +1565,7 @@ const DB = {
     const linksResult = await fetchReviewGrantsSafe({
       table: 'counsellor_review_grant_entries',
       query: {
-        select: 'grant_id,journal_entry_id',
+        select: 'id,grant_id,journal_entry_id',
         grant_id: `in.(${grantIds.map((id) => `"${id}"`).join(',')})`
       },
       userId,
@@ -1496,9 +1575,13 @@ const DB = {
     if (linksResult.unavailable) {
       return { entries: [], grants: [], grantLinks: [], unavailable: true };
     }
-    const entryIds = [...new Set((linksResult.rows || []).map((r) => r.journal_entry_id).filter(Boolean))];
+    const grantLinks = (linksResult.rows || []).map(normalizeCounsellorGrantLinkRow).filter(Boolean);
+    const linkByJournalId = Object.fromEntries(
+      grantLinks.map((link) => [String(link.journalEntryId), link])
+    );
+    const entryIds = [...new Set(grantLinks.map((link) => link.journalEntryId).filter(Boolean))];
     if (!entryIds.length) {
-      return { entries: [], grants: grantsResult.rows || [], grantLinks: linksResult.rows || [], unavailable: false };
+      return { entries: [], grants: grantsResult.rows || [], grantLinks, unavailable: false };
     }
     try {
       const session = await getAuthenticatedReadSession(userId, 'getCounsellorGrantedEntries journal', authSession);
@@ -1521,7 +1604,7 @@ const DB = {
           return { entries: [], grants: [], grantLinks: [], unavailable: true };
         }
         AuthDebug.log('[db] granted journal read failed:', { status: response.status, responseText });
-        return { entries: [], grants: grantsResult.rows || [], grantLinks: linksResult.rows || [], unavailable: false };
+        return { entries: [], grants: grantsResult.rows || [], grantLinks, unavailable: false };
       }
       let data = [];
       try {
@@ -1529,11 +1612,21 @@ const DB = {
       } catch {
         data = [];
       }
-      const entries = (Array.isArray(data) ? data : []).map((r) => normalizeJournalEntryRow(r));
+      const entries = (Array.isArray(data) ? data : []).map((r) => {
+        const entry = normalizeJournalEntryRow(r);
+        const link = linkByJournalId[String(entry.id)];
+        if (!link) return entry;
+        return {
+          ...entry,
+          grantId: link.grantId,
+          grantEntryId: link.grantEntryId,
+          journalEntryId: link.journalEntryId
+        };
+      });
       return {
         entries,
         grants: grantsResult.rows || [],
-        grantLinks: linksResult.rows || [],
+        grantLinks,
         unavailable: false
       };
     } catch (err) {
@@ -1545,6 +1638,7 @@ const DB = {
     }
   },
 
+  // Legacy grant-scoped lookup — retained until counsellor UI keys by grantEntryId (Phase 2d.3.2c).
   getCounsellorReviewResponseForGrant: async (userId, grantId, authSession = null) => {
     const grantKey = String(grantId || '').trim();
     if (!grantKey) {
@@ -1552,7 +1646,7 @@ const DB = {
     }
     const result = await fetchReviewResponsesSafe({
       query: {
-        select: 'id,grant_id,counsellor_user_id,parent_user_id,parent_id,counsellor_wayfinder_id,status,response_sections,parent_facing_text,ai_draft_json,counsellor_working_notes,published_at,revoked_at,created_at,updated_at',
+        select: COUNSELLOR_REVIEW_RESPONSE_LEGACY_SELECT,
         grant_id: `eq.${grantKey}`,
         counsellor_user_id: `eq.${userId}`
       },
@@ -1570,11 +1664,42 @@ const DB = {
     };
   },
 
+  getCounsellorReviewResponseForGrantEntry: async (userId, grantEntryId, authSession = null) => {
+    const grantEntryKey = String(grantEntryId || '').trim();
+    if (!grantEntryKey) {
+      return { available: false, response: null, unavailable: false };
+    }
+    const rpcResult = await callReviewResponseRpcSafe({
+      rpcName: 'get_counsellor_review_response_for_grant_entry',
+      userId,
+      authSession,
+      context: 'getCounsellorReviewResponseForGrantEntry',
+      body: { p_grant_entry_id: grantEntryKey }
+    });
+    if (rpcResult.unavailable) {
+      return { available: false, response: null, unavailable: true };
+    }
+    if (!rpcResult.ok) {
+      if (isRpcSignatureUnavailable(rpcResult.responseText)) {
+        return { available: false, response: null, unavailable: true };
+      }
+      return { available: false, response: null, unavailable: false };
+    }
+    const row = parentFeedbackRpcRows(rpcResult.data)[0];
+    return {
+      available: true,
+      response: row ? normalizeCounsellorReviewResponseRow(row) : null,
+      unavailable: false
+    };
+  },
+
   saveCounsellorReviewResponseDraft: async (userId, grantMeta, draftPayload, authSession = null) => {
     const grantId = String(grantMeta?.grantId || grantMeta?.grant_id || '').trim();
     if (!grantId) {
       return { ok: false, unavailable: false, response: null, errorStage: 'grant' };
     }
+    const grantEntryId = String(grantMeta?.grantEntryId || grantMeta?.grant_entry_id || '').trim();
+    const journalEntryId = String(grantMeta?.journalEntryId || grantMeta?.journal_entry_id || '').trim();
     const parentUserId = grantMeta?.parentUserId || grantMeta?.parent_user_id;
     const parentId = grantMeta?.parentId || grantMeta?.parent_id;
     const counsellorWayfinderId = grantMeta?.counsellorWayfinderId || grantMeta?.counsellor_wayfinder_id;
@@ -1582,18 +1707,30 @@ const DB = {
       return { ok: false, unavailable: false, response: null, errorStage: 'grantMeta' };
     }
 
+    const perEntryMode = !!(grantEntryId && journalEntryId);
     const existing = await fetchReviewResponsesSafe({
-      query: {
+      query: perEntryMode ? {
+        select: 'id,status',
+        grant_entry_id: `eq.${grantEntryId}`,
+        counsellor_user_id: `eq.${userId}`
+      } : {
         select: 'id,status',
         grant_id: `eq.${grantId}`,
         counsellor_user_id: `eq.${userId}`
       },
       userId,
       authSession,
-      context: 'saveCounsellorReviewResponseDraft lookup'
+      context: perEntryMode
+        ? 'saveCounsellorReviewResponseDraft per-entry lookup'
+        : 'saveCounsellorReviewResponseDraft legacy lookup'
     });
     if (existing.unavailable) {
-      return { ok: false, unavailable: true, response: null, errorStage: 'lookup' };
+      return {
+        ok: false,
+        unavailable: true,
+        response: null,
+        errorStage: perEntryMode ? 'perEntryLookup' : 'lookup'
+      };
     }
 
     const body = {
@@ -1614,15 +1751,27 @@ const DB = {
         method: 'PATCH',
         userId,
         authSession,
-        context: 'saveCounsellorReviewResponseDraft update',
+        context: perEntryMode
+          ? 'saveCounsellorReviewResponseDraft per-entry update'
+          : 'saveCounsellorReviewResponseDraft legacy update',
         query: `id=eq.${encodeURIComponent(existingRow.id)}`,
         body
       });
       if (updateResult.unavailable) {
-        return { ok: false, unavailable: true, response: null, errorStage: 'update' };
+        return {
+          ok: false,
+          unavailable: true,
+          response: null,
+          errorStage: perEntryMode ? 'perEntryUpdate' : 'update'
+        };
       }
       if (!updateResult.ok || !updateResult.rows?.[0]) {
-        return { ok: false, unavailable: false, response: null, errorStage: 'update' };
+        return {
+          ok: false,
+          unavailable: false,
+          response: null,
+          errorStage: perEntryMode ? 'perEntryUpdate' : 'update'
+        };
       }
       return {
         ok: true,
@@ -1632,26 +1781,44 @@ const DB = {
       };
     }
 
+    const insertBody = {
+      grant_id: grantId,
+      counsellor_user_id: userId,
+      parent_user_id: parentUserId,
+      parent_id: parentId,
+      counsellor_wayfinder_id: counsellorWayfinderId,
+      status: 'draft',
+      ...body
+    };
+    if (perEntryMode) {
+      insertBody.grant_entry_id = grantEntryId;
+      insertBody.journal_entry_id = journalEntryId;
+    }
+
     const insertResult = await reviewResponseWriteSafe({
       method: 'POST',
       userId,
       authSession,
-      context: 'saveCounsellorReviewResponseDraft insert',
-      body: {
-        grant_id: grantId,
-        counsellor_user_id: userId,
-        parent_user_id: parentUserId,
-        parent_id: parentId,
-        counsellor_wayfinder_id: counsellorWayfinderId,
-        status: 'draft',
-        ...body
-      }
+      context: perEntryMode
+        ? 'saveCounsellorReviewResponseDraft per-entry insert'
+        : 'saveCounsellorReviewResponseDraft legacy insert',
+      body: insertBody
     });
     if (insertResult.unavailable) {
-      return { ok: false, unavailable: true, response: null, errorStage: 'insert' };
+      return {
+        ok: false,
+        unavailable: true,
+        response: null,
+        errorStage: perEntryMode ? 'perEntryInsert' : 'insert'
+      };
     }
     if (!insertResult.ok || !insertResult.rows?.[0]) {
-      return { ok: false, unavailable: false, response: null, errorStage: 'insert' };
+      return {
+        ok: false,
+        unavailable: false,
+        response: null,
+        errorStage: perEntryMode ? 'perEntryInsert' : 'insert'
+      };
     }
     return {
       ok: true,
@@ -1872,10 +2039,10 @@ const DB = {
     };
   },
 
-  saveParentCounsellorFeedbackReflection: async (userId, responseId, grantEntryId, reflectionText, authSession = null) => {
+  saveParentCounsellorFeedbackReflection: async (userId, responseId, arg3, arg4, arg5 = null) => {
     const responseKey = String(responseId || '').trim();
-    const grantEntryKey = String(grantEntryId || '').trim();
-    if (!responseKey || !grantEntryKey) {
+    const { grantEntryId, reflectionText, authSession } = parseParentFeedbackReflectionArgs(arg3, arg4, arg5);
+    if (!responseKey) {
       return {
         available: false,
         ok: false,
@@ -1883,80 +2050,149 @@ const DB = {
         reason: 'feedback_reflection_context_required'
       };
     }
-    const result = await callParentFeedbackRpcSafe({
+
+    const finish = (result, usedLegacy = false) => {
+      if (result.unavailable) {
+        return {
+          available: false,
+          ok: false,
+          reflection: null,
+          reason: parentFeedbackUnavailableReason(result.responseText)
+        };
+      }
+      if (!result.ok) {
+        return {
+          available: false,
+          ok: false,
+          reflection: null,
+          reason: parentFeedbackUnavailableReason(result.responseText)
+        };
+      }
+      const reflection = normalizeParentFeedbackReflectionRow(parentFeedbackRpcRows(result.data)[0]);
+      return {
+        available: true,
+        ok: !!reflection,
+        reflection,
+        usedLegacyRpc: usedLegacy
+      };
+    };
+
+    const perEntryResult = await callParentFeedbackRpcSafe({
       rpcName: 'save_parent_counsellor_feedback_reflection',
       userId,
       authSession,
-      context: 'saveParentCounsellorFeedbackReflection',
+      context: 'saveParentCounsellorFeedbackReflection per-entry',
+      body: {
+        p_response_id: responseKey,
+        p_reflection_text: reflectionText ?? ''
+      }
+    });
+    if (perEntryResult.ok) {
+      return finish(perEntryResult, false);
+    }
+    if (!isRpcSignatureUnavailable(perEntryResult.responseText)) {
+      return finish(perEntryResult, false);
+    }
+
+    const grantEntryKey = String(grantEntryId || '').trim();
+    if (!grantEntryKey) {
+      return {
+        available: false,
+        ok: false,
+        reflection: null,
+        reason: parentFeedbackUnavailableReason(perEntryResult.responseText)
+      };
+    }
+
+    const legacyResult = await callParentFeedbackRpcSafe({
+      rpcName: 'save_parent_counsellor_feedback_reflection',
+      userId,
+      authSession,
+      context: 'saveParentCounsellorFeedbackReflection legacy',
       body: {
         p_response_id: responseKey,
         p_grant_entry_id: grantEntryKey,
         p_reflection_text: reflectionText ?? ''
       }
     });
-    if (result.unavailable) {
-      return {
-        available: false,
-        ok: false,
-        reflection: null,
-        reason: parentFeedbackUnavailableReason(result.responseText)
-      };
-    }
-    if (!result.ok) {
-      return {
-        available: false,
-        ok: false,
-        reflection: null,
-        reason: parentFeedbackUnavailableReason(result.responseText)
-      };
-    }
-    const reflection = normalizeParentFeedbackReflectionRow(parentFeedbackRpcRows(result.data)[0]);
-    return {
-      available: true,
-      ok: !!reflection,
-      reflection
-    };
+    return finish(legacyResult, true);
   },
 
-  getParentCounsellorFeedbackReflection: async (userId, responseId, grantEntryId, authSession = null) => {
+  getParentCounsellorFeedbackReflection: async (userId, responseId, arg3, arg4 = null) => {
     const responseKey = String(responseId || '').trim();
-    const grantEntryKey = String(grantEntryId || '').trim();
-    if (!responseKey || !grantEntryKey) {
+    let grantEntryId = null;
+    let authSession = null;
+    if (isAuthSessionLike(arg4)) {
+      grantEntryId = arg3;
+      authSession = arg4;
+    } else if (isAuthSessionLike(arg3)) {
+      authSession = arg3;
+    }
+    if (!responseKey) {
       return {
         available: false,
         reflection: null,
         reason: 'feedback_reflection_context_required'
       };
     }
-    const result = await callParentFeedbackRpcSafe({
+
+    const finish = (result, usedLegacy = false) => {
+      if (result.unavailable) {
+        return {
+          available: false,
+          reflection: null,
+          reason: parentFeedbackUnavailableReason(result.responseText)
+        };
+      }
+      if (!result.ok) {
+        return {
+          available: false,
+          reflection: null,
+          reason: parentFeedbackUnavailableReason(result.responseText)
+        };
+      }
+      const reflection = normalizeParentFeedbackReflectionRow(parentFeedbackRpcRows(result.data)[0]);
+      return {
+        available: true,
+        reflection,
+        usedLegacyRpc: usedLegacy
+      };
+    };
+
+    const perEntryResult = await callParentFeedbackRpcSafe({
       rpcName: 'get_parent_counsellor_feedback_reflection',
       userId,
       authSession,
-      context: 'getParentCounsellorFeedbackReflection',
+      context: 'getParentCounsellorFeedbackReflection per-entry',
+      body: { p_response_id: responseKey }
+    });
+    if (perEntryResult.ok) {
+      return finish(perEntryResult, false);
+    }
+    if (!isRpcSignatureUnavailable(perEntryResult.responseText)) {
+      return finish(perEntryResult, false);
+    }
+
+    const grantEntryKey = String(grantEntryId || '').trim();
+    if (!grantEntryKey) {
+      return {
+        available: false,
+        reflection: null,
+        reason: parentFeedbackUnavailableReason(perEntryResult.responseText)
+      };
+    }
+
+    const legacyResult = await callParentFeedbackRpcSafe({
+      rpcName: 'get_parent_counsellor_feedback_reflection',
+      userId,
+      authSession,
+      context: 'getParentCounsellorFeedbackReflection legacy',
       body: {
         p_response_id: responseKey,
         p_grant_entry_id: grantEntryKey
       }
     });
-    if (result.unavailable) {
-      return {
-        available: false,
-        reflection: null,
-        reason: parentFeedbackUnavailableReason(result.responseText)
-      };
-    }
-    if (!result.ok) {
-      return {
-        available: false,
-        reflection: null,
-        reason: parentFeedbackUnavailableReason(result.responseText)
-      };
-    }
-    const reflection = normalizeParentFeedbackReflectionRow(parentFeedbackRpcRows(result.data)[0]);
-    return {
-      available: true,
-      reflection
-    };
+    return finish(legacyResult, true);
   },
 
   getParentEntryReviewLockMap: async (userId, journalEntryIds, authSession = null) => {
