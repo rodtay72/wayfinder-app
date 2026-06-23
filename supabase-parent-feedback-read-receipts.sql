@@ -123,6 +123,7 @@ end;
 $$;
 
 revoke all on function public.lock_grant_entries_for_feedback_response(uuid, text) from public;
+revoke execute on function public.lock_grant_entries_for_feedback_response(uuid, text) from authenticated;
 -- Internal only: called by publish/read SECURITY DEFINER RPCs (no authenticated execute grant).
 
 -- ---------------------------------------------------------------------------
@@ -188,6 +189,7 @@ create index if not exists parent_counsellor_feedback_reflections_entry_idx
 alter table public.parent_counsellor_feedback_reflections enable row level security;
 
 -- Parent may read own reflections only. Writes via save_parent_counsellor_feedback_reflection RPC only.
+revoke insert, update on public.parent_counsellor_feedback_reflections from authenticated;
 grant select on public.parent_counsellor_feedback_reflections to authenticated;
 
 drop policy if exists "Parents read own feedback reflections" on public.parent_counsellor_feedback_reflections;
