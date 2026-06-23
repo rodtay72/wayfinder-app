@@ -215,6 +215,9 @@ create policy "Counsellors update draft review responses"
       from public.counsellor_review_grants g
       where g.id = grant_id
         and g.counsellor_user_id = auth.uid()
+        and g.parent_user_id = parent_user_id
+        and g.parent_id = parent_id
+        and g.counsellor_wayfinder_id = counsellor_wayfinder_id
     )
   );
 
