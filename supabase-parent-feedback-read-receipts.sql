@@ -123,7 +123,7 @@ end;
 $$;
 
 revoke all on function public.lock_grant_entries_for_feedback_response(uuid, text) from public;
-grant execute on function public.lock_grant_entries_for_feedback_response(uuid, text) to authenticated;
+-- Internal only: called by publish/read SECURITY DEFINER RPCs (no authenticated execute grant).
 
 -- ---------------------------------------------------------------------------
 -- A. Read receipts
@@ -187,7 +187,8 @@ create index if not exists parent_counsellor_feedback_reflections_entry_idx
 
 alter table public.parent_counsellor_feedback_reflections enable row level security;
 
-grant select, insert, update on public.parent_counsellor_feedback_reflections to authenticated;
+-- Parent may read own reflections only. Writes via save_parent_counsellor_feedback_reflection RPC only.
+grant select on public.parent_counsellor_feedback_reflections to authenticated;
 
 drop policy if exists "Parents read own feedback reflections" on public.parent_counsellor_feedback_reflections;
 create policy "Parents read own feedback reflections"
@@ -197,34 +198,9 @@ create policy "Parents read own feedback reflections"
   using (parent_user_id = auth.uid());
 
 drop policy if exists "Parents insert own feedback reflections" on public.parent_counsellor_feedback_reflections;
-create policy "Parents insert own feedback reflections"
-  on public.parent_counsellor_feedback_reflections
-  for insert
-  to authenticated
-  with check (
-    parent_user_id = auth.uid()
-    and public.parent_owns_published_feedback_response(response_id)
-    and exists (
-      select 1
-      from public.counsellor_review_grant_entries ge
-      where ge.id = grant_entry_id
-        and ge.grant_id = grant_id
-        and ge.journal_entry_id = journal_entry_id
-    )
-  );
-
 drop policy if exists "Parents update own feedback reflections" on public.parent_counsellor_feedback_reflections;
-create policy "Parents update own feedback reflections"
-  on public.parent_counsellor_feedback_reflections
-  for update
-  to authenticated
-  using (parent_user_id = auth.uid())
-  with check (
-    parent_user_id = auth.uid()
-    and public.parent_owns_published_feedback_response(response_id)
-  );
 
--- No counsellor SELECT/INSERT/UPDATE policies (no share-back in Phase 2d).
+-- No counsellor policies (no share-back in Phase 2d). No direct authenticated INSERT/UPDATE.
 
 -- ---------------------------------------------------------------------------
 -- C. Entry locks (immutable; grant-scoped entries only)
