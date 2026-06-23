@@ -2235,11 +2235,12 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
  const [loading,setLoading]=useState(true);
  const [available,setAvailable]=useState(false);
  const [detail,setDetail]=useState(null);
- const [error,setError]=useState('');
+ const [loadError,setLoadError]=useState('');
+ const [markReadError,setMarkReadError]=useState('');
  const [markingRead,setMarkingRead]=useState(false);
- const [reflections,setReflections]=useState({});
- const [reflectionStatus,setReflectionStatus]=useState({});
- const [savingReflection,setSavingReflection]=useState(null);
+ const [reflectionText,setReflectionText]=useState('');
+ const [reflectionStatus,setReflectionStatus]=useState('');
+ const [savingReflection,setSavingReflection]=useState(false);
 
  const fmtEntryDate=(value)=>{
   const dt=parseStoredDate(value);
@@ -2257,24 +2258,26 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
 
  const loadDetail=async()=>{
   setLoading(true);
-  setError('');
+  setLoadError('');
+  setMarkReadError('');
+  setReflectionStatus('');
   try{
    const result=await DB.getParentCounsellorFeedbackDetail(user.id,responseId,authSession);
    if(!result.available){
     setAvailable(false);
     setDetail(null);
-    setError(meta.unavailable||'Counsellor feedback is not available yet. Your journal and shared reflections remain unchanged.');
+    setLoadError(meta.unavailable||'Counsellor feedback is not available yet. Your journal and shared reflections remain unchanged.');
     return;
    }
    setAvailable(true);
    setDetail(result.detail||null);
    if(!result.detail){
-    setError(meta.detailUnavailable||'This counsellor feedback could not be loaded right now.');
+    setLoadError(meta.detailUnavailable||'This counsellor feedback could not be loaded right now.');
    }
   }catch(err){
    setAvailable(false);
    setDetail(null);
-   setError(meta.unavailable||'Counsellor feedback is not available yet. Your journal and shared reflections remain unchanged.');
+   setLoadError(meta.unavailable||'Counsellor feedback is not available yet. Your journal and shared reflections remain unchanged.');
    AuthDebug.log('[parent feedback] detail load failed:', { message: err?.message || String(err) });
   }finally{
    setLoading(false);
@@ -2284,68 +2287,68 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
  useEffect(()=>{ if(responseId&&authSession?.access_token) loadDetail(); },[user?.id,responseId,authSession?.access_token]);
 
  useEffect(()=>{
-  if(!detail?.linkedGrantEntries?.length||!responseId||!authSession?.access_token) return;
+  if(!detail?.responseId||!responseId||!authSession?.access_token) return;
   let cancelled=false;
   (async()=>{
-   const next={};
-   for(const link of detail.linkedGrantEntries){
-    try{
-     const result=await DB.getParentCounsellorFeedbackReflection(user.id,responseId,link.grantEntryId,authSession);
-     if(!cancelled&&result.available&&result.reflection){
-      next[link.grantEntryId]=result.reflection.reflectionText||'';
-     }
-    }catch(_){}
+   try{
+    const result=await DB.getParentCounsellorFeedbackReflection(user.id,responseId,authSession);
+    if(!cancelled&&result.available&&result.reflection){
+     setReflectionText(result.reflection.reflectionText||'');
+    }
+   }catch(err){
+    AuthDebug.log('[parent feedback] reflection load failed:', { message: err?.message || String(err) });
    }
-   if(!cancelled) setReflections(prev=>({...prev,...next}));
   })();
   return ()=>{ cancelled=true; };
- },[detail?.responseId,detail?.linkedGrantEntries,responseId,user?.id,authSession?.access_token]);
+ },[detail?.responseId,responseId,user?.id,authSession?.access_token]);
 
  const handleMarkRead=async()=>{
   if(!responseId||detail?.isRead||markingRead) return;
   setMarkingRead(true);
-  setError('');
+  setMarkReadError('');
   try{
    const result=await DB.markParentCounsellorFeedbackRead(user.id,responseId,authSession);
    if(!result.available||!result.ok){
-    setError(meta.detailUnavailable||'This counsellor feedback could not be updated right now.');
+    setMarkReadError(meta.markReadError||'Mark as read could not be completed right now. Your counsellor feedback remains visible.');
     return;
    }
    setDetail(prev=>prev?({...prev,isRead:true,readAt:result.readAt||prev.readAt}):prev);
    onMarkedRead?.();
   }catch(err){
-   setError(meta.detailUnavailable||'This counsellor feedback could not be updated right now.');
+   setMarkReadError(meta.markReadError||'Mark as read could not be completed right now. Your counsellor feedback remains visible.');
    AuthDebug.log('[parent feedback] mark read failed:', { message: err?.message || String(err) });
   }finally{
    setMarkingRead(false);
   }
  };
 
- const handleSaveReflection=async(grantEntryId)=>{
-  if(!responseId||!grantEntryId||savingReflection) return;
-  setSavingReflection(grantEntryId);
-  setReflectionStatus(prev=>({...prev,[grantEntryId]:'saving'}));
+ const handleSaveReflection=async()=>{
+  if(!responseId||savingReflection) return;
+  setSavingReflection(true);
+  setReflectionStatus('saving');
   try{
-   const result=await DB.saveParentCounsellorFeedbackReflection(user.id,responseId,grantEntryId,reflections[grantEntryId]||'',authSession);
+   const result=await DB.saveParentCounsellorFeedbackReflection(user.id,responseId,reflectionText,authSession);
    if(!result.available||!result.ok){
-    setReflectionStatus(prev=>({...prev,[grantEntryId]:'error'}));
+    setReflectionStatus('error');
     return;
    }
-   setReflectionStatus(prev=>({...prev,[grantEntryId]:'saved'}));
+   setReflectionStatus('saved');
   }catch(err){
-   setReflectionStatus(prev=>({...prev,[grantEntryId]:'error'}));
+   setReflectionStatus('error');
    AuthDebug.log('[parent feedback] reflection save failed:', { message: err?.message || String(err) });
   }finally{
-   setSavingReflection(null);
+   setSavingReflection(false);
   }
  };
+
+ const journalEntryId=detail?.journalEntryId||detail?.linkedGrantEntries?.[0]?.journalEntryId||detail?.linkedJournalEntryIds?.[0]||null;
 
  if(loading) return <div className="wrap"><div className="card parent-feedback-reader"><p className="sub">Loading counsellor feedback…</p></div></div>;
 
  return <div className="wrap parent-feedback-reader-wrap">
   <Bar title={meta.readerTitle||'Counsellor feedback'} back={onBack} onSignOut={onSignOut}/>
   <div className="card parent-feedback-reader">
-   {!available || !detail ? <p className="sub parent-feedback-unavailable">{error||meta.unavailable}</p> : <>
+   {!available || !detail ? <p className="sub parent-feedback-unavailable">{loadError||meta.unavailable}</p> : <>
     <p className="parent-feedback-reader-intro sub">{meta.readerIntro||'This reflection relates only to the Wayfinder entries you chose to share.'}</p>
     <div className="parent-feedback-confidentiality">
      <h3>Context and confidentiality</h3>
@@ -2356,6 +2359,7 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
      {detail.publishedAt ? <span className="sub">{meta.publishedLabel||'Published'}: {formatCounsellorFeedbackDate(detail.publishedAt)}</span> : null}
      {detail.isRead ? <span className="pill parent-feedback-read-pill">{meta.markReadDone||'Marked as read'}</span> : null}
     </div>
+    {journalEntryId ? <p className="sub parent-feedback-linked-entry">{linkedEntryLabel(journalEntryId)}</p> : null}
     <div className="parent-feedback-body">
      <pre className="parent-feedback-text">{detail.parentFacingText||''}</pre>
     </div>
@@ -2364,34 +2368,27 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
      <button type="button" className="btn btn-primary" disabled={markingRead} onClick={handleMarkRead}>
       {markingRead?(meta.markReadSaving||'Marking as read…'):(meta.markReadButton||'Mark as read')}
      </button>
+     {markReadError ? <p className="parent-feedback-error">{markReadError}</p> : null}
     </div>}
-    {detail.linkedGrantEntries?.length>0 && <div className="parent-feedback-reflections">
-     <h3>{meta.reflectionSectionTitle||'Reflections linked to your shared entries'}</h3>
-     {detail.linkedGrantEntries.map(link=>{
-      const grantEntryId=link.grantEntryId;
-      const status=reflectionStatus[grantEntryId];
-      return <div key={grantEntryId} className="parent-feedback-reflection-block">
-       <p className="parent-feedback-reflection-entry-label">{linkedEntryLabel(link.journalEntryId)}</p>
-       <label className="parent-feedback-reflection-field">
-        <span>{meta.reflectionLabel||'My reflection after reading this feedback'}</span>
-        <textarea
-         rows={4}
-         value={reflections[grantEntryId]||''}
-         placeholder={meta.reflectionPlaceholder||''}
-         onChange={ev=>setReflections(prev=>({...prev,[grantEntryId]:ev.target.value}))}
-        />
-       </label>
-       <div className="parent-feedback-reflection-actions">
-        <button type="button" className="btn btn-secondary" disabled={savingReflection===grantEntryId} onClick={()=>handleSaveReflection(grantEntryId)}>
-         {savingReflection===grantEntryId?(meta.reflectionSaving||'Saving…'):(meta.reflectionSaveButton||'Save my reflection')}
-        </button>
-        {status==='saved' && <span className="parent-feedback-reflection-status">{meta.reflectionSaved||'Saved'}</span>}
-       </div>
-      </div>;
-     })}
-    </div>}
+    <div className="parent-feedback-reflections">
+     <h3>{meta.reflectionSectionTitle||'My reflection after reading this feedback'}</h3>
+     <label className="parent-feedback-reflection-field">
+      <textarea
+       rows={4}
+       value={reflectionText}
+       placeholder={meta.reflectionPlaceholder||'Your private reflection — only you can see this.'}
+       onChange={ev=>{ setReflectionText(ev.target.value); if(reflectionStatus==='saved') setReflectionStatus(''); }}
+      />
+     </label>
+     <div className="parent-feedback-reflection-actions">
+      <button type="button" className="btn btn-secondary" disabled={savingReflection} onClick={handleSaveReflection}>
+       {savingReflection?(meta.reflectionSaving||'Saving…'):(meta.reflectionSaveButton||'Save my reflection')}
+      </button>
+      {reflectionStatus==='saved' && <span className="parent-feedback-reflection-status">{meta.reflectionSaved||'Saved'}</span>}
+      {reflectionStatus==='error' && <span className="parent-feedback-reflection-status parent-feedback-reflection-status--error">{meta.reflectionError||'Your reflection could not be saved right now.'}</span>}
+     </div>
+    </div>
    </>}
-   {error&&detail&&<p className="parent-feedback-error">{error}</p>}
   </div>
  </div>;
 }
