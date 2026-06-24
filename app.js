@@ -2231,6 +2231,58 @@ function ParentCounsellorFeedbackNotification({meta,loading,available,unreadCoun
  </div>;
 }
 
+function ParentCounsellorFeedbackLibrary({meta,loading,available,rows,unreadResponseIds,entries,entryTitle,entryDateValue,onOpenFeedback}){
+ if(loading||!available||!rows.length) return null;
+ const unreadSet=new Set((unreadResponseIds||[]).map(id=>String(id)));
+ const sortedRows=[...rows].sort((a,b)=>{
+  const ta=parseStoredDate(a.publishedAt)?.getTime()||0;
+  const tb=parseStoredDate(b.publishedAt)?.getTime()||0;
+  return tb-ta;
+ });
+ const contextLabelForRow=(row)=>{
+  if(row.contextLabel) return row.contextLabel;
+  const journalEntryId=row.journalEntryId;
+  if(journalEntryId&&entries?.length){
+   const entry=entries.find(e=>String(e.id)===String(journalEntryId));
+   if(entry){
+    const title=entryTitle?entryTitle(entry):'Wayfinder activity';
+    const date=entryDateValue?entryDateValue(entry):entry?.date;
+    return `${title} · ${formatCounsellorFeedbackDate(date)}`;
+   }
+  }
+  return meta.feedbackLibraryTitle||'Counsellor feedback';
+ };
+ return <div className="card parent-feedback-library">
+  <div className="parent-feedback-library-head">
+   <div>
+    <h2>{meta.feedbackLibraryTitle||'Counsellor feedback'}</h2>
+    <p className="dashboard-helper">{meta.feedbackLibrarySubtitle||'Feedback your counsellor has shared on entries you chose to share.'}</p>
+   </div>
+   <span className="pill parent-feedback-library-count">{sortedRows.length} {sortedRows.length===1?'item':'items'}</span>
+  </div>
+  <ul className="parent-feedback-library-list">
+   {sortedRows.map(row=>{
+    const responseId=row.responseId?String(row.responseId):'';
+    if(!responseId) return null;
+    const isNew=unreadSet.has(responseId);
+    const statusLabel=isNew?(meta.feedbackStatusNew||'New'):(meta.feedbackStatusAvailable||'Available');
+    return <li key={responseId} className="parent-feedback-library-item">
+     <div className="parent-feedback-library-item-copy">
+      <div className="parent-feedback-library-item-title">{contextLabelForRow(row)}</div>
+      <div className="parent-feedback-library-item-meta">
+       {row.publishedAt ? <span>{meta.publishedLabel||'Published'}: {formatCounsellorFeedbackDate(row.publishedAt)}</span> : null}
+       <span className={'parent-feedback-library-status parent-feedback-library-status--'+(isNew?'new':'available')} aria-label={'Feedback status: '+statusLabel}>{statusLabel}</span>
+      </div>
+     </div>
+     <button type="button" className="btn btn-secondary parent-feedback-library-open" onClick={()=>onOpenFeedback(responseId)}>
+      {meta.feedbackLibraryOpen||'Open feedback'}
+     </button>
+    </li>;
+   })}
+  </ul>
+ </div>;
+}
+
 function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,entryTitle,entryDateValue,meta,onBack,onMarkedRead,onSignOut}){
  const [loading,setLoading]=useState(true);
  const [available,setAvailable]=useState(false);
@@ -2406,30 +2458,49 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [lastSavedEntryId,setLastSavedEntryId]=useState(null);
  const [activeFeedbackResponseId,setActiveFeedbackResponseId]=useState(null);
  const [feedbackNotice,setFeedbackNotice]=useState({loading:false,available:false,unreadCount:0,rows:[]});
+ const [feedbackLibrary,setFeedbackLibrary]=useState({loading:false,available:false,rows:[]});
  const feedbackMeta=parentCounsellorFeedbackMeta();
 
  const refreshFeedbackNotice=async()=>{
   if(!user?.id||!authSession?.access_token){
    setFeedbackNotice({loading:false,available:false,unreadCount:0,rows:[]});
+   setFeedbackLibrary({loading:false,available:false,rows:[]});
    return;
   }
   setFeedbackNotice(prev=>({...prev,loading:true}));
+  setFeedbackLibrary(prev=>({...prev,loading:true}));
   try{
-   const countResult=await DB.getParentUnreadCounsellorFeedbackCount(user.id,authSession);
+   const [countResult,summaryResult,publishedResult]=await Promise.all([
+    DB.getParentUnreadCounsellorFeedbackCount(user.id,authSession),
+    DB.getParentUnreadCounsellorFeedbackSummary(user.id,authSession),
+    DB.getParentPublishedReviewResponses(user.id,null,authSession).catch(err=>{
+     AuthDebug.log('[parent feedback] library load failed:', { message: err?.message || String(err) });
+     return { rows: [], unavailable: true };
+    })
+   ]);
    if(!countResult.available){
     setFeedbackNotice({loading:false,available:false,unreadCount:0,rows:[]});
-    return;
+   }else{
+    setFeedbackNotice({
+     loading:false,
+     available:!!summaryResult.available,
+     unreadCount:countResult.count||0,
+     rows:summaryResult.available?(summaryResult.rows||[]):[]
+    });
    }
-   const summaryResult=await DB.getParentUnreadCounsellorFeedbackSummary(user.id,authSession);
-   setFeedbackNotice({
-    loading:false,
-    available:!!summaryResult.available,
-    unreadCount:countResult.count||0,
-    rows:summaryResult.available?(summaryResult.rows||[]):[]
-   });
+   if(publishedResult.unavailable){
+    setFeedbackLibrary({loading:false,available:false,rows:[]});
+   }else{
+    setFeedbackLibrary({
+     loading:false,
+     available:true,
+     rows:publishedResult.rows||[]
+    });
+   }
   }catch(err){
    AuthDebug.log('[parent feedback] notice load failed:', { message: err?.message || String(err) });
    setFeedbackNotice({loading:false,available:false,unreadCount:0,rows:[]});
+   setFeedbackLibrary({loading:false,available:false,rows:[]});
   }
  };
 
@@ -2588,6 +2659,18 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
     available={feedbackNotice.available}
     unreadCount={feedbackNotice.unreadCount}
     unreadRows={feedbackNotice.rows}
+    onOpenFeedback={openCounsellorFeedback}
+   />
+
+   <ParentCounsellorFeedbackLibrary
+    meta={feedbackMeta}
+    loading={feedbackLibrary.loading}
+    available={feedbackLibrary.available}
+    rows={feedbackLibrary.rows}
+    unreadResponseIds={feedbackNotice.rows.map(row=>row.responseId).filter(Boolean)}
+    entries={entries}
+    entryTitle={entryTitle}
+    entryDateValue={entryDateValue}
     onOpenFeedback={openCounsellorFeedback}
    />
 

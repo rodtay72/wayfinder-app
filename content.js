@@ -183,7 +183,13 @@ const PARENT_COUNSELLOR_FEEDBACK = {
   detailUnavailable: "This counsellor feedback could not be loaded right now.",
   entryLockNotice: "This reflection has been locked because counsellor feedback has been published or read. This preserves the original context of the shared review.",
   entryLockedShareNote: "This entry is locked for review integrity and cannot be shared again.",
-  sharedEntryFallbackLabel: "Shared reflection"
+  sharedEntryFallbackLabel: "Shared reflection",
+  feedbackLibraryTitle: "Counsellor feedback",
+  feedbackLibrarySubtitle: "Feedback your counsellor has shared on entries you chose to share.",
+  feedbackLibraryEmpty: "No counsellor feedback has been shared yet.",
+  feedbackLibraryOpen: "Open feedback",
+  feedbackStatusNew: "New",
+  feedbackStatusAvailable: "Available"
 };
 
 const COUNSELLOR_REVIEW_SHARING = {
