@@ -547,6 +547,19 @@
   .parent-feedback-linked-entry{margin:0 0 14px;}
   .parent-feedback-unavailable,.parent-feedback-error{color:#7A5E42;font-size:14px;line-height:1.55;}
   .parent-feedback-lock-note{margin:0;padding:10px 12px;background:#FFF8E7;border:1px solid #E8D9B5;border-radius:8px;font-size:13px;line-height:1.5;color:#5d4a32;}
+  .parent-feedback-library{padding:22px 24px;}
+  .parent-feedback-library-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 16px;margin-bottom:16px;}
+  .parent-feedback-library-head h2{margin:0 0 6px;}
+  .parent-feedback-library-count{background:#E8F0E8;color:var(--sage-deep);}
+  .parent-feedback-library-list{margin:0;padding:0;list-style:none;display:grid;gap:10px;}
+  .parent-feedback-library-item{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid #E0E8DC;border-radius:8px;background:#FAFCFA;}
+  .parent-feedback-library-item-copy{flex:1;min-width:180px;}
+  .parent-feedback-library-item-title{font-weight:700;font-size:14px;color:#40514b;margin-bottom:6px;line-height:1.4;}
+  .parent-feedback-library-item-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:12px;color:#666;}
+  .parent-feedback-library-status{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid transparent;white-space:nowrap;}
+  .parent-feedback-library-status--new{background:#FFF8E7;border-color:#E8D9B5;color:#8B6914;}
+  .parent-feedback-library-status--available{background:#E8F0E8;border-color:#D8E2D8;color:var(--sage-deep);}
+  .parent-feedback-library-open{flex-shrink:0;}
   .trail-entry.is-locked .trail-entry-toggle{border-color:#E8D9B5;}
   .counsellor-hosting-intro,.counsellor-hosting-form,.counsellor-hosting-setup{margin-bottom:14px;}
   .counsellor-hosting-privacy{font-size:13px;line-height:1.6;color:#5d6c66;margin:10px 0 0;padding:12px 14px;background:#fff;border:1px solid #E0E8DC;border-radius:8px;border-left:4px solid var(--sage);}
