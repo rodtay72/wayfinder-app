@@ -3663,6 +3663,20 @@ const reviewSectionsFromRecord=(record)=>{
  };
 };
 
+function counsellorResponseStatusMeta(status,reviewMeta){
+ const raw=String(status||'').trim().toLowerCase();
+ const known=['pending','draft','published','revoked','unavailable'];
+ const normalized=known.includes(raw)?raw:'unavailable';
+ const labelMap={
+  pending:reviewMeta?.responseStatusPending||'Pending response',
+  draft:reviewMeta?.responseStatusDraft||'Draft saved',
+  published:reviewMeta?.responseStatusPublished||'Published',
+  revoked:reviewMeta?.responseStatusRevoked||'Revoked',
+  unavailable:reviewMeta?.responseStatusUnavailable||'Status unavailable'
+ };
+ return {status:normalized,label:labelMap[normalized]};
+}
+
 const reviewSectionsToPayload=(sections)=>({
  noticed:sections.noticed||'',
  possible_child_need:sections.possibleChildNeed||'',
@@ -3927,7 +3941,7 @@ function CounsellorReviewResponseComposer({user,authSession,grantContext,reviewM
  </div>;
 }
 
-function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags,user,authSession}){
+function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags,responseStatuses}){
  const [expanded,setExpanded]=useState(false);
  const fmtDate=(value)=>{
   const dt=parseStoredDate(value);
@@ -3987,8 +4001,14 @@ function CounsellorReviewGrantGroup({group,reviewMeta,onOpenEntry,flags,user,aut
        const isDecode=isBehaviourDecodeEntry(e);
        const activityLabel=isDecode?'Decode a Moment · Alignment Reminder':e.activity;
        const entryChildAge=ageFrom(e.childDob,e.date);
+       const rawStatus=responseStatuses?.[e._key]??responseStatuses?.[e.grantEntryId];
+       const entryStatus=rawStatus===undefined?'unavailable':rawStatus;
+       const statusMeta=counsellorResponseStatusMeta(entryStatus,reviewMeta);
        return <button type="button" key={e._key} className="counsellor-grant-entry-row" onClick={()=>onOpenEntry(e._key)}>
-        <span className="counsellor-grant-entry-title">{activityLabel}</span>
+        <div className="counsellor-grant-entry-row-head">
+         <span className="counsellor-grant-entry-title">{activityLabel}</span>
+         <span className={'counsellor-grant-entry-status counsellor-grant-entry-status--'+statusMeta.status} aria-label={'Response status: '+statusMeta.label}>{statusMeta.label}</span>
+        </div>
         <span className="counsellor-grant-entry-meta">{fmtDate(e.date)}{entryChildAge?' · '+entryChildAge:''}</span>
         {flags?.[e._key]&&<span className="counsellor-grant-entry-flag">{flags[e._key]}</span>}
         <span className="counsellor-grant-entry-action">{reviewMeta.openEntryLabel||'Open for ALIGN/CAB review'}</span>
@@ -4049,6 +4069,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [loadingEntries,setLoadingEntries]=useState(true);
  const [loadError,setLoadError]=useState('');
  const [flags,setFlags]=useState({});
+ const [responseStatuses,setResponseStatuses]=useState({});
  const [longitudinalSummaries,setLongitudinalSummaries]=useState({});
  const [longitudinalOpen,setLongitudinalOpen]=useState({});
  const [counsellorStage,setCounsellorStage]=useState('reflections');
@@ -4066,6 +4087,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
   setLoadingEntries(true);
   setLoadError('');
   setFlags({});
+  setResponseStatuses({});
   setLongitudinalSummaries({});
   try{
    const grantResult=await DB.getCounsellorGrantedEntries(user.id,authSession);
@@ -4082,7 +4104,8 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
    setUsingLegacyJournalAccess(legacyAccess);
    const withChildAge=data.map(e=>toCounsellorEntry({...e,childAge:entryChildAge(e)}));
    setEntries(withChildAge);
-   setGrantGroups(legacyAccess?[]:buildCounsellorGrantGroups(grantResult.grants,grantResult.grantLinks,withChildAge));
+   const groups=legacyAccess?[]:buildCounsellorGrantGroups(grantResult.grants,grantResult.grantLinks,withChildAge);
+   setGrantGroups(groups);
 
    if(!legacyAccess && withChildAge.length>0){
     const flagResults=await Promise.all(
@@ -4100,6 +4123,43 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
     const flagMap={};
     flagResults.forEach(f=>{flagMap[f.id]=f.flag;});
     setFlags(flagMap);
+
+    const statusEntries=groups.flatMap(g=>g.entries||[]).filter(e=>e.grantEntryId);
+    if(statusEntries.length>0&&user?.id&&authSession?.access_token){
+     const statusResults=await Promise.all(
+      statusEntries.map(async(e)=>{
+       try{
+        const result=await DB.getCounsellorReviewResponseForGrantEntry(user.id,e.grantEntryId,authSession);
+        if(result.unavailable){
+         AuthDebug.log('[counsellor] response status lookup unavailable:', { grantEntryId: e.grantEntryId });
+         return {key:e._key,status:'unavailable'};
+        }
+        if(!result.available){
+         AuthDebug.log('[counsellor] response status lookup not available:', { grantEntryId: e.grantEntryId });
+         return {key:e._key,status:'unavailable'};
+        }
+        if(!result.response) return {key:e._key,status:'pending'};
+        const rowStatus=String(result.response.status||'').trim().toLowerCase();
+        if(rowStatus==='draft'||rowStatus==='published'||rowStatus==='revoked') return {key:e._key,status:rowStatus};
+        AuthDebug.log('[counsellor] response status unexpected:', { grantEntryId: e.grantEntryId, rowStatus });
+        return {key:e._key,status:'unavailable'};
+       }catch(err){
+        AuthDebug.log('[counsellor] response status lookup failed:', { grantEntryId: e.grantEntryId, message: err?.message||String(err) });
+        return {key:e._key,status:'unavailable'};
+       }
+      })
+     );
+     const statusMap={};
+     statusResults.forEach(r=>{if(r.key) statusMap[r.key]=r.status;});
+     setResponseStatuses(statusMap);
+    }else if(statusEntries.length>0){
+     const statusMap={};
+     statusEntries.forEach(e=>{if(e._key) statusMap[e._key]='unavailable';});
+     setResponseStatuses(statusMap);
+     AuthDebug.log('[counsellor] response status lookup skipped: missing auth session');
+    }else{
+     setResponseStatuses({});
+    }
 
     const groupedByParent=withChildAge.reduce((acc,e)=>{
      const key=e.parentId||'Parent ID unavailable';
@@ -4126,6 +4186,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
     setLongitudinalSummaries(longMap);
    }else{
     setFlags({});
+    setResponseStatuses({});
     setLongitudinalSummaries({});
    }
   }catch(err){
@@ -4179,7 +4240,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
     <>
      {!usingLegacyJournalAccess && <CounsellorLongitudinalSection entries={entries} summaries={longitudinalSummaries} openState={longitudinalOpen} onToggle={pid=>setLongitudinalOpen(prev=>({...prev,[pid]:!prev[pid]}))} reviewMeta={reviewMeta}/>}
      {!usingLegacyJournalAccess && grantGroups.length>0 ? <div className="counsellor-review-context-section">
-      {grantGroups.map(group=><CounsellorReviewGrantGroup key={group.grant.id} group={group} reviewMeta={reviewMeta} flags={flags} onOpenEntry={setOpenId} user={user} authSession={authSession}/>)}
+      {grantGroups.map(group=><CounsellorReviewGrantGroup key={group.grant.id} group={group} reviewMeta={reviewMeta} flags={flags} responseStatuses={responseStatuses} onOpenEntry={setOpenId}/>)}
      </div> :
      entries.map(e=>{
       const childAge=ageFrom(e.childDob,e.date);
