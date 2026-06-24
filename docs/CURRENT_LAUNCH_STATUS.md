@@ -6,9 +6,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-21
+**Last updated:** 2026-06-24
 
-**Last verified merge:** PR #43 — v0.4 Day 2 Events Listing (Issue #42); counsellor Babel fix merged on main
+**Last verified merge:** PR #67 — counsellor response status badges; parent feedback mark-as-read flow fixed and owner-verified after PR #64 / #66 SQL applies
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -39,12 +39,16 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | 24/7 Launch Operations Handoff | Day 15 GitHub as 24/7 operating centre — Issue #36 | PR #37 |
 | Production Incident Triage and Recovery Playbook | Day 16 incident triage and recovery — Issue #38 | PR #39 |
 | v0.4 Implementation Contract | v0.4 Day 1 build plan and tier map — Issue #40 | PR #41 |
+| v0.4 Day 2 Events Listing | Parent Events Listing and add-to-calendar flow verified on main | PR #43 |
+| Parent feedback mark-as-read fix | Issue #52 parent read receipt flow fixed; SQL hotfixes applied manually and owner verified | PR #64, PR #66 |
+| Parent feedback error copy | Parent-facing mark-read failure copy clarified to refer to read status/dashboard notice only | PR #65 |
+| Counsellor response status badges | Counsellor workspace shows Pending response, Draft saved, Published, Revoked, and Status unavailable badges on parent-approved entries | PR #67 |
 
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
-| `feature/parent-selected-counsellor-review` | Issue #48 PR A: parent-selected counsellor review grants (schema + runtime + graceful degradation) | In flight |
+| Issue #52 parent/counsellor feedback workflow | Per-entry counsellor response flow, parent mark-read flow, and counsellor response status badges merged and owner-verified through PR #67 | Monitoring / verified |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -66,6 +70,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 6. Decode a Moment and ALIGN Journey still usable if touched.
 7. Mobile layout readable.
 8. Events Listing page reachable (Dashboard → Events); event cards display; add-to-calendar privacy-safe (.ics contains logistics only).
+9. Parent counsellor feedback: published feedback opens, mark-as-read succeeds, read receipt records, dashboard unread notice clears, and feedback remains readable.
+10. Counsellor workspace: parent-approved entries show response status badges (Pending response, Draft saved, Published, Revoked, or Status unavailable) without exposing private identifiers or hidden response content.
 
 ## Agent ops notes
 
