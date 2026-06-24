@@ -171,7 +171,7 @@ const PARENT_COUNSELLOR_FEEDBACK = {
   markReadHelper: "Mark as read only when you have reviewed this feedback. This preserves the shared context and clears the dashboard notice.",
   markReadSaving: "Marking as read…",
   markReadDone: "Marked as read",
-  markReadError: "Mark as read could not be completed right now. Your counsellor feedback remains visible.",
+  markReadError: "We couldn't update the read status or clear the dashboard notice right now. Please try again.",
   reflectionSectionTitle: "My reflection after reading this feedback",
   reflectionPlaceholder: "Your private reflection — only you can see this.",
   reflectionSaveButton: "Save my reflection",
