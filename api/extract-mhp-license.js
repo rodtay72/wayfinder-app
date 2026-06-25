@@ -5,7 +5,6 @@ import {
   getProfileByUserId,
   parseBody,
   readJson,
-  requireServiceRoleKey,
   supabaseAdminFetch
 } from './_supabase-admin.js';
 
@@ -13,6 +12,20 @@ const MHP_LICENSE_BUCKET = 'professional-license-documents';
 const DEFAULT_MODEL = process.env.MHP_LICENSE_EXTRACTION_MODEL || 'gpt-4o-mini';
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_TEXT_CHARS = 12000;
+const MIN_PDF_TEXT_CHARS = 20;
+const USER_EXTRACTION_FAILURE = 'Extraction failed. Please try again or contact Wayfinder support.';
+
+const ERROR_CODES = {
+  AUTH_REQUIRED: 'auth_required',
+  DOCUMENT_NOT_FOUND: 'document_not_found',
+  ROLE_NOT_AUTHORISED: 'role_not_authorised',
+  MISSING_OPENAI_KEY: 'missing_openai_key',
+  MISSING_SERVICE_ROLE_KEY: 'missing_service_role_key',
+  STORAGE_DOWNLOAD_FAILED: 'storage_download_failed',
+  PDF_TEXT_UNREADABLE: 'pdf_text_unreadable',
+  OPENAI_REQUEST_FAILED: 'openai_request_failed',
+  EXTRACTION_UNAVAILABLE: 'extraction_unavailable'
+};
 
 const setCors = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,6 +37,33 @@ const bearerToken = (req) => {
   const header = req.headers.authorization || req.headers.Authorization || '';
   const match = String(header).match(/^Bearer\s+(.+)$/i);
   return match ? match[1].trim() : '';
+};
+
+const createDiag = () => ({
+  documentIdPresent: false,
+  tokenPresent: false,
+  userResolved: false,
+  profileResolved: false,
+  documentResolved: false
+});
+
+const logExtractionFailure = ({ stage, status, error_code, message, diag }) => {
+  console.error('[mhp-license-extract]', {
+    stage: stage || 'unknown',
+    status: status ?? null,
+    error_code: error_code || ERROR_CODES.EXTRACTION_UNAVAILABLE,
+    message: message || 'Licence extraction failed',
+    documentIdPresent: !!diag?.documentIdPresent,
+    tokenPresent: !!diag?.tokenPresent,
+    userResolved: !!diag?.userResolved,
+    profileResolved: !!diag?.profileResolved,
+    documentResolved: !!diag?.documentResolved
+  });
+};
+
+const fail = (res, { status, error_code, error, stage, diag }) => {
+  logExtractionFailure({ stage, status, error_code, message: error, diag });
+  return res.status(status).json({ ok: false, error, error_code });
 };
 
 const encodeStoragePath = (storagePath) => String(storagePath || '')
@@ -40,37 +80,70 @@ const decodePdfString = (value) => String(value || '')
   .replace(/\\\)/g, ')')
   .replace(/\\\\/g, '\\');
 
-const collectPdfTextOperators = (raw) => {
-  const chunks = [];
-  const tjRegex = /\(((?:\\.|[^\\)])*)\)\s*Tj/g;
-  let match;
-  while ((match = tjRegex.exec(raw)) !== null) {
-    const text = decodePdfString(match[1]).trim();
-    if (text) chunks.push(text);
+const decodePdfHexString = (value) => {
+  const clean = String(value || '').replace(/[^0-9A-Fa-f]/g, '');
+  if (!clean || clean.length < 2) return '';
+  let out = '';
+  const byteLength = clean.length - (clean.length % 2);
+  for (let i = 0; i < byteLength; i += 2) {
+    const code = parseInt(clean.slice(i, i + 2), 16);
+    if (Number.isNaN(code)) continue;
+    out += String.fromCharCode(code);
   }
-  const tjArrayRegex = /\[((?:\([^)]*\)|[^\]])*)\]\s*TJ/g;
+  return out.replace(/\u0000/g, '').trim();
+};
+
+const pushPdfTextChunk = (chunks, value) => {
+  const text = String(value || '').replace(/\u0000/g, '').trim();
+  if (text) chunks.push(text);
+};
+
+const collectPdfTextFromSegment = (segment, chunks) => {
+  const raw = String(segment || '');
+  const literalTjRegex = /\(((?:\\.|[^\\)])*)\)\s*Tj/g;
+  let match;
+  while ((match = literalTjRegex.exec(raw)) !== null) {
+    pushPdfTextChunk(chunks, decodePdfString(match[1]));
+  }
+  const hexTjRegex = /<([0-9A-Fa-f\s]+)>\s*Tj/g;
+  while ((match = hexTjRegex.exec(raw)) !== null) {
+    pushPdfTextChunk(chunks, decodePdfHexString(match[1]));
+  }
+  const quoteTjRegex = /'((?:\\.|[^\\'])*)'\s*Tj/g;
+  while ((match = quoteTjRegex.exec(raw)) !== null) {
+    pushPdfTextChunk(chunks, decodePdfString(match[1]));
+  }
+  const tjArrayRegex = /\[((?:\([^)]*\)|<[^>]*>|'[^']*'|[^\]])*)\]\s*TJ/g;
   while ((match = tjArrayRegex.exec(raw)) !== null) {
     const inner = match[1];
-    const partRegex = /\(((?:\\.|[^\\)])*)\)/g;
+    const literalPartRegex = /\(((?:\\.|[^\\)])*)\)/g;
     let part;
-    while ((part = partRegex.exec(inner)) !== null) {
-      const text = decodePdfString(part[1]).trim();
-      if (text) chunks.push(text);
+    while ((part = literalPartRegex.exec(inner)) !== null) {
+      pushPdfTextChunk(chunks, decodePdfString(part[1]));
+    }
+    const hexPartRegex = /<([0-9A-Fa-f\s]+)>/g;
+    while ((part = hexPartRegex.exec(inner)) !== null) {
+      pushPdfTextChunk(chunks, decodePdfHexString(part[1]));
+    }
+    const quotePartRegex = /'((?:\\.|[^\\'])*)'/g;
+    while ((part = quotePartRegex.exec(inner)) !== null) {
+      pushPdfTextChunk(chunks, decodePdfString(part[1]));
     }
   }
-  return chunks.join('\n');
 };
 
 const extractPdfText = (buffer) => {
   const raw = buffer.toString('latin1');
-  const chunks = [collectPdfTextOperators(raw)];
+  const chunks = [];
+  collectPdfTextFromSegment(raw, chunks);
   const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let streamMatch;
   while ((streamMatch = streamRegex.exec(raw)) !== null) {
+    const streamBody = streamMatch[1];
+    collectPdfTextFromSegment(streamBody, chunks);
     try {
-      const inflated = zlib.inflateSync(Buffer.from(streamMatch[1], 'latin1'));
-      const text = collectPdfTextOperators(inflated.toString('latin1'));
-      if (text) chunks.push(text);
+      const inflated = zlib.inflateSync(Buffer.from(streamBody, 'latin1'));
+      collectPdfTextFromSegment(inflated.toString('latin1'), chunks);
     } catch {
       // Ignore non-deflate streams.
     }
@@ -154,7 +227,13 @@ async function getLicenseDocument(documentId, userId) {
 }
 
 async function downloadLicensePdf(bucket, storagePath) {
-  const serviceKey = requireServiceRoleKey();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    const error = new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
+    error.error_code = ERROR_CODES.MISSING_SERVICE_ROLE_KEY;
+    error.status = 503;
+    throw error;
+  }
   const encodedPath = encodeStoragePath(storagePath);
   const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${encodedPath}`, {
     method: 'GET',
@@ -166,12 +245,14 @@ async function downloadLicensePdf(bucket, storagePath) {
   if (!response.ok) {
     const detail = await readJson(response);
     const error = new Error(detail?.message || detail?.error || response.statusText || 'Storage download failed');
+    error.error_code = ERROR_CODES.STORAGE_DOWNLOAD_FAILED;
     error.status = response.status;
     throw error;
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   if (buffer.length > MAX_PDF_BYTES) {
     const error = new Error('Licence PDF exceeds size limit.');
+    error.error_code = ERROR_CODES.STORAGE_DOWNLOAD_FAILED;
     error.status = 413;
     throw error;
   }
@@ -197,6 +278,7 @@ async function callExtractionModel(pdfText) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     const error = new Error('OPENAI_API_KEY is not configured.');
+    error.error_code = ERROR_CODES.MISSING_OPENAI_KEY;
     error.status = 503;
     throw error;
   }
@@ -223,74 +305,167 @@ async function callExtractionModel(pdfText) {
   const data = await readJson(response);
   if (!response.ok) {
     const error = new Error(data?.error?.message || 'AI extraction request failed');
+    error.error_code = ERROR_CODES.OPENAI_REQUEST_FAILED;
     error.status = response.status;
     throw error;
   }
   const text = data?.choices?.[0]?.message?.content || '{}';
-  return JSON.parse(text);
+  try {
+    return JSON.parse(text);
+  } catch {
+    const error = new Error('AI extraction returned invalid JSON.');
+    error.error_code = ERROR_CODES.OPENAI_REQUEST_FAILED;
+    error.status = 502;
+    throw error;
+  }
 }
+
+const mapExtractionError = (err) => {
+  const errorCode = err?.error_code || ERROR_CODES.EXTRACTION_UNAVAILABLE;
+  const status = err?.status === 401 || err?.status === 403 || err?.status === 404
+    ? err.status
+    : errorCode === ERROR_CODES.PDF_TEXT_UNREADABLE
+      ? 422
+      : errorCode === ERROR_CODES.MISSING_OPENAI_KEY || errorCode === ERROR_CODES.MISSING_SERVICE_ROLE_KEY
+        ? 503
+        : err?.status || 500;
+  const userMessage = [
+    ERROR_CODES.AUTH_REQUIRED,
+    ERROR_CODES.DOCUMENT_NOT_FOUND,
+    ERROR_CODES.ROLE_NOT_AUTHORISED
+  ].includes(errorCode)
+    ? String(err?.message || USER_EXTRACTION_FAILURE)
+    : USER_EXTRACTION_FAILURE;
+  return { status, error_code: errorCode, error: userMessage };
+};
 
 export default async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return fail(res, {
+      status: 405,
+      error_code: ERROR_CODES.EXTRACTION_UNAVAILABLE,
+      error: 'Method not allowed',
+      stage: 'method',
+      diag: createDiag()
+    });
+  }
 
   const body = parseBody(req);
   const documentId = String(body.documentId || body.document_id || '').trim();
   const token = bearerToken(req);
+  const diag = createDiag();
+  diag.documentIdPresent = !!documentId;
+  diag.tokenPresent = !!token;
 
   if (!token) {
-    return res.status(401).json({ ok: false, error: 'Authentication required.' });
+    return fail(res, {
+      status: 401,
+      error_code: ERROR_CODES.AUTH_REQUIRED,
+      error: 'Authentication required.',
+      stage: 'auth',
+      diag
+    });
   }
   if (!documentId) {
-    return res.status(400).json({ ok: false, error: 'documentId is required.' });
+    return fail(res, {
+      status: 400,
+      error_code: ERROR_CODES.EXTRACTION_UNAVAILABLE,
+      error: USER_EXTRACTION_FAILURE,
+      stage: 'request',
+      diag
+    });
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return fail(res, {
+      status: 503,
+      error_code: ERROR_CODES.MISSING_SERVICE_ROLE_KEY,
+      error: USER_EXTRACTION_FAILURE,
+      stage: 'config',
+      diag
+    });
   }
 
   let userId = null;
   try {
     const user = await getAuthUserFromAccessToken(token);
     if (!user?.id) {
-      return res.status(401).json({ ok: false, error: 'Authentication required.' });
+      return fail(res, {
+        status: 401,
+        error_code: ERROR_CODES.AUTH_REQUIRED,
+        error: 'Authentication required.',
+        stage: 'auth',
+        diag
+      });
     }
+    diag.userResolved = true;
     userId = user.id;
 
     const profile = await getProfileByUserId(userId);
+    diag.profileResolved = !!profile;
     if (!profile || String(profile.role || '').trim().toLowerCase() !== 'counsellor') {
-      return res.status(403).json({ ok: false, error: 'Mental Health Professional access required.' });
+      return fail(res, {
+        status: 403,
+        error_code: ERROR_CODES.ROLE_NOT_AUTHORISED,
+        error: 'Mental Health Professional access required.',
+        stage: 'role',
+        diag
+      });
     }
 
     const document = await getLicenseDocument(documentId, userId);
+    diag.documentResolved = !!document;
     if (!document) {
-      return res.status(404).json({ ok: false, error: 'Licence document not found.' });
+      return fail(res, {
+        status: 404,
+        error_code: ERROR_CODES.DOCUMENT_NOT_FOUND,
+        error: 'Licence document not found.',
+        stage: 'document_lookup',
+        diag
+      });
     }
 
     const bucket = String(document.storage_bucket || MHP_LICENSE_BUCKET).trim();
     const storagePath = String(document.storage_path || '').trim();
     if (!storagePath || bucket !== MHP_LICENSE_BUCKET) {
-      return res.status(400).json({ ok: false, error: 'Licence document is not available for extraction.' });
+      return fail(res, {
+        status: 400,
+        error_code: ERROR_CODES.DOCUMENT_NOT_FOUND,
+        error: 'Licence document not found.',
+        stage: 'document_metadata',
+        diag
+      });
     }
 
     const currentExtractionStatus = String(document.extraction_status || 'pending').trim().toLowerCase();
     if (currentExtractionStatus === 'processing') {
-      return res.status(409).json({ ok: false, error: 'Extraction is already in progress.' });
+      return fail(res, {
+        status: 409,
+        error_code: ERROR_CODES.EXTRACTION_UNAVAILABLE,
+        error: USER_EXTRACTION_FAILURE,
+        stage: 'processing',
+        diag
+      });
     }
 
     await patchLicenseDocument(documentId, userId, {
       extraction_status: 'processing'
     });
 
-    let extraction = null;
     try {
       const pdfBuffer = await downloadLicensePdf(bucket, storagePath);
       const pdfText = extractPdfText(pdfBuffer);
-      if (!pdfText || pdfText.length < 20) {
+      if (!pdfText || pdfText.length < MIN_PDF_TEXT_CHARS) {
         const error = new Error('Could not extract readable text from the licence PDF.');
-        error.stage = 'pdfText';
+        error.error_code = ERROR_CODES.PDF_TEXT_UNREADABLE;
+        error.status = 422;
         throw error;
       }
 
       const modelResult = await callExtractionModel(pdfText);
-      extraction = sanitizeExtraction(modelResult);
+      const extraction = sanitizeExtraction(modelResult);
       const extractedAt = new Date().toISOString();
 
       const updatedRows = await patchLicenseDocument(documentId, userId, {
@@ -342,22 +517,23 @@ export default async function handler(req, res) {
       } catch {
         // Best-effort failure marker only.
       }
-      const status = err.status === 401 || err.status === 403 || err.status === 404
-        ? err.status
-        : err.stage === 'pdfText'
-          ? 422
-          : err.status || 500;
-      return res.status(status).json({
-        ok: false,
-        error: status >= 500
-          ? 'Licence extraction is unavailable right now.'
-          : 'Licence extraction failed. Please try again or enter details manually later.'
+      const mapped = mapExtractionError(err);
+      return fail(res, {
+        status: mapped.status,
+        error_code: mapped.error_code,
+        error: mapped.error,
+        stage: 'extract',
+        diag
       });
     }
   } catch (error) {
-    return res.status(500).json({
-      ok: false,
-      error: 'Licence extraction is unavailable right now.'
+    const mapped = mapExtractionError(error);
+    return fail(res, {
+      status: mapped.status >= 500 ? 500 : mapped.status,
+      error_code: error?.error_code || ERROR_CODES.EXTRACTION_UNAVAILABLE,
+      error: USER_EXTRACTION_FAILURE,
+      stage: 'handler',
+      diag
     });
   }
 }

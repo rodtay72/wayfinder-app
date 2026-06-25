@@ -281,6 +281,7 @@
   .mhp-license-extract-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;}
   .mhp-license-extract-status{font-size:13px;font-weight:650;color:#5d6c66;}
   .mhp-license-extract-status--error{color:#8A1F1F;}
+  .mhp-license-extract-debug{font-size:11px;color:#7A5E42;font-family:monospace;}
   .mhp-license-extraction-success{margin:12px 0 0;padding:14px 16px;border:1px solid #C8D9C4;border-radius:8px;background:#F2F8F0;}
   .mhp-license-extraction-success-message{margin:0;font-size:14px;font-weight:700;color:var(--sage-deep);}
   .mhp-license-review-panel{margin-top:14px;padding:14px 16px;border:1px solid #D8E4D2;border-radius:8px;background:#FBFDFA;}
