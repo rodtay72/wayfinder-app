@@ -1,89 +1,58 @@
 -- ============================================================
 -- Wayfinder Mental Health Professional profile + licence contract
--- Issue #71 — PR A (SQL / RLS / storage instructions only)
+-- Issue #71 - PR A (SQL / RLS / storage instructions only)
 -- ============================================================
 --
--- Run in Supabase SQL Editor after:
---   supabase-profiles.sql
---   supabase-counsellor-rls.sql   (needs is_wayfinder_counsellor())
+-- Purpose:
+--   Add the data contract for invite-only Mental Health Professional (MHP)
+--   onboarding, profile setup, licence document metadata/extraction review,
+--   and membership expiry.
 --
--- User-facing label: Mental Health Professional
--- Internal role value remains: counsellor
+-- Important naming rule:
+--   User-facing label: Mental Health Professional
+--   Internal role value: counsellor
 --
--- Scope (PR A only):
---   Tables, constraints, RLS, safe public profile RPCs, storage instructions.
---   Does NOT modify auth, ensure_profile, email verification, Parent/Child ID logic,
---   journal save/read runtime, dashboard protected reads, app.js, supabase.js, or API routes.
+-- This SQL intentionally does NOT rename existing role values, RLS helper
+-- names, route files, or counsellor portal internals.
 --
--- Privacy:
---   Licence PDF rows and storage paths are never public.
---   Public profile output uses profile_slug — not raw auth UUIDs.
---   extracted_json and extraction_confidence remain owner/admin only.
+-- Scope:
+--   - SQL tables, constraints, indexes, RLS policies, safe read RPC.
+--   - Storage bucket instructions only for professional licence PDFs.
+--   - No UI, no API route, no app runtime changes.
 --
--- Admin / service role:
---   Supabase service_role bypasses RLS for owner-applied admin operations.
---   Authenticated admin uses profiles.role = 'admin' via is_wayfinder_mhp_admin().
+-- Owner-applied only. Do not run from CI.
+--
+-- Expected upstream prerequisites:
+--   - public.profiles exists
+--   - public.is_wayfinder_counsellor() exists
+--   - public.ensure_profile(...) remains unchanged
+--
+-- ============================================================
 
 -- ---------------------------------------------------------------------------
--- Helpers
+-- 0. Preconditions
 -- ---------------------------------------------------------------------------
 
-create or replace function public.is_wayfinder_mhp_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.profiles p
-    where p.user_id = auth.uid()
-      and p.role = 'admin'
-  );
-$$;
-
-comment on function public.is_wayfinder_mhp_admin() is
-  'Authenticated Wayfinder admin check for MHP onboarding review. service_role bypasses RLS natively.';
-
-revoke all on function public.is_wayfinder_mhp_admin() from public;
-grant execute on function public.is_wayfinder_mhp_admin() to authenticated;
-
-create or replace function public.mhp_membership_is_active(p_user_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.mental_health_professional_memberships m
-    where m.user_id = p_user_id
-      and m.membership_status = 'active'
-      and (
-        m.institutional_membership_expires_at is null
-        or m.institutional_membership_expires_at > now()
-      )
-  );
-$$;
-
-revoke all on function public.mhp_membership_is_active(uuid) from public;
-grant execute on function public.mhp_membership_is_active(uuid) to authenticated;
-
-create or replace function public.set_mhp_row_updated_at()
-returns trigger
-language plpgsql
-as $$
+do $$
 begin
-  new.updated_at = now();
-  return new;
+  if to_regclass('public.profiles') is null then
+    raise exception 'MHP profile contract blocked: public.profiles does not exist.'
+      using errcode = 'P0001';
+  end if;
+
+  if to_regprocedure('public.is_wayfinder_counsellor()') is null then
+    raise exception 'MHP profile contract blocked: public.is_wayfinder_counsellor() does not exist.'
+      using errcode = 'P0001';
+  end if;
 end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 1. professional_invites
+-- 1. Professional invites
 -- ---------------------------------------------------------------------------
+-- Invite creation remains owner/admin/service-role controlled in this phase.
+-- There is no authenticated INSERT/UPDATE policy for general users.
+-- invite_token_hash stores a hash only, never a raw invite token.
 
 create table if not exists public.professional_invites (
   id uuid primary key default gen_random_uuid(),
@@ -91,41 +60,47 @@ create table if not exists public.professional_invites (
   invite_token_hash text not null,
   invited_role text not null default 'counsellor',
   invite_status text not null default 'created',
-  invited_by uuid references auth.users(id),
-  accepted_by uuid references auth.users(id),
+  invited_by uuid references auth.users(id) on delete set null,
+  accepted_by uuid references auth.users(id) on delete set null,
   expires_at timestamptz not null,
   accepted_at timestamptz,
   revoked_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint professional_invites_invited_role_check
-    check (invited_role = 'counsellor'),
-  constraint professional_invites_invite_status_check
-    check (invite_status in ('created', 'sent', 'accepted', 'expired', 'revoked'))
+  constraint professional_invites_email_not_blank check (length(trim(email)) > 0),
+  constraint professional_invites_token_hash_not_blank check (length(trim(invite_token_hash)) > 0),
+  constraint professional_invites_invited_role_check check (invited_role in ('counsellor')),
+  constraint professional_invites_status_check check (invite_status in ('created', 'sent', 'accepted', 'expired', 'revoked')),
+  constraint professional_invites_acceptance_consistency check (
+    (invite_status <> 'accepted') or (accepted_by is not null and accepted_at is not null)
+  ),
+  constraint professional_invites_revocation_consistency check (
+    (invite_status <> 'revoked') or (revoked_at is not null)
+  )
 );
 
-create unique index if not exists professional_invites_token_hash_unique_idx
+create unique index if not exists professional_invites_token_hash_key
   on public.professional_invites (invite_token_hash);
 
 create index if not exists professional_invites_email_idx
-  on public.professional_invites (lower(email));
+  on public.professional_invites (lower(trim(email)));
 
 create index if not exists professional_invites_status_idx
   on public.professional_invites (invite_status, expires_at);
 
-comment on table public.professional_invites is
-  'Invite-only onboarding for Mental Health Professionals (internal role counsellor). Stores hashed invite tokens only.';
-
-drop trigger if exists professional_invites_set_updated_at on public.professional_invites;
-create trigger professional_invites_set_updated_at
-  before update on public.professional_invites
-  for each row execute function public.set_mhp_row_updated_at();
-
 alter table public.professional_invites enable row level security;
 
+-- No direct authenticated access in PR A. Future invite acceptance should use
+-- a SECURITY DEFINER RPC that verifies token hash, expiry, status, and email.
+revoke all on public.professional_invites from public;
+revoke all on public.professional_invites from authenticated;
+
 -- ---------------------------------------------------------------------------
--- 2. mental_health_professional_profiles
+-- 2. Mental Health Professional profiles
 -- ---------------------------------------------------------------------------
+-- Professionals can create/update their own non-published draft/pending profile.
+-- They cannot self-publish public profiles through RLS.
+-- Public reads go through list_published_mental_health_professionals().
 
 create table if not exists public.mental_health_professional_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -138,34 +113,80 @@ create table if not exists public.mental_health_professional_profiles (
   short_bio text,
   country_of_origin text,
   ethnicity text,
-  enquiry_email text default 'ask.anything@psytec.com.sg',
-  enquiry_mobile text default '+65 91681166',
+  enquiry_email text not null default 'ask.anything@psytec.com.sg',
+  enquiry_mobile text not null default '+65 91681166',
   profile_visible boolean not null default false,
   profile_status text not null default 'draft',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint mental_health_professional_profiles_status_check
-    check (profile_status in ('hidden', 'draft', 'pending_review', 'published', 'suspended'))
+  constraint mhp_profiles_status_check check (profile_status in ('hidden', 'draft', 'pending_review', 'published', 'suspended')),
+  constraint mhp_profiles_slug_format_check check (
+    profile_slug is null or profile_slug ~ '^[a-z0-9][a-z0-9-]{2,80}$'
+  ),
+  constraint mhp_profiles_enquiry_email_not_blank check (length(trim(enquiry_email)) > 0),
+  constraint mhp_profiles_enquiry_mobile_not_blank check (length(trim(enquiry_mobile)) > 0)
 );
 
-create unique index if not exists mental_health_professional_profiles_slug_unique_idx
-  on public.mental_health_professional_profiles (profile_slug)
-  where profile_slug is not null;
+create index if not exists mhp_profiles_status_visible_idx
+  on public.mental_health_professional_profiles (profile_status, profile_visible);
 
-comment on table public.mental_health_professional_profiles is
-  'Mental Health Professional public-facing profile metadata. Internal auth role remains counsellor.';
-
-drop trigger if exists mental_health_professional_profiles_set_updated_at
-  on public.mental_health_professional_profiles;
-create trigger mental_health_professional_profiles_set_updated_at
-  before update on public.mental_health_professional_profiles
-  for each row execute function public.set_mhp_row_updated_at();
+create index if not exists mhp_profiles_slug_idx
+  on public.mental_health_professional_profiles (profile_slug);
 
 alter table public.mental_health_professional_profiles enable row level security;
 
+revoke all on public.mental_health_professional_profiles from public;
+grant select, insert, update on public.mental_health_professional_profiles to authenticated;
+
+-- Professionals can read their own profile, regardless of public status.
+drop policy if exists "MHPs read own profile" on public.mental_health_professional_profiles;
+create policy "MHPs read own profile"
+  on public.mental_health_professional_profiles
+  for select
+  to authenticated
+  using (
+    user_id = auth.uid()
+    and public.is_wayfinder_counsellor()
+  );
+
+-- Professionals can create their own profile, but only in non-public states.
+drop policy if exists "MHPs insert own draft profile" on public.mental_health_professional_profiles;
+create policy "MHPs insert own draft profile"
+  on public.mental_health_professional_profiles
+  for insert
+  to authenticated
+  with check (
+    user_id = auth.uid()
+    and public.is_wayfinder_counsellor()
+    and profile_status in ('hidden', 'draft', 'pending_review')
+    and profile_visible = false
+  );
+
+-- Professionals can update their own profile only while it is not published.
+-- Owner/admin/service-role review is required to publish or suspend profiles.
+drop policy if exists "MHPs update own nonpublished profile" on public.mental_health_professional_profiles;
+create policy "MHPs update own nonpublished profile"
+  on public.mental_health_professional_profiles
+  for update
+  to authenticated
+  using (
+    user_id = auth.uid()
+    and public.is_wayfinder_counsellor()
+    and profile_status in ('hidden', 'draft', 'pending_review')
+  )
+  with check (
+    user_id = auth.uid()
+    and public.is_wayfinder_counsellor()
+    and profile_status in ('hidden', 'draft', 'pending_review')
+    and profile_visible = false
+  );
+
 -- ---------------------------------------------------------------------------
--- 3. mental_health_professional_license_documents
+-- 3. Licence document metadata + AI extraction review state
 -- ---------------------------------------------------------------------------
+-- Raw PDF files must remain in a private Supabase Storage bucket.
+-- This table stores metadata and extracted draft fields only.
+-- AI extraction is draft support. It does not verify or publish a profile.
 
 create table if not exists public.mental_health_professional_license_documents (
   id uuid primary key default gen_random_uuid(),
@@ -181,341 +202,110 @@ create table if not exists public.mental_health_professional_license_documents (
   extraction_confidence jsonb,
   extraction_model text,
   extracted_at timestamptz,
-  reviewed_by uuid references auth.users(id),
+  reviewed_by uuid references auth.users(id) on delete set null,
   reviewed_at timestamptz,
   review_notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint mental_health_professional_license_documents_document_status_check
-    check (document_status in ('uploaded', 'extracted', 'needs_review', 'accepted', 'rejected', 'expired')),
-  constraint mental_health_professional_license_documents_extraction_status_check
-    check (extraction_status in ('pending', 'processing', 'completed', 'failed'))
+  constraint mhp_license_storage_bucket_not_blank check (length(trim(storage_bucket)) > 0),
+  constraint mhp_license_storage_path_not_blank check (length(trim(storage_path)) > 0),
+  constraint mhp_license_file_size_nonnegative check (file_size_bytes is null or file_size_bytes >= 0),
+  constraint mhp_license_document_status_check check (document_status in ('uploaded', 'extracted', 'needs_review', 'accepted', 'rejected', 'expired')),
+  constraint mhp_license_extraction_status_check check (extraction_status in ('pending', 'processing', 'completed', 'failed')),
+  constraint mhp_license_pdf_mime_check check (mime_type is null or mime_type = 'application/pdf')
 );
 
-create index if not exists mental_health_professional_license_documents_user_idx
+create index if not exists mhp_license_documents_user_idx
   on public.mental_health_professional_license_documents (user_id, created_at desc);
 
-create unique index if not exists mental_health_professional_license_documents_storage_unique_idx
+create index if not exists mhp_license_documents_status_idx
+  on public.mental_health_professional_license_documents (document_status, extraction_status);
+
+create unique index if not exists mhp_license_documents_storage_path_key
   on public.mental_health_professional_license_documents (storage_bucket, storage_path);
-
-comment on table public.mental_health_professional_license_documents is
-  'Private licence PDF metadata and AI extraction results. PDF bytes live in private storage only.';
-
-drop trigger if exists mental_health_professional_license_documents_set_updated_at
-  on public.mental_health_professional_license_documents;
-create trigger mental_health_professional_license_documents_set_updated_at
-  before update on public.mental_health_professional_license_documents
-  for each row execute function public.set_mhp_row_updated_at();
 
 alter table public.mental_health_professional_license_documents enable row level security;
 
+revoke all on public.mental_health_professional_license_documents from public;
+grant select, insert on public.mental_health_professional_license_documents to authenticated;
+
+-- Professionals can read their own document metadata and extraction results.
+drop policy if exists "MHPs read own licence document metadata" on public.mental_health_professional_license_documents;
+create policy "MHPs read own licence document metadata"
+  on public.mental_health_professional_license_documents
+  for select
+  to authenticated
+  using (
+    user_id = auth.uid()
+    and public.is_wayfinder_counsellor()
+  );
+
+-- Professionals can create uploaded document metadata for their own files.
+-- They cannot mark documents accepted/rejected/expired or set review fields.
+drop policy if exists "MHPs insert own uploaded licence document metadata" on public.mental_health_professional_license_documents;
+create policy "MHPs insert own uploaded licence document metadata"
+  on public.mental_health_professional_license_documents
+  for insert
+  to authenticated
+  with check (
+    user_id = auth.uid()
+    and public.is_wayfinder_counsellor()
+    and storage_bucket = 'professional-license-documents'
+    and document_status = 'uploaded'
+    and extraction_status in ('pending', 'processing')
+    and reviewed_by is null
+    and reviewed_at is null
+  );
+
+-- No authenticated UPDATE policy in PR A. Extraction/review updates are done
+-- later through server-side service role or explicit owner/admin RPCs.
+
 -- ---------------------------------------------------------------------------
--- 4. mental_health_professional_memberships
+-- 4. Membership status / expiry
 -- ---------------------------------------------------------------------------
+-- Professionals can read their own membership state but cannot update it.
+-- Owner/admin/service-role updates it after licence review.
 
 create table if not exists public.mental_health_professional_memberships (
   user_id uuid primary key references auth.users(id) on delete cascade,
   institution_name text,
   membership_status text not null default 'pending_review',
   institutional_membership_expires_at timestamptz,
-  source_license_document_id uuid references public.mental_health_professional_license_documents(id),
+  source_license_document_id uuid references public.mental_health_professional_license_documents(id) on delete set null,
   updated_at timestamptz not null default now(),
-  constraint mental_health_professional_memberships_status_check
-    check (membership_status in ('pending_review', 'active', 'expired', 'suspended'))
+  constraint mhp_memberships_status_check check (membership_status in ('pending_review', 'active', 'expired', 'suspended'))
 );
 
-comment on table public.mental_health_professional_memberships is
-  'Institutional membership expiry and activation. Professionals cannot self-approve or extend membership.';
-
-drop trigger if exists mental_health_professional_memberships_set_updated_at
-  on public.mental_health_professional_memberships;
-create trigger mental_health_professional_memberships_set_updated_at
-  before update on public.mental_health_professional_memberships
-  for each row execute function public.set_mhp_row_updated_at();
+create index if not exists mhp_memberships_status_expiry_idx
+  on public.mental_health_professional_memberships (membership_status, institutional_membership_expires_at);
 
 alter table public.mental_health_professional_memberships enable row level security;
 
--- ---------------------------------------------------------------------------
--- Grants (RLS still applies)
--- ---------------------------------------------------------------------------
-
-grant select, insert, update on public.professional_invites to authenticated;
-grant select, insert, update on public.mental_health_professional_profiles to authenticated;
-grant select, insert, update on public.mental_health_professional_license_documents to authenticated;
+revoke all on public.mental_health_professional_memberships from public;
 grant select on public.mental_health_professional_memberships to authenticated;
-grant insert, update, delete on public.mental_health_professional_memberships to authenticated;
+
+-- Professionals can read own membership status/expiry.
+drop policy if exists "MHPs read own membership" on public.mental_health_professional_memberships;
+create policy "MHPs read own membership"
+  on public.mental_health_professional_memberships
+  for select
+  to authenticated
+  using (
+    user_id = auth.uid()
+    and public.is_wayfinder_counsellor()
+  );
+
+-- No authenticated INSERT/UPDATE/DELETE policy in PR A. Membership is owner/
+-- admin/service-role controlled because it gates public visibility and access.
 
 -- ---------------------------------------------------------------------------
--- RLS — professional_invites (admin / service role only)
+-- 5. Safe parent/public read RPC for published MHP directory
 -- ---------------------------------------------------------------------------
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'professional_invites'
-      and policyname = 'MHP admin manages professional invites'
-  ) then
-    create policy "MHP admin manages professional invites"
-      on public.professional_invites
-      for all
-      to authenticated
-      using (public.is_wayfinder_mhp_admin())
-      with check (public.is_wayfinder_mhp_admin());
-  end if;
-end;
-$$;
-
--- ---------------------------------------------------------------------------
--- RLS — mental_health_professional_profiles
--- ---------------------------------------------------------------------------
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_profiles'
-      and policyname = 'Counsellors read own MHP profile'
-  ) then
-    create policy "Counsellors read own MHP profile"
-      on public.mental_health_professional_profiles
-      for select
-      to authenticated
-      using (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_profiles'
-      and policyname = 'Counsellors insert own MHP profile'
-  ) then
-    create policy "Counsellors insert own MHP profile"
-      on public.mental_health_professional_profiles
-      for insert
-      to authenticated
-      with check (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-        and profile_status in ('hidden', 'draft')
-        and profile_visible = false
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_profiles'
-      and policyname = 'Counsellors update own draft MHP profile'
-  ) then
-    create policy "Counsellors update own draft MHP profile"
-      on public.mental_health_professional_profiles
-      for update
-      to authenticated
-      using (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-        and profile_status in ('hidden', 'draft')
-      )
-      with check (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-        and profile_status in ('hidden', 'draft')
-        and profile_visible = false
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_profiles'
-      and policyname = 'MHP admin manages MHP profiles'
-  ) then
-    create policy "MHP admin manages MHP profiles"
-      on public.mental_health_professional_profiles
-      for all
-      to authenticated
-      using (public.is_wayfinder_mhp_admin())
-      with check (public.is_wayfinder_mhp_admin());
-  end if;
-end;
-$$;
-
--- ---------------------------------------------------------------------------
--- RLS — mental_health_professional_license_documents
--- ---------------------------------------------------------------------------
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_license_documents'
-      and policyname = 'Counsellors read own licence documents'
-  ) then
-    create policy "Counsellors read own licence documents"
-      on public.mental_health_professional_license_documents
-      for select
-      to authenticated
-      using (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_license_documents'
-      and policyname = 'Counsellors insert own licence documents'
-  ) then
-    create policy "Counsellors insert own licence documents"
-      on public.mental_health_professional_license_documents
-      for insert
-      to authenticated
-      with check (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-        and document_status = 'uploaded'
-        and extraction_status = 'pending'
-        and reviewed_by is null
-        and reviewed_at is null
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_license_documents'
-      and policyname = 'Counsellors update own unreviewed licence documents'
-  ) then
-    create policy "Counsellors update own unreviewed licence documents"
-      on public.mental_health_professional_license_documents
-      for update
-      to authenticated
-      using (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-        and document_status not in ('accepted', 'rejected', 'expired')
-        and reviewed_by is null
-      )
-      with check (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-        and document_status not in ('accepted', 'rejected', 'expired')
-        and reviewed_by is null
-        and reviewed_at is null
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_license_documents'
-      and policyname = 'MHP admin manages licence documents'
-  ) then
-    create policy "MHP admin manages licence documents"
-      on public.mental_health_professional_license_documents
-      for all
-      to authenticated
-      using (public.is_wayfinder_mhp_admin())
-      with check (public.is_wayfinder_mhp_admin());
-  end if;
-end;
-$$;
-
--- ---------------------------------------------------------------------------
--- RLS — mental_health_professional_memberships
--- ---------------------------------------------------------------------------
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_memberships'
-      and policyname = 'Counsellors read own membership'
-  ) then
-    create policy "Counsellors read own membership"
-      on public.mental_health_professional_memberships
-      for select
-      to authenticated
-      using (
-        user_id = auth.uid()
-        and public.is_wayfinder_counsellor()
-      );
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'mental_health_professional_memberships'
-      and policyname = 'MHP admin manages memberships'
-  ) then
-    create policy "MHP admin manages memberships"
-      on public.mental_health_professional_memberships
-      for all
-      to authenticated
-      using (public.is_wayfinder_mhp_admin())
-      with check (public.is_wayfinder_mhp_admin());
-  end if;
-end;
-$$;
-
--- ---------------------------------------------------------------------------
--- Safe public profile RPCs (no raw auth UUIDs)
--- ---------------------------------------------------------------------------
+-- This returns only parent-safe public profile fields. It does not expose raw
+-- auth UUIDs, document storage paths, PDF files, invite data, extraction JSON,
+-- review notes, or hidden/private profile states.
 
 create or replace function public.list_published_mental_health_professionals()
-returns table(
-  profile_slug text,
-  full_name text,
-  professional_title text,
-  short_bio text,
-  photo_url text,
-  country_of_origin text,
-  ethnicity text
-)
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select
-    p.profile_slug,
-    p.full_name,
-    p.professional_title,
-    p.short_bio,
-    p.photo_url,
-    p.country_of_origin,
-    p.ethnicity
-  from public.mental_health_professional_profiles p
-  inner join public.mental_health_professional_memberships m
-    on m.user_id = p.user_id
-  where p.profile_status = 'published'
-    and p.profile_visible = true
-    and p.profile_slug is not null
-    and m.membership_status = 'active'
-    and (
-      m.institutional_membership_expires_at is null
-      or m.institutional_membership_expires_at > now()
-    )
-  order by p.full_name nulls last, p.profile_slug;
-$$;
-
-comment on function public.list_published_mental_health_professionals() is
-  'Parent-safe directory of active, published Mental Health Professional profiles. No auth UUIDs or licence paths.';
-
-revoke all on function public.list_published_mental_health_professionals() from public;
-grant execute on function public.list_published_mental_health_professionals() to authenticated;
-grant execute on function public.list_published_mental_health_professionals() to anon;
-
-create or replace function public.get_published_mental_health_professional_profile(p_profile_slug text)
 returns table(
   profile_slug text,
   photo_url text,
@@ -527,7 +317,9 @@ returns table(
   country_of_origin text,
   ethnicity text,
   enquiry_email text,
-  enquiry_mobile text
+  enquiry_mobile text,
+  institution_name text,
+  membership_expires_at timestamptz
 )
 language sql
 stable
@@ -545,75 +337,98 @@ as $$
     p.country_of_origin,
     p.ethnicity,
     p.enquiry_email,
-    p.enquiry_mobile
+    p.enquiry_mobile,
+    m.institution_name,
+    m.institutional_membership_expires_at as membership_expires_at
   from public.mental_health_professional_profiles p
-  inner join public.mental_health_professional_memberships m
-    on m.user_id = p.user_id
-  where p.profile_slug = trim(p_profile_slug)
+  join public.mental_health_professional_memberships m on m.user_id = p.user_id
+  where p.profile_visible = true
     and p.profile_status = 'published'
-    and p.profile_visible = true
     and m.membership_status = 'active'
     and (
       m.institutional_membership_expires_at is null
       or m.institutional_membership_expires_at > now()
     )
-  limit 1;
+  order by p.full_name asc nulls last, p.profile_slug asc nulls last;
 $$;
 
-comment on function public.get_published_mental_health_professional_profile(text) is
-  'Parent-safe published Mental Health Professional profile by slug. No auth UUIDs, licence PDF paths, or extraction JSON.';
-
-revoke all on function public.get_published_mental_health_professional_profile(text) from public;
-grant execute on function public.get_published_mental_health_professional_profile(text) to authenticated;
-grant execute on function public.get_published_mental_health_professional_profile(text) to anon;
+revoke all on function public.list_published_mental_health_professionals() from public;
+grant execute on function public.list_published_mental_health_professionals() to anon;
+grant execute on function public.list_published_mental_health_professionals() to authenticated;
 
 -- ---------------------------------------------------------------------------
--- Private storage bucket instructions (owner-applied in Supabase Dashboard)
+-- 6. Own status RPC for professional onboarding header
 -- ---------------------------------------------------------------------------
+-- This is for the logged-in professional to see own profile/membership state.
+-- It does not expose other professionals' data.
+
+create or replace function public.get_my_mental_health_professional_status()
+returns table(
+  profile_status text,
+  profile_visible boolean,
+  full_name text,
+  professional_title text,
+  photo_url text,
+  membership_status text,
+  institution_name text,
+  membership_expires_at timestamptz,
+  latest_document_status text,
+  latest_extraction_status text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    p.profile_status,
+    p.profile_visible,
+    p.full_name,
+    p.professional_title,
+    p.photo_url,
+    m.membership_status,
+    m.institution_name,
+    m.institutional_membership_expires_at as membership_expires_at,
+    d.document_status as latest_document_status,
+    d.extraction_status as latest_extraction_status
+  from public.profiles base
+  left join public.mental_health_professional_profiles p on p.user_id = base.user_id
+  left join public.mental_health_professional_memberships m on m.user_id = base.user_id
+  left join lateral (
+    select ld.document_status, ld.extraction_status
+    from public.mental_health_professional_license_documents ld
+    where ld.user_id = base.user_id
+    order by ld.created_at desc
+    limit 1
+  ) d on true
+  where base.user_id = auth.uid()
+    and base.role = 'counsellor';
+$$;
+
+revoke all on function public.get_my_mental_health_professional_status() from public;
+grant execute on function public.get_my_mental_health_professional_status() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 7. Storage bucket instructions (manual owner setup)
+-- ---------------------------------------------------------------------------
+-- Create a private Supabase Storage bucket named:
+--   professional-license-documents
 --
--- Bucket name: professional-license-documents
--- Public bucket: OFF (private by default)
+-- Required behaviour:
+--   - The bucket must be private.
+--   - Licence PDFs must not be publicly readable by default.
+--   - Browser upload policy should restrict authenticated professionals to
+--     their own folder/path convention once upload UI is built.
+--   - Server-side extraction/review should use service role only in API code.
+--   - Never put service role keys or AI API keys in browser code.
 --
--- Do NOT create public storage policies for licence PDFs.
--- Recommended object path convention: {user_id}/{document_id}.pdf
+-- Suggested future storage path convention:
+--   professional-license-documents/{auth.uid()}/{document_id}.pdf
 --
--- Example owner-applied storage policies (run separately after bucket creation):
---
---   -- Professionals upload/read only their own folder
---   create policy "MHP owner read own licence objects"
---     on storage.objects for select to authenticated
---     using (
---       bucket_id = 'professional-license-documents'
---       and (storage.foldername(name))[1] = auth.uid()::text
---       and public.is_wayfinder_counsellor()
---     );
---
---   create policy "MHP owner insert own licence objects"
---     on storage.objects for insert to authenticated
---     with check (
---       bucket_id = 'professional-license-documents'
---       and (storage.foldername(name))[1] = auth.uid()::text
---       and public.is_wayfinder_counsellor()
---     );
---
---   create policy "MHP owner update own licence objects"
---     on storage.objects for update to authenticated
---     using (
---       bucket_id = 'professional-license-documents'
---       and (storage.foldername(name))[1] = auth.uid()::text
---       and public.is_wayfinder_counsellor()
---     )
---     with check (
---       bucket_id = 'professional-license-documents'
---       and (storage.foldername(name))[1] = auth.uid()::text
---       and public.is_wayfinder_counsellor()
---     );
---
--- Admin review downloads should use service_role or a future admin RPC — not public URLs.
---
+-- Storage policies are intentionally not created in PR A because upload UI and
+-- path convention are not implemented yet. Add storage policies with the UI/API
+-- slice that performs authenticated uploads.
+
 -- ============================================================
--- Notes:
---   - Internal role remains counsellor; do not rename counsellor.html or helpers.
---   - Invite acceptance, upload runtime, AI extraction, and admin UI are later PRs.
---   - Owner must apply this SQL manually after merge.
+-- End of MHP profile + licence data contract
 -- ============================================================
