@@ -10,12 +10,17 @@ import {
 const MHP_LICENSE_BUCKET = 'professional-license-documents';
 const DEFAULT_MODEL = process.env.MHP_LICENSE_EXTRACTION_MODEL || 'gpt-4o-mini';
 const DETERMINISTIC_MODEL = 'deterministic-pdf-text-v1';
-const OPENAI_TIMEOUT_MS = 12000;
+const OPENAI_TIMEOUT_MS = 10000;
+const FUNCTION_BUDGET_MS = Number(process.env.MHP_EXTRACTION_BUDGET_MS || 8000);
 const MIN_DETERMINISTIC_HIGH_CONFIDENCE_FIELDS = 5;
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
+const MAX_PDF_SCAN_BYTES = 2 * 1024 * 1024;
+const MAX_PDF_STREAMS = 48;
+const MAX_STREAM_BODY_BYTES = 512 * 1024;
 const MAX_TEXT_CHARS = 12000;
 const MIN_PDF_TEXT_CHARS = 20;
 const USER_EXTRACTION_FAILURE = 'Extraction failed. Please try again or contact Wayfinder support.';
+const USER_EXTRACTION_TIMEOUT = 'Extraction took too long. Please try again later.';
 
 const ERROR_CODES = {
   AUTH_REQUIRED: 'auth_required',
@@ -28,6 +33,7 @@ const ERROR_CODES = {
   PDF_TEXT_UNREADABLE: 'pdf_text_unreadable',
   OPENAI_REQUEST_FAILED: 'openai_request_failed',
   OPENAI_TIMEOUT: 'openai_timeout',
+  EXTRACTION_TIMEOUT_GUARD: 'extraction_timeout_guard',
   EXTRACTION_UNAVAILABLE: 'extraction_unavailable'
 };
 
@@ -51,7 +57,32 @@ const createDiag = () => ({
   documentResolved: false
 });
 
-const logExtractionFailure = ({ stage, status, error_code, message, diag }) => {
+const createRunMetrics = () => ({
+  pdfByteLength: null,
+  extractedTextLength: null,
+  deterministicFieldCount: null,
+  usedOpenAi: false
+});
+
+const logExtractionStage = ({ stage, durationMs, status, error_code, diag, metrics, totalElapsedMs }) => {
+  console.error('[mhp-license-extract-stage]', {
+    stage: stage || 'unknown',
+    durationMs: durationMs ?? null,
+    status: status || 'ok',
+    error_code: error_code ?? null,
+    documentIdPresent: !!diag?.documentIdPresent,
+    userResolved: !!diag?.userResolved,
+    profileResolved: !!diag?.profileResolved,
+    documentResolved: !!diag?.documentResolved,
+    pdfByteLength: metrics?.pdfByteLength ?? null,
+    extractedTextLength: metrics?.extractedTextLength ?? null,
+    deterministicFieldCount: metrics?.deterministicFieldCount ?? null,
+    usedOpenAi: !!metrics?.usedOpenAi,
+    totalElapsedMs: totalElapsedMs ?? null
+  });
+};
+
+const logExtractionFailure = ({ stage, status, error_code, message, diag, metrics, totalElapsedMs }) => {
   console.error('[mhp-license-extract]', {
     stage: stage || 'unknown',
     status: status ?? null,
@@ -61,12 +92,69 @@ const logExtractionFailure = ({ stage, status, error_code, message, diag }) => {
     tokenPresent: !!diag?.tokenPresent,
     userResolved: !!diag?.userResolved,
     profileResolved: !!diag?.profileResolved,
-    documentResolved: !!diag?.documentResolved
+    documentResolved: !!diag?.documentResolved,
+    pdfByteLength: metrics?.pdfByteLength ?? null,
+    extractedTextLength: metrics?.extractedTextLength ?? null,
+    deterministicFieldCount: metrics?.deterministicFieldCount ?? null,
+    usedOpenAi: !!metrics?.usedOpenAi,
+    totalElapsedMs: totalElapsedMs ?? null
   });
 };
 
-const fail = (res, { status, error_code, error, stage, diag }) => {
-  logExtractionFailure({ stage, status, error_code, message: error, diag });
+const createBudgetGuard = (diag, metrics) => {
+  const startedAt = Date.now();
+  return {
+    elapsed: () => Date.now() - startedAt,
+    assertBudget: (stage) => {
+      if (Date.now() - startedAt >= FUNCTION_BUDGET_MS) {
+        const error = new Error('Extraction exceeded internal time budget.');
+        error.error_code = ERROR_CODES.EXTRACTION_TIMEOUT_GUARD;
+        error.status = 504;
+        error.stage = stage;
+        throw error;
+      }
+    },
+    async runStage(stage, fn) {
+      this.assertBudget(stage);
+      const stageStart = Date.now();
+      try {
+        const result = await fn();
+        logExtractionStage({
+          stage,
+          durationMs: Date.now() - stageStart,
+          status: 'ok',
+          diag,
+          metrics,
+          totalElapsedMs: Date.now() - startedAt
+        });
+        this.assertBudget(stage);
+        return result;
+      } catch (err) {
+        logExtractionStage({
+          stage,
+          durationMs: Date.now() - stageStart,
+          status: 'error',
+          error_code: err?.error_code || ERROR_CODES.EXTRACTION_UNAVAILABLE,
+          diag,
+          metrics,
+          totalElapsedMs: Date.now() - startedAt
+        });
+        throw err;
+      }
+    }
+  };
+};
+
+const fail = (res, { status, error_code, error, stage, diag, metrics, budget }) => {
+  logExtractionFailure({
+    stage,
+    status,
+    error_code,
+    message: error,
+    diag,
+    metrics,
+    totalElapsedMs: budget?.elapsed?.() ?? null
+  });
   return res.status(status).json({ ok: false, error, error_code });
 };
 
@@ -136,18 +224,25 @@ const collectPdfTextFromSegment = (segment, chunks) => {
   }
 };
 
-const extractPdfText = (buffer) => {
-  const raw = buffer.toString('latin1');
+const extractPdfText = (buffer, assertBudget) => {
+  const scanBuffer = buffer.length > MAX_PDF_SCAN_BYTES ? buffer.subarray(0, MAX_PDF_SCAN_BYTES) : buffer;
+  const raw = scanBuffer.toString('latin1');
   const chunks = [];
   collectPdfTextFromSegment(raw, chunks);
   const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let streamMatch;
+  let streamCount = 0;
   while ((streamMatch = streamRegex.exec(raw)) !== null) {
+    if (++streamCount > MAX_PDF_STREAMS) break;
+    if (assertBudget) assertBudget('pdf_text_extract');
     const streamBody = streamMatch[1];
+    if (!streamBody || streamBody.length > MAX_STREAM_BODY_BYTES) continue;
     collectPdfTextFromSegment(streamBody, chunks);
     try {
       const inflated = zlib.inflateSync(Buffer.from(streamBody, 'latin1'));
-      collectPdfTextFromSegment(inflated.toString('latin1'), chunks);
+      if (inflated.length <= MAX_STREAM_BODY_BYTES) {
+        collectPdfTextFromSegment(inflated.toString('latin1'), chunks);
+      }
     } catch {
       // Ignore non-deflate streams.
     }
@@ -240,17 +335,18 @@ const parseDeterministicLicenseFields = (pdfText) => {
     setDeterministicField(fields, confidence, 'full_name', nameMatch[0].replace(/\s+/g, ' ').trim(), 0.92);
   }
 
-  const accreditationMatch = compact.match(/\bAccreditation(?:\s+Number|\s+No\.?)?\s*[:\-]?\s*(C\d{3,6})\b/i)
-    || compact.match(/\b(C0\d{3,5})\b/);
-  if (accreditationMatch) {
-    const number = accreditationMatch[1] || accreditationMatch[0];
-    setDeterministicField(fields, confidence, 'accreditation_number', number, 0.94);
+  const accNoMatch = compact.match(/\bAcc\.?\s*No\.?\s*[:\-]?\s*(C\d{3,6})\b/i)
+    || compact.match(/\bAccreditation(?:\s+Number|\s+No\.?)?\s*[:\-]?\s*(C\d{3,6})\b/i)
+    || compact.match(/\b(C\d{3,6})\b/);
+  if (accNoMatch) {
+    setDeterministicField(fields, confidence, 'accreditation_number', accNoMatch[1], 0.95);
   }
 
-  const licenseMatch = compact.match(/\b(?:Registration|Certificate|Licence|License)(?:\s+Number|\s+No\.?)?\s*[:\-]?\s*(\d{3,4}\/\d{4})\b/i)
+  const certNoMatch = compact.match(/\bCert\.?\s*No\.?\s*[:\-]?\s*(\d{3,4}\/\d{4})\b/i)
+    || compact.match(/\b(?:Registration|Certificate|Licence|License)(?:\s+Number|\s+No\.?)?\s*[:\-]?\s*(\d{3,4}\/\d{4})\b/i)
     || compact.match(/\b(\d{3,4}\/\d{4})\b/);
-  if (licenseMatch) {
-    setDeterministicField(fields, confidence, 'license_registration_number', licenseMatch[1] || licenseMatch[0], 0.94);
+  if (certNoMatch) {
+    setDeterministicField(fields, confidence, 'license_registration_number', certNoMatch[1], 0.95);
   }
 
   const validityMatch = compact.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\s+(?:to|–|-|—)\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i);
@@ -378,16 +474,6 @@ Rules:
 - Do not guess registration numbers or dates.
 - Prefer exact certificate wording for names, titles, issuing body, and numbers.
 - Dates should be ISO YYYY-MM-DD when clearly stated.
-- This output will be reviewed by a human before any Wayfinder review step.
-
-Reference example format (Singapore Association for Counselling certificate):
-- full_name: Mr Rodney Tay
-- professional_title / credential_label: SAC Registered Counsellor / Registered Counsellor
-- issuing_body: Singapore Association for Counselling
-- valid_from: 2026-02-01
-- valid_to: 2028-01-31
-- license_registration_number: 2312/2026
-- accreditation_number: C0820
 
 Certificate text:
 ${pdfText}`;
@@ -486,7 +572,7 @@ async function patchLicenseDocument(documentId, userId, patch) {
   });
 }
 
-async function callExtractionModel(pdfText) {
+async function callExtractionModel(pdfText, remainingBudgetMs) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     const error = new Error('OPENAI_API_KEY is not configured.');
@@ -494,8 +580,15 @@ async function callExtractionModel(pdfText) {
     error.status = 503;
     throw error;
   }
+  const timeoutMs = Math.max(1000, Math.min(OPENAI_TIMEOUT_MS, remainingBudgetMs - 250));
+  if (timeoutMs <= 1000) {
+    const error = new Error('Extraction exceeded internal time budget before OpenAI call.');
+    error.error_code = ERROR_CODES.EXTRACTION_TIMEOUT_GUARD;
+    error.status = 504;
+    throw error;
+  }
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -506,7 +599,7 @@ async function callExtractionModel(pdfText) {
       },
       body: JSON.stringify({
         model: DEFAULT_MODEL,
-        max_tokens: 700,
+        max_tokens: 600,
         temperature: 0.1,
         response_format: { type: 'json_object' },
         messages: [
@@ -553,7 +646,7 @@ const mapExtractionError = (err) => {
     ? err.status
     : errorCode === ERROR_CODES.PDF_TEXT_UNREADABLE
       ? 422
-      : errorCode === ERROR_CODES.OPENAI_TIMEOUT
+      : errorCode === ERROR_CODES.OPENAI_TIMEOUT || errorCode === ERROR_CODES.EXTRACTION_TIMEOUT_GUARD
         ? 504
       : errorCode === ERROR_CODES.MISSING_OPENAI_KEY || errorCode === ERROR_CODES.MISSING_SERVICE_ROLE_KEY || errorCode === ERROR_CODES.PROFILE_LOOKUP_FAILED
         ? 503
@@ -565,20 +658,37 @@ const mapExtractionError = (err) => {
     ERROR_CODES.ROLE_NOT_AUTHORISED
   ].includes(errorCode)) {
     userMessage = String(err?.message || USER_EXTRACTION_FAILURE);
-  } else if (errorCode === ERROR_CODES.OPENAI_TIMEOUT) {
-    userMessage = 'Extraction took too long. Please try again later.';
+  } else if (errorCode === ERROR_CODES.OPENAI_TIMEOUT || errorCode === ERROR_CODES.EXTRACTION_TIMEOUT_GUARD) {
+    userMessage = USER_EXTRACTION_TIMEOUT;
   }
   return { status, error_code: errorCode, error: userMessage };
 };
 
-const markExtractionFailed = async (documentId, userId) => {
+const markExtractionFailed = async (documentId, userId, budget, diag, metrics) => {
   if (!documentId || !userId) return;
+  const stageStart = Date.now();
   try {
     await patchLicenseDocument(documentId, userId, {
       extraction_status: 'failed'
     });
-  } catch {
-    // Best-effort failure marker only.
+    logExtractionStage({
+      stage: 'mark_failed',
+      durationMs: Date.now() - stageStart,
+      status: 'ok',
+      diag,
+      metrics,
+      totalElapsedMs: budget?.elapsed?.() ?? null
+    });
+  } catch (err) {
+    logExtractionStage({
+      stage: 'mark_failed',
+      durationMs: Date.now() - stageStart,
+      status: 'error',
+      error_code: ERROR_CODES.EXTRACTION_UNAVAILABLE,
+      diag,
+      metrics,
+      totalElapsedMs: budget?.elapsed?.() ?? null
+    });
   }
 };
 
@@ -591,7 +701,8 @@ export default async function handler(req, res) {
       error_code: ERROR_CODES.EXTRACTION_UNAVAILABLE,
       error: 'Method not allowed',
       stage: 'method',
-      diag: createDiag()
+      diag: createDiag(),
+      metrics: createRunMetrics()
     });
   }
 
@@ -599,6 +710,8 @@ export default async function handler(req, res) {
   const documentId = String(body.documentId || body.document_id || '').trim();
   const token = bearerToken(req);
   const diag = createDiag();
+  const metrics = createRunMetrics();
+  const budget = createBudgetGuard(diag, metrics);
   diag.documentIdPresent = !!documentId;
   diag.tokenPresent = !!token;
 
@@ -607,8 +720,10 @@ export default async function handler(req, res) {
       status: 401,
       error_code: ERROR_CODES.AUTH_REQUIRED,
       error: 'Authentication required.',
-      stage: 'auth',
-      diag
+      stage: 'auth_user_lookup',
+      diag,
+      metrics,
+      budget
     });
   }
   if (!documentId) {
@@ -617,7 +732,9 @@ export default async function handler(req, res) {
       error_code: ERROR_CODES.EXTRACTION_UNAVAILABLE,
       error: USER_EXTRACTION_FAILURE,
       stage: 'request',
-      diag
+      diag,
+      metrics,
+      budget
     });
   }
 
@@ -627,33 +744,39 @@ export default async function handler(req, res) {
       error_code: ERROR_CODES.MISSING_SERVICE_ROLE_KEY,
       error: USER_EXTRACTION_FAILURE,
       stage: 'config',
-      diag
+      diag,
+      metrics,
+      budget
     });
   }
 
   let userId = null;
   try {
-    const user = await getAuthUserFromAccessToken(token);
+    const user = await budget.runStage('auth_user_lookup', () => getAuthUserFromAccessToken(token));
     if (!user?.id) {
       return fail(res, {
         status: 401,
         error_code: ERROR_CODES.AUTH_REQUIRED,
         error: 'Authentication required.',
-        stage: 'auth',
-        diag
+        stage: 'auth_user_lookup',
+        diag,
+        metrics,
+        budget
       });
     }
     diag.userResolved = true;
     userId = user.id;
 
-    const profileLookup = await getExtractionProfileRole(userId);
+    const profileLookup = await budget.runStage('profile_role_lookup', () => getExtractionProfileRole(userId));
     if (!profileLookup.ok) {
       return fail(res, {
         status: 503,
         error_code: ERROR_CODES.PROFILE_LOOKUP_FAILED,
         error: USER_EXTRACTION_FAILURE,
-        stage: 'profile_lookup',
-        diag
+        stage: 'profile_role_lookup',
+        diag,
+        metrics,
+        budget
       });
     }
     diag.profileResolved = true;
@@ -664,20 +787,24 @@ export default async function handler(req, res) {
         status: 403,
         error_code: ERROR_CODES.ROLE_NOT_AUTHORISED,
         error: 'Mental Health Professional access required.',
-        stage: 'profile_lookup',
-        diag
+        stage: 'profile_role_lookup',
+        diag,
+        metrics,
+        budget
       });
     }
 
-    const document = await getLicenseDocument(documentId, userId);
+    const document = await budget.runStage('document_metadata_lookup', () => getLicenseDocument(documentId, userId));
     diag.documentResolved = !!document;
     if (!document) {
       return fail(res, {
         status: 404,
         error_code: ERROR_CODES.DOCUMENT_NOT_FOUND,
         error: 'Licence document not found.',
-        stage: 'document_lookup',
-        diag
+        stage: 'document_metadata_lookup',
+        diag,
+        metrics,
+        budget
       });
     }
 
@@ -688,19 +815,27 @@ export default async function handler(req, res) {
         status: 400,
         error_code: ERROR_CODES.DOCUMENT_NOT_FOUND,
         error: 'Licence document not found.',
-        stage: 'document_metadata',
-        diag
+        stage: 'document_metadata_lookup',
+        diag,
+        metrics,
+        budget
       });
     }
 
-
-    await patchLicenseDocument(documentId, userId, {
+    await budget.runStage('mark_processing', () => patchLicenseDocument(documentId, userId, {
       extraction_status: 'processing'
-    });
+    }));
 
     try {
-      const pdfBuffer = await downloadLicensePdf(bucket, storagePath);
-      const pdfText = extractPdfText(pdfBuffer);
+      const pdfBuffer = await budget.runStage('storage_download', () => downloadLicensePdf(bucket, storagePath));
+      metrics.pdfByteLength = pdfBuffer.length;
+
+      const pdfText = await budget.runStage('pdf_text_extract', async () => extractPdfText(
+        pdfBuffer,
+        (stage) => budget.assertBudget(stage)
+      ));
+      metrics.extractedTextLength = pdfText.length;
+
       if (!pdfText || pdfText.length < MIN_PDF_TEXT_CHARS) {
         const error = new Error('Could not extract readable text from the licence PDF.');
         error.error_code = ERROR_CODES.PDF_TEXT_UNREADABLE;
@@ -708,7 +843,12 @@ export default async function handler(req, res) {
         throw error;
       }
 
-      const deterministic = parseDeterministicLicenseFields(pdfText);
+      const deterministic = await budget.runStage('deterministic_parse', async () => parseDeterministicLicenseFields(pdfText));
+      metrics.deterministicFieldCount = countHighConfidenceDeterministicFields(
+        deterministic.fields,
+        deterministic.confidence
+      );
+
       let extractionModel = DETERMINISTIC_MODEL;
       let extraction;
       if (isDeterministicExtractionSufficient(deterministic.fields, deterministic.confidence)) {
@@ -718,12 +858,33 @@ export default async function handler(req, res) {
           requires_human_review: true
         });
       } else {
-        const modelResult = await callExtractionModel(pdfText);
+        metrics.usedOpenAi = true;
+        budget.assertBudget('openai_fallback');
+        const remainingBudgetMs = FUNCTION_BUDGET_MS - budget.elapsed();
+        const modelResult = await budget.runStage('openai_fallback', () => callExtractionModel(
+          pdfText,
+          remainingBudgetMs
+        ));
         extraction = sanitizeExtraction(modelResult);
         extractionModel = DEFAULT_MODEL;
       }
 
-      const saved = await saveCompletedExtraction(documentId, userId, extraction, extractionModel);
+      const saved = await budget.runStage('save_extraction', () => saveCompletedExtraction(
+        documentId,
+        userId,
+        extraction,
+        extractionModel
+      ));
+
+      logExtractionStage({
+        stage: 'complete',
+        durationMs: 0,
+        status: 'ok',
+        diag,
+        metrics,
+        totalElapsedMs: budget.elapsed()
+      });
+
       return res.status(200).json(buildExtractionResponse(
         saved.extraction,
         saved.extractionModel,
@@ -732,25 +893,29 @@ export default async function handler(req, res) {
         saved.extractedAt
       ));
     } catch (err) {
-      await markExtractionFailed(documentId, userId);
+      await markExtractionFailed(documentId, userId, budget, diag, metrics);
       const mapped = mapExtractionError(err);
       return fail(res, {
         status: mapped.status,
         error_code: mapped.error_code,
         error: mapped.error,
-        stage: 'extract',
-        diag
+        stage: err?.stage || 'extract',
+        diag,
+        metrics,
+        budget
       });
     }
   } catch (error) {
-    await markExtractionFailed(documentId, userId);
+    await markExtractionFailed(documentId, userId, budget, diag, metrics);
     const mapped = mapExtractionError(error);
     return fail(res, {
-      status: mapped.status >= 500 ? 500 : mapped.status,
-      error_code: error?.error_code || ERROR_CODES.EXTRACTION_UNAVAILABLE,
-      error: USER_EXTRACTION_FAILURE,
-      stage: 'handler',
-      diag
+      status: mapped.status >= 500 ? mapped.status : mapped.status,
+      error_code: error?.error_code || mapped.error_code || ERROR_CODES.EXTRACTION_UNAVAILABLE,
+      error: mapped.error,
+      stage: error?.stage || 'handler',
+      diag,
+      metrics,
+      budget
     });
   }
 }
