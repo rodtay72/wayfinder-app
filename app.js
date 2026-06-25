@@ -4236,6 +4236,43 @@ const mhpStatusLabel=(value)=>{
  return raw.split('_').map(part=>part?part.charAt(0).toUpperCase()+part.slice(1):'').join(' ');
 };
 
+const mhpExtractedLicenseFields=(extracted,extractionFallback)=>{
+ const source=extracted&&typeof extracted==='object'?extracted:{};
+ const fallback=extractionFallback&&typeof extractionFallback==='object'?extractionFallback:{};
+ const pick=(key)=>String(source[key]||fallback[key]||'').trim();
+ return {
+  fullName:pick('full_name'),
+  professionalTitle:pick('professional_title')||pick('credential_label'),
+  credentialLabel:pick('credential_label'),
+  issuingBody:pick('issuing_body'),
+  licenseRegistrationNumber:pick('license_registration_number'),
+  accreditationNumber:pick('accreditation_number'),
+  validFrom:pick('valid_from'),
+  validTo:pick('valid_to'),
+  rawValidityText:pick('raw_validity_text')
+ };
+};
+
+const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate})=>{
+ const fields=mhpExtractedLicenseFields(doc?.extractedJson);
+ const display=(value)=>value||'-';
+ return <div className="mhp-license-review-panel">
+  <h5>{meta.licenseExtractionReviewTitle||'Review extracted details'}</h5>
+  <div className="mhp-license-review-grid">
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewFullName||'Full name'}</span><span className="mhp-license-review-value">{display(fields.fullName)}</span></div>
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewProfessionalTitle||'Professional title / credential'}</span><span className="mhp-license-review-value">{display(fields.professionalTitle)}</span></div>
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewIssuingBody||'Issuing body'}</span><span className="mhp-license-review-value">{display(fields.issuingBody)}</span></div>
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewLicenseNumber||'License / registration number'}</span><span className="mhp-license-review-value">{display(fields.licenseRegistrationNumber)}</span></div>
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewAccreditationNumber||'Accreditation number'}</span><span className="mhp-license-review-value">{display(fields.accreditationNumber)}</span></div>
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewValidFrom||'Valid from'}</span><span className="mhp-license-review-value">{fields.validFrom?fmtDate(fields.validFrom):'-'}</span></div>
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewValidTo||'Valid to'}</span><span className="mhp-license-review-value">{fields.validTo?fmtDate(fields.validTo):'-'}</span></div>
+   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewRawValidityText||'Raw validity text'}</span><span className="mhp-license-review-value">{display(fields.rawValidityText)}</span></div>
+  </div>
+  <span className="mhp-license-human-review-pill">{meta.licenseHumanReviewRequired||'Human review required'}</span>
+  <p className="mhp-license-review-warning">{meta.licenseExtractionAccuracyWarning||'AI extraction may be inaccurate. Check names, registration numbers, issuing body, and expiry dates before submitting.'}</p>
+ </div>;
+};
+
 const mhpDefaultProfileForm=()=>({
  photoUrl:'',
  fullName:'',
@@ -4278,6 +4315,9 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
  const [uploading,setUploading]=useState(false);
  const [uploadSuccess,setUploadSuccess]=useState(null);
  const [uploadError,setUploadError]=useState('');
+ const [extractingDocId,setExtractingDocId]=useState('');
+ const [extractionSuccessDocId,setExtractionSuccessDocId]=useState('');
+ const [extractionErrors,setExtractionErrors]=useState({});
  const fileInputRef=useRef(null);
 
  const fmtDate=(value)=>{
@@ -4374,6 +4414,33 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
   }
  };
 
+ const handleExtract=async(documentId)=>{
+  if(!documentId||extractingDocId) return;
+  setExtractingDocId(documentId);
+  setExtractionErrors((prev)=>({...prev,[documentId]:''}));
+  try{
+   const result=await DB.requestMhpLicenseExtraction(user.id,documentId,authSession);
+   if(result.unavailable){
+    setStorageUnavailable(true);
+    setExtractionErrors((prev)=>({...prev,[documentId]:meta.licenseStorageUnavailable||'Licence upload storage is not ready yet.'}));
+    return;
+   }
+   if(!result.ok){
+    setExtractionErrors((prev)=>({...prev,[documentId]:meta.licenseExtractionFailed||'Extraction failed. Please try again or enter details manually later.'}));
+    await loadDocuments();
+    return;
+   }
+   if(result.document) mergeDocument(result.document);
+   setExtractionSuccessDocId(documentId);
+   await loadDocuments();
+  }catch(err){
+   setExtractionErrors((prev)=>({...prev,[documentId]:meta.licenseExtractionFailed||'Extraction failed. Please try again or enter details manually later.'}));
+   AuthDebug.log('[mhp] licence extraction failed:', { message: err?.message || String(err) });
+  }finally{
+   setExtractingDocId('');
+  }
+ };
+
  const canUpload=!!selectedFile&&!uploading&&!storageUnavailable;
  const chooseLabel=uploadSuccess&&!selectedFile
   ? (meta.licenseChooseAnother||'Choose another PDF')
@@ -4399,15 +4466,30 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
    {loading ? <p className="sub">Loading uploaded documents…</p> : documents.length===0 ? <p className="sub">{meta.licenseDocumentsEmpty||'No licence PDF uploaded yet.'}</p> : <>
     <h4 className="mhp-license-list-title">{meta.licenseUploadListTitle||'Uploaded licence documents'}</h4>
     <ul className="mhp-license-document-list">
-    {documents.map(doc=><li key={doc.id} className={'mhp-license-document-item'+(uploadSuccess?.documentId&&doc.id===uploadSuccess.documentId?' mhp-license-document-item--recent':'')}>
+    {documents.map(doc=>{
+     const extractionStatus=String(doc.extractionStatus||'pending').trim().toLowerCase();
+     const canExtract=extractionStatus==='pending'||extractionStatus==='failed';
+     const isExtracting=extractingDocId===doc.id||extractionStatus==='processing';
+     const showExtractionSuccess=extractionSuccessDocId===doc.id||extractionStatus==='completed';
+     const showReviewPanel=extractionStatus==='completed'&&doc.extractedJson;
+     return <li key={doc.id} className={'mhp-license-document-item'+(uploadSuccess?.documentId&&doc.id===uploadSuccess.documentId?' mhp-license-document-item--recent':'')}>
      <div className="mhp-license-document-title">{doc.originalFilename||'Licence document.pdf'}</div>
      <div className="mhp-license-document-meta">
       <span>{meta.licenseDocumentStatusLabel||'Document status'}: {mhpStatusLabel(doc.documentStatus)}</span>
-      <span>{meta.licenseExtractionStatusLabel||'Extraction status'}: {doc.extractionStatus==='pending'?(meta.licenseExtractionPending||'Extraction pending'):mhpStatusLabel(doc.extractionStatus)}</span>
+      <span>{meta.licenseExtractionStatusLabel||'Extraction status'}: {extractionStatus==='pending'?(meta.licenseExtractionPending||'Extraction pending'):mhpStatusLabel(doc.extractionStatus)}</span>
       <span>{meta.licenseUploadedDateLabel||'Uploaded'}: {fmtDate(doc.createdAt)}</span>
      </div>
-     {doc.extractionStatus==='pending' ? <p className="sub mhp-license-extraction-note">{meta.licenseExtractionComingNext||'AI extraction coming next'}</p> : null}
-    </li>)}
+     {canExtract ? <div className="mhp-license-extract-row">
+      <button type="button" className="btn btn-secondary" disabled={!!extractingDocId||storageUnavailable} onClick={()=>handleExtract(doc.id)}>{isExtracting?(meta.licenseExtracting||'Extracting…'):(meta.licenseExtractDetails||'Extract details')}</button>
+      {isExtracting ? <span className="mhp-license-extract-status">{meta.licenseExtracting||'Extracting…'}</span> : null}
+      {extractionErrors[doc.id] ? <span className="mhp-license-extract-status mhp-license-extract-status--error">{extractionErrors[doc.id]}</span> : null}
+     </div> : isExtracting ? <div className="mhp-license-extract-row"><span className="mhp-license-extract-status">{meta.licenseExtracting||'Extracting…'}</span></div> : null}
+     {showExtractionSuccess && extractionStatus==='completed' ? <div className="mhp-license-extraction-success" role="status" aria-live="polite">
+      <p className="mhp-license-extraction-success-message">{meta.licenseExtractionDraftSuccess||'Draft details extracted. Please review before submitting for Wayfinder review.'}</p>
+     </div> : null}
+     {showReviewPanel ? <MentalHealthProfessionalLicenseExtractionReview doc={doc} meta={meta} fmtDate={fmtDate}/> : null}
+    </li>;
+    })}
    </ul>
    </>}
   </>}
