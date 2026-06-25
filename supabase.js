@@ -217,6 +217,90 @@ const authenticatedSelect = async ({ table, query, userId = null, parentId = nul
   return Array.isArray(data) ? data : [];
 };
 
+const isMhpProfileContractUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('42p01')) return true;
+  const names = [
+    'mental_health_professional_profiles',
+    'mental_health_professional_memberships'
+  ];
+  return names.some((name) => text.includes(name) && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  ));
+};
+
+const fetchMhpOnboardingRowsSafe = async ({ userId, authSession, context }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session.access_token}`,
+      Accept: 'application/json'
+    };
+    const profileParams = new URLSearchParams({
+      select: 'profile_status,profile_visible',
+      user_id: `eq.${userId}`,
+      limit: '1'
+    });
+    const membershipParams = new URLSearchParams({
+      select: 'membership_status,institutional_membership_expires_at',
+      user_id: `eq.${userId}`,
+      limit: '1'
+    });
+    const [profileResponse, membershipResponse] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/mental_health_professional_profiles?${profileParams.toString()}`, {
+        method: 'GET',
+        headers
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/mental_health_professional_memberships?${membershipParams.toString()}`, {
+        method: 'GET',
+        headers
+      })
+    ]);
+    const profileText = await profileResponse.text();
+    const membershipText = await membershipResponse.text();
+    if (!profileResponse.ok) {
+      if (isMhpProfileContractUnavailable(profileResponse.status, profileText)) {
+        return { unavailable: true, profile: null, membership: null };
+      }
+      AuthDebug.log('[db] MHP onboarding profile read failed:', {
+        context,
+        status: profileResponse.status
+      });
+      return { unavailable: false, profile: null, membership: null, error: true };
+    }
+    if (!membershipResponse.ok) {
+      if (isMhpProfileContractUnavailable(membershipResponse.status, membershipText)) {
+        return { unavailable: true, profile: null, membership: null };
+      }
+      AuthDebug.log('[db] MHP onboarding membership read failed:', {
+        context,
+        status: membershipResponse.status
+      });
+      return { unavailable: false, profile: null, membership: null, error: true };
+    }
+    const profileRows = profileText ? JSON.parse(profileText) : [];
+    const membershipRows = membershipText ? JSON.parse(membershipText) : [];
+    return {
+      unavailable: false,
+      profile: Array.isArray(profileRows) && profileRows.length ? profileRows[0] : null,
+      membership: Array.isArray(membershipRows) && membershipRows.length ? membershipRows[0] : null,
+      error: false
+    };
+  } catch (err) {
+    AuthDebug.log('[db] MHP onboarding read exception:', {
+      context,
+      message: err?.message || String(err)
+    });
+    return { unavailable: false, profile: null, membership: null, error: true };
+  }
+};
+
 const isHostedEventsUnavailable = (status, responseText) => {
   const text = String(responseText || '').toLowerCase();
   if (status === 404) return true;
@@ -788,6 +872,21 @@ const parseApiJson = async (response) => {
 const Auth = {
   signUp: (email, password) => sb.auth.signUp({ email, password }),
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
+  requestPasswordReset: async (email) => {
+    const target = String(email || '').trim();
+    if (!target) {
+      return {
+        data: null,
+        error: new Error('Enter your email address.')
+      };
+    }
+    const redirectTo = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : undefined;
+    const options = redirectTo ? { redirectTo } : undefined;
+    const { data, error } = await sb.auth.resetPasswordForEmail(target, options);
+    return { data, error };
+  },
   updatePassword: (password) => sb.auth.updateUser({ password }),
   resendVerification: async (target) => {
     const session = target && typeof target === 'object' ? target : null;
@@ -2195,6 +2294,58 @@ const DB = {
       }
     });
     return finish(legacyResult, true);
+  },
+
+  getMentalHealthProfessionalOnboardingStatus: async (userId, authSession = null) => {
+    const result = await fetchMhpOnboardingRowsSafe({
+      userId,
+      authSession,
+      context: 'getMentalHealthProfessionalOnboardingStatus'
+    });
+    if (result.unavailable) {
+      return {
+        available: false,
+        requiresOnboarding: false,
+        reason: 'mhp_contract_unavailable'
+      };
+    }
+    if (result.error) {
+      return {
+        available: false,
+        requiresOnboarding: false,
+        reason: 'read_failed'
+      };
+    }
+    const profile = result.profile;
+    const membership = result.membership;
+    if (!profile && !membership) {
+      return {
+        available: true,
+        requiresOnboarding: false,
+        reason: 'legacy_counsellor'
+      };
+    }
+    const membershipExpires = membership?.institutional_membership_expires_at
+      ? new Date(membership.institutional_membership_expires_at)
+      : null;
+    const membershipActive = membership?.membership_status === 'active'
+      && (!membershipExpires || membershipExpires.getTime() > Date.now());
+    const profilePublished = profile?.profile_status === 'published'
+      && profile?.profile_visible === true;
+    if (profilePublished && membershipActive) {
+      return {
+        available: true,
+        requiresOnboarding: false,
+        reason: 'complete'
+      };
+    }
+    return {
+      available: true,
+      requiresOnboarding: true,
+      reason: 'incomplete',
+      profileStatus: profile?.profile_status || null,
+      membershipStatus: membership?.membership_status || null
+    };
   },
 
   getParentEntryReviewLockMap: async (userId, journalEntryIds, authSession = null) => {

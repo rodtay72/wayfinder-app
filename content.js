@@ -574,6 +574,21 @@ const WAYFINDER_APP_VERSIONS = [
   }
 ];
 
+const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
+  forgotPasswordLink: "Forgot password?",
+  forgotPasswordTitle: "Reset your password",
+  forgotPasswordPrompt: "Enter the email you used for Wayfinder. If an account exists, we will send a password reset link.",
+  forgotPasswordSubmit: "Send reset link",
+  forgotPasswordSuccess: "If an account exists, we will send a password reset link.",
+  forgotPasswordBack: "Back to sign in",
+  inviteTitle: "You've been invited as a Mental Health Professional",
+  inviteSubtitle: "Sign in or create an account using the email address your invitation was sent to.",
+  inviteSignInNote: "Use the invited email address. Your invite link has been received — you do not need to enter it again.",
+  onboardingTitle: "Complete your Mental Health Professional profile",
+  onboardingSubtitle: "Profile and licence upload are coming in the next step.",
+  onboardingPortalLabel: "Mental Health Professional Portal"
+};
+
 // PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)
 const PDPA_SIGNUP_NOTICE = {
   version: "2026-06-1",
@@ -610,6 +625,7 @@ if (typeof module !== 'undefined' && module.exports) {
     UI_TEXT,
     APP_VERSION_PAGE,
     WAYFINDER_APP_VERSIONS,
-    PDPA_SIGNUP_NOTICE
+    PDPA_SIGNUP_NOTICE,
+    MENTAL_HEALTH_PROFESSIONAL_ONBOARDING
   };
 }

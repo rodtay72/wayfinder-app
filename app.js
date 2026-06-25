@@ -271,7 +271,46 @@ function Landing({onEnter,user,profile,onSignOut,authReady,role}){
  </div>;
 }
 
-function AuthScreen({onAuth, role, message, messageEmail}){
+const parseInviteTokenFromUrl=()=>{
+ if(typeof window==='undefined') return '';
+ try{
+  const url=new URL(window.location.href);
+  const fromQuery=url.searchParams.get('invite');
+  if(fromQuery&&String(fromQuery).trim()) return String(fromQuery).trim();
+  const hash=url.hash&&url.hash.startsWith('#')?url.hash.slice(1):'';
+  if(hash){
+   const hashParams=new URLSearchParams(hash);
+   const fromHash=hashParams.get('invite');
+   if(fromHash&&String(fromHash).trim()) return String(fromHash).trim();
+  }
+ }catch(err){
+  AuthDebug.log('[auth] invite parse failed:', { message: err?.message || String(err) });
+ }
+ return '';
+};
+
+const clearInviteFromUrl=()=>{
+ if(typeof window==='undefined') return;
+ try{
+  const url=new URL(window.location.href);
+  if(!url.searchParams.has('invite')) return;
+  url.searchParams.delete('invite');
+  window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
+ }catch(_){}
+};
+
+function ProfessionalOnboardingPlaceholder({meta,onSignOut}){
+ return <div className="wrap">
+  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{meta.onboardingPortalLabel||'Mental Health Professional Portal'}</p></div>
+  <div className="card mhp-onboarding-card">
+   <h2>{meta.onboardingTitle||'Complete your Mental Health Professional profile'}</h2>
+   <p className="dashboard-helper">{meta.onboardingSubtitle||'Profile and licence upload are coming in the next step.'}</p>
+   <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
+  </div>
+ </div>;
+}
+
+function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
  const [mode,setMode]=useState('signin');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -281,8 +320,15 @@ function AuthScreen({onAuth, role, message, messageEmail}){
  const [resendLoading,setResendLoading]=useState(false);
  const [pdpaAcknowledged,setPdpaAcknowledged]=useState(false);
  const [pdpaNoticePrompt,setPdpaNoticePrompt]=useState('');
- const allowSignup=role!=='counsellor';
+ const [forgotOpen,setForgotOpen]=useState(false);
+ const [resetLoading,setResetLoading]=useState(false);
+ const [resetStatus,setResetStatus]=useState('');
+ const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
+ const allowSignup=role!=='counsellor'||!!inviteToken;
  const activeMode=allowSignup?mode:'signin';
+ const portalLabel=role==='counsellor'
+  ? (inviteToken?(mhpMeta.onboardingPortalLabel||'Mental Health Professional Portal'):'Counsellor Portal')
+  : 'A space to find your way back to each other';
  const pdpaNotice=typeof PDPA_SIGNUP_NOTICE!=='undefined'?PDPA_SIGNUP_NOTICE:{};
  const pdpaTitle=String(pdpaNotice.title||'Before you create your account').trim();
  const pdpaBody=String(pdpaNotice.body||'').trim();
@@ -328,14 +374,48 @@ function AuthScreen({onAuth, role, message, messageEmail}){
   }catch(e){setError(e.message||'Could not send verification email. Please try again.');}
   setResendLoading(false);
  };
+ const requestPasswordReset=async()=>{
+  setError('');
+  setResetStatus('');
+  const target=email.trim();
+  if(!target){setError('Enter your email address, then try again.');return;}
+  setResetLoading(true);
+  try{
+   const {error:err}=await Auth.requestPasswordReset(target);
+   if(err){
+    AuthDebug.log('[auth] password reset request failed:', { message: err?.message || String(err) });
+   }
+   setResetStatus(mhpMeta.forgotPasswordSuccess||mhpMeta.forgotPasswordPrompt||'If an account exists, we will send a password reset link.');
+  }catch(e){
+   AuthDebug.log('[auth] password reset request exception:', { message: e?.message || String(e) });
+   setResetStatus(mhpMeta.forgotPasswordSuccess||'If an account exists, we will send a password reset link.');
+  }finally{
+   setResetLoading(false);
+  }
+ };
  return <div className="wrap">
-  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other'}</p></div>
+  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{portalLabel}</p></div>
+  {inviteToken ? <div className="card mhp-invite-card">
+   <h2>{mhpMeta.inviteTitle||"You've been invited as a Mental Health Professional"}</h2>
+   <p className="dashboard-helper">{mhpMeta.inviteSubtitle||'Sign in or create an account using the email address your invitation was sent to.'}</p>
+   <p className="sub mhp-invite-note">{mhpMeta.inviteSignInNote||'Use the invited email address. Your invite link has been received — you do not need to enter it again.'}</p>
+  </div> : null}
   <div className="card" style={{padding:0,overflow:'hidden'}}>
    <img src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'} style={{width:'100%',height:'auto',display:'block'}}/>
    <div style={{padding:24}}>
+   {forgotOpen ? <>
+    <h2>{mhpMeta.forgotPasswordTitle||'Reset your password'}</h2>
+    <p className="sub auth-forgot-copy">{mhpMeta.forgotPasswordPrompt||'Enter the email you used for Wayfinder. If an account exists, we will send a password reset link.'}</p>
+    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&requestPasswordReset()}/></div>
+    {error&&<div style={{color:'#c0392b',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fdecea',borderRadius:6}}>{error}</div>}
+    {resetStatus&&<div style={{color:'#4f7a5e',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#edf7ef',borderRadius:6}}>{resetStatus}</div>}
+    <button className="btn btn-primary btn-block" onClick={requestPasswordReset} disabled={resetLoading}>{resetLoading?'Please wait…':(mhpMeta.forgotPasswordSubmit||'Send reset link')}</button>
+    <button type="button" className="btn btn-ghost btn-block auth-forgot-back" onClick={()=>{setForgotOpen(false);setResetStatus('');setError('');}}>{mhpMeta.forgotPasswordBack||'Back to sign in'}</button>
+   </> : <>
    <h2>{activeMode==='signin'?'Sign in':'Create account'}</h2>
    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
    <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   {activeMode==='signin' && <p className="auth-forgot-wrap"><button type="button" className="auth-forgot-link" onClick={()=>{setForgotOpen(true);setError('');setResetStatus('');}}>{mhpMeta.forgotPasswordLink||'Forgot password?'}</button></p>}
    {message&&<div style={{color:'#8a5a00',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fff4d6',borderRadius:6}}>
     <div>{message}</div>
     <button className="btn btn-secondary" style={{marginTop:10,width:'100%'}} onClick={resendVerification} disabled={resendLoading}>{resendLoading?'Sending...':'Resend verification email'}</button>
@@ -358,7 +438,8 @@ function AuthScreen({onAuth, role, message, messageEmail}){
    <button className="btn btn-primary btn-block" onClick={submit} disabled={loading||(activeMode==='signup'&&!pdpaAcknowledged)}>{loading?'Please wait…':activeMode==='signin'?'Sign in':'Create account'}</button>
    {allowSignup ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
     {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
-   </p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Counsellor accounts are provisioned by the Wayfinder administrator.</p>}
+   </p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{inviteToken?'Create an account with your invited email, or sign in if you already have one.':'Counsellor accounts are provisioned by the Wayfinder administrator.'}</p>}
+   </>}
    </div>
   </div>
  </div>;
@@ -507,9 +588,22 @@ function App(){
  const [accessDenied,setAccessDenied]=useState('');
  const [authMessage,setAuthMessage]=useState('');
  const [authMessageEmail,setAuthMessageEmail]=useState('');
+ const [pendingInviteToken,setPendingInviteToken]=useState('');
+ const [mhpOnboarding,setMhpOnboarding]=useState({loading:false,required:false});
  const profileLoadRef = useRef({ userId: null, promise: null });
  const passwordRecoveryRef = useRef(false);
+ const pendingInviteTokenRef = useRef('');
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
+ const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
+
+ useEffect(()=>{
+  const token=parseInviteTokenFromUrl();
+  if(token){
+   pendingInviteTokenRef.current=token;
+   setPendingInviteToken(token);
+   clearInviteFromUrl();
+  }
+ },[]);
 
  const startPasswordRecovery=async(rawSession,source='auth-state')=>{
   let session=rawSession||null;
@@ -656,7 +750,10 @@ function App(){
     let profilePromise=profileLoadRef.current.promise;
 
     if(profileLoadRef.current.userId!==session.user.id||!profilePromise){
-     profilePromise=APP_ROLE==='counsellor'?Profile.getExisting(session.user.id,session):Profile.getOrCreate(session.user.id,APP_ROLE,session);
+     const counsellorUsesExisting=APP_ROLE==='counsellor'&&!pendingInviteTokenRef.current;
+     profilePromise=counsellorUsesExisting
+      ? Profile.getExisting(session.user.id,session)
+      : Profile.getOrCreate(session.user.id,APP_ROLE,session);
      profileLoadRef.current={userId:session.user.id,promise:profilePromise};
     }
 
@@ -776,6 +873,32 @@ function App(){
   return ()=>subscription.unsubscribe();
  },[]);
 
+ useEffect(()=>{
+  if(!user?.id||!authSession?.access_token||APP_ROLE!=='counsellor'||!profile||profile.role!=='counsellor'||passwordRecovery.active){
+   setMhpOnboarding({loading:false,required:false});
+   return;
+  }
+  let cancelled=false;
+  (async()=>{
+   setMhpOnboarding({loading:true,required:false});
+   try{
+    const status=await DB.getMentalHealthProfessionalOnboardingStatus(user.id,authSession);
+    if(cancelled) return;
+    const needsOnboarding=!!status.requiresOnboarding
+     || (pendingInviteTokenRef.current&&status.reason==='legacy_counsellor');
+    if(!needsOnboarding){
+     pendingInviteTokenRef.current='';
+     setPendingInviteToken('');
+    }
+    setMhpOnboarding({loading:false,required:needsOnboarding});
+   }catch(err){
+    AuthDebug.log('[mhp] onboarding status check failed:', { message: err?.message || String(err) });
+    if(!cancelled) setMhpOnboarding({loading:false,required:false});
+   }
+  })();
+  return ()=>{ cancelled=true; };
+ },[user?.id,authSession?.access_token,profile?.role,APP_ROLE,passwordRecovery.active]);
+
  const refreshAuthSession=async()=>{
   const {data,error}=await Auth.getFreshSession();
   if(error)throw error;
@@ -817,7 +940,7 @@ function App(){
 
  if(!authReady){AuthDebug.log('[render] branch: auth loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;}
   if(passwordRecovery.active){AuthDebug.log('[render] branch: password recovery');return <PasswordRecoveryScreen status={passwordRecovery} role={APP_ROLE} onSubmit={completePasswordRecovery} onSignOut={signOut}/>;}
-  if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail}/>;}
+  if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={pendingInviteToken||null}/>;}
   if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
   if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
    <h2 style={{marginBottom:12}}>{accessDenied}</h2>
@@ -839,6 +962,8 @@ function App(){
   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
  </div></div>;}
 
+ if(APP_ROLE==='counsellor'&&mhpOnboarding.loading){AuthDebug.log('[render] branch: mhp onboarding loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your professional workspace…</div></div>;}
+ if(APP_ROLE==='counsellor'&&mhpOnboarding.required){AuthDebug.log('[render] branch: mhp onboarding placeholder');return <ProfessionalOnboardingPlaceholder meta={mhpMeta} onSignOut={signOut}/>;}
  if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} profile={profile} authSession={authSession} onSignOut={signOut}/>;}
  AuthDebug.log('[render] branch: client dashboard');
  return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} authSession={authSession} onSignOut={signOut}/>;
