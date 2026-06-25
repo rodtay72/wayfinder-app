@@ -258,6 +258,19 @@
   .mhp-profile-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;}
   .mhp-profile-save-status{font-size:13px;font-weight:650;color:var(--sage-deep);}
   .mhp-profile-save-status--error{color:#8A1F1F;}
+  .mhp-license-section{padding:22px 24px;margin-top:16px;}
+  .mhp-license-section h3{margin:0 0 10px;font-size:18px;color:#40514b;}
+  .mhp-license-privacy-note{margin:0 0 14px;}
+  .mhp-license-unavailable{margin:0 0 12px;color:#7A5E42;}
+  .mhp-license-upload-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px;}
+  .mhp-license-file-input{display:none;}
+  .mhp-license-upload-status{font-size:13px;font-weight:650;color:var(--sage-deep);}
+  .mhp-license-upload-status--error{color:#8A1F1F;}
+  .mhp-license-document-list{margin:0;padding:0;list-style:none;display:grid;gap:10px;}
+  .mhp-license-document-item{padding:14px 16px;border:1px solid #E0E8DC;border-radius:8px;background:#FAFCFA;}
+  .mhp-license-document-title{font-weight:700;font-size:14px;color:#40514b;margin-bottom:8px;word-break:break-word;}
+  .mhp-license-document-meta{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:#666;}
+  .mhp-license-extraction-note{margin:10px 0 0;font-size:12px;color:#5d6c66;}
 
   .dashboard-section{padding:24px;}
   .dashboard-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;}

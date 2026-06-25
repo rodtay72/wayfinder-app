@@ -225,6 +225,8 @@ const isMhpProfileContractUnavailable = (status, responseText) => {
   const names = [
     'mental_health_professional_profiles',
     'mental_health_professional_memberships',
+    'mental_health_professional_license_documents',
+    'professional-license-documents',
     'get_my_mental_health_professional_status'
   ];
   return names.some((name) => text.includes(name) && (
@@ -292,6 +294,99 @@ const mhpProfileWriteSafe = async ({ method, userId, authSession, context, body,
   table: 'mental_health_professional_profiles',
   unavailableCheck: isMhpProfileContractUnavailable
 });
+
+const MHP_LICENSE_BUCKET = 'professional-license-documents';
+const MHP_LICENSE_MAX_BYTES = 10 * 1024 * 1024;
+
+const normalizeMhpLicenseDocumentRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    id: row.id || null,
+    userId: row.user_id || row.userId || null,
+    storageBucket: row.storage_bucket || row.storageBucket || MHP_LICENSE_BUCKET,
+    storagePath: row.storage_path || row.storagePath || '',
+    originalFilename: row.original_filename || row.originalFilename || '',
+    mimeType: row.mime_type || row.mimeType || 'application/pdf',
+    fileSizeBytes: row.file_size_bytes ?? row.fileSizeBytes ?? null,
+    documentStatus: row.document_status || row.documentStatus || 'uploaded',
+    extractionStatus: row.extraction_status || row.extractionStatus || 'pending',
+    createdAt: row.created_at || row.createdAt || null,
+    updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
+const fetchMhpLicenseDocumentsSafe = async ({ query, userId, authSession, context }) => fetchReviewGrantsSafe({
+  table: 'mental_health_professional_license_documents',
+  query,
+  userId,
+  authSession,
+  context,
+  unavailableCheck: isMhpProfileContractUnavailable
+});
+
+const mhpLicenseDocumentInsertSafe = async ({ userId, authSession, context, body }) => reviewGrantWriteSafe({
+  method: 'POST',
+  userId,
+  authSession,
+  context,
+  body,
+  table: 'mental_health_professional_license_documents',
+  unavailableCheck: isMhpProfileContractUnavailable
+});
+
+const isMhpLicenseStorageUnavailable = (status, responseText) => {
+  if (isMhpProfileContractUnavailable(status, responseText)) return true;
+  const text = String(responseText || '').toLowerCase();
+  if (text.includes('bucket') && (
+    text.includes('not found') ||
+    text.includes('does not exist') ||
+    text.includes('could not find')
+  )) return true;
+  if (text.includes('professional-license-documents') && (
+    text.includes('not found') ||
+    text.includes('policy') ||
+    text.includes('row-level security')
+  )) return true;
+  return false;
+};
+
+const uploadMhpLicensePdfSafe = async ({ userId, storagePath, file, authSession, context }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const encodedPath = String(storagePath || '')
+      .split('/')
+      .filter(Boolean)
+      .map((part) => encodeURIComponent(part))
+      .join('/');
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${MHP_LICENSE_BUCKET}/${encodedPath}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/pdf',
+        'x-upsert': 'false'
+      },
+      body: file
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isMhpLicenseStorageUnavailable(response.status, responseText)) {
+        AuthDebug.log('[db] MHP licence storage unavailable:', { context, status: response.status });
+        return { ok: false, unavailable: true, responseText };
+      }
+      AuthDebug.log('[db] MHP licence storage upload failed:', { context, status: response.status, responseText });
+      return { ok: false, unavailable: false, responseText };
+    }
+    return { ok: true, unavailable: false, responseText: null };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isMhpLicenseStorageUnavailable(0, message)) {
+      return { ok: false, unavailable: true, responseText: message };
+    }
+    AuthDebug.log('[db] MHP licence storage upload exception:', { context, message });
+    return { ok: false, unavailable: false, responseText: message };
+  }
+};
 
 const fetchMhpOnboardingRowsSafe = async ({ userId, authSession, context }) => {
   try {
@@ -2536,6 +2631,99 @@ const DB = {
       ok: true,
       unavailable: false,
       profile: normalizeMhpProfileRow(writeResult.rows[0]),
+      errorStage: null
+    };
+  },
+
+  getMyMentalHealthProfessionalLicenseDocuments: async (userId, authSession = null) => {
+    const result = await fetchMhpLicenseDocumentsSafe({
+      query: {
+        select: 'id,user_id,storage_bucket,storage_path,original_filename,mime_type,file_size_bytes,document_status,extraction_status,created_at,updated_at',
+        user_id: `eq.${userId}`,
+        order: 'created_at.desc'
+      },
+      userId,
+      authSession,
+      context: 'getMyMentalHealthProfessionalLicenseDocuments'
+    });
+    if (result.unavailable) {
+      return { available: false, unavailable: true, documents: [] };
+    }
+    if (!result.ok) {
+      return { available: false, unavailable: false, documents: [] };
+    }
+    return {
+      available: true,
+      unavailable: false,
+      documents: (result.rows || []).map(normalizeMhpLicenseDocumentRow).filter(Boolean)
+    };
+  },
+
+  uploadMentalHealthProfessionalLicenseDocument: async (userId, file, authSession = null) => {
+    const source = file && typeof file === 'object' ? file : null;
+    const mimeType = String(source?.type || '').trim().toLowerCase();
+    const fileName = String(source?.name || '').trim();
+    const fileSize = Number(source?.size || 0);
+    const looksPdf = mimeType === 'application/pdf' || /\.pdf$/i.test(fileName);
+    if (!source || !looksPdf) {
+      return { ok: false, unavailable: false, document: null, errorStage: 'invalidType' };
+    }
+    if (!Number.isFinite(fileSize) || fileSize <= 0) {
+      return { ok: false, unavailable: false, document: null, errorStage: 'invalidFile' };
+    }
+    if (fileSize > MHP_LICENSE_MAX_BYTES) {
+      return { ok: false, unavailable: false, document: null, errorStage: 'tooLarge' };
+    }
+
+    const documentId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const ownerId = String(userId || '').trim();
+    if (!ownerId) {
+      return { ok: false, unavailable: false, document: null, errorStage: 'auth' };
+    }
+    const storagePath = `${ownerId}/${documentId}.pdf`;
+
+    const uploadResult = await uploadMhpLicensePdfSafe({
+      userId: ownerId,
+      storagePath,
+      file: source,
+      authSession,
+      context: 'uploadMentalHealthProfessionalLicenseDocument storage'
+    });
+    if (uploadResult.unavailable) {
+      return { ok: false, unavailable: true, document: null, errorStage: 'storageUnavailable' };
+    }
+    if (!uploadResult.ok) {
+      return { ok: false, unavailable: false, document: null, errorStage: 'storageUpload' };
+    }
+
+    const insertResult = await mhpLicenseDocumentInsertSafe({
+      userId: ownerId,
+      authSession,
+      context: 'uploadMentalHealthProfessionalLicenseDocument metadata',
+      body: {
+        id: documentId,
+        user_id: ownerId,
+        storage_bucket: MHP_LICENSE_BUCKET,
+        storage_path: storagePath,
+        original_filename: fileName || `${documentId}.pdf`,
+        mime_type: 'application/pdf',
+        file_size_bytes: fileSize,
+        document_status: 'uploaded',
+        extraction_status: 'pending'
+      }
+    });
+    if (insertResult.unavailable) {
+      return { ok: false, unavailable: true, document: null, errorStage: 'metadataUnavailable' };
+    }
+    if (!insertResult.ok || !(insertResult.rows || []).length) {
+      return { ok: false, unavailable: false, document: null, errorStage: 'metadataInsert' };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      document: normalizeMhpLicenseDocumentRow(insertResult.rows[0]),
       errorStage: null
     };
   },
