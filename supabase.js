@@ -2764,14 +2764,24 @@ const DB = {
         }
       }
       if (!response.ok || !data?.ok) {
-        const stage = response.status === 401 || response.status === 403
-          ? 'auth'
-          : response.status === 409
-            ? 'processing'
-            : response.status === 422
-              ? 'pdfText'
-              : 'extract';
-        return { ok: false, unavailable: false, extraction: null, document: null, errorStage: stage };
+        const errorCode = String(data?.error_code || '').trim() || null;
+        const stage = errorCode
+          || (response.status === 401 || response.status === 403
+            ? 'auth'
+            : response.status === 409
+              ? 'processing'
+              : response.status === 422
+                ? 'pdfText'
+                : 'extract');
+        return {
+          ok: false,
+          unavailable: false,
+          extraction: null,
+          document: null,
+          errorStage: stage,
+          errorCode,
+          errorMessage: data?.error || null
+        };
       }
       const extraction = data.extraction && typeof data.extraction === 'object' ? data.extraction : null;
       const refresh = await fetchMhpLicenseDocumentsSafe({
