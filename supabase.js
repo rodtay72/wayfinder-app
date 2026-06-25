@@ -297,6 +297,7 @@ const mhpProfileWriteSafe = async ({ method, userId, authSession, context, body,
 
 const MHP_LICENSE_BUCKET = 'professional-license-documents';
 const MHP_LICENSE_MAX_BYTES = 10 * 1024 * 1024;
+const MHP_EXTRACTION_REQUEST_TIMEOUT_MS = 25000;
 
 const normalizeMhpLicenseDocumentRow = (row) => {
   if (!row || typeof row !== 'object') return null;
@@ -2743,14 +2744,37 @@ const DB = {
     }
     try {
       const session = await getAuthenticatedReadSession(ownerId, 'requestMhpLicenseExtraction', authSession);
-      const response = await fetch('/api/extract-mhp-license', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ documentId: docId })
-      });
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller
+        ? setTimeout(() => controller.abort(), MHP_EXTRACTION_REQUEST_TIMEOUT_MS)
+        : null;
+      let response;
+      try {
+        response = await fetch('/api/extract-mhp-license', {
+          method: 'POST',
+          signal: controller?.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ documentId: docId })
+        });
+      } catch (err) {
+        if (err?.name === 'AbortError') {
+          return {
+            ok: false,
+            unavailable: false,
+            extraction: null,
+            document: null,
+            errorStage: 'timeout',
+            errorCode: 'openai_timeout',
+            errorMessage: 'Extraction took too long. Please try again later.'
+          };
+        }
+        throw err;
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
       const responseText = await response.text();
       let data = null;
       try {
@@ -2758,7 +2782,7 @@ const DB = {
       } catch {
         data = null;
       }
-      if (response.status === 404 || response.status === 503 || response.status === 502) {
+      if (response.status === 404 || response.status === 503 || response.status === 502 || response.status === 504) {
         if (isMhpProfileContractUnavailable(response.status, responseText)) {
           return { ok: false, unavailable: true, extraction: null, document: null, errorStage: 'unavailable' };
         }

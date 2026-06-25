@@ -4448,11 +4448,14 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
   if(!documentId||extractingDocId) return;
   setExtractingDocId(documentId);
   setExtractionErrors((prev)=>({...prev,[documentId]:null}));
-  const setExtractionFailure=(errorCode)=>{
+  const setExtractionFailure=(errorCode,errorMessage)=>{
+   const message=errorCode==='openai_timeout'
+    ? (meta.licenseExtractionTimeout||'Extraction took too long. Please try again later.')
+    : (errorMessage||meta.licenseExtractionFailed||'Extraction failed. Please try again or contact Wayfinder support.');
    setExtractionErrors((prev)=>({
     ...prev,
     [documentId]:{
-     message: meta.licenseExtractionFailed||'Extraction failed. Please try again or contact Wayfinder support.',
+     message,
      errorCode: errorCode||null
     }
    }));
@@ -4468,7 +4471,7 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
     return;
    }
    if(!result.ok){
-    setExtractionFailure(result.errorCode||result.errorStage||null);
+    setExtractionFailure(result.errorCode||result.errorStage||null,result.errorMessage||null);
     AuthDebug.log('[mhp] licence extraction failed:', {
      errorCode: result.errorCode || null,
      errorStage: result.errorStage || null
@@ -4524,8 +4527,8 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
     <ul className="mhp-license-document-list">
     {displayDocuments.map(doc=>{
      const extractionStatus=String(doc.extractionStatus||'pending').trim().toLowerCase();
-     const canExtract=extractionStatus==='pending'||extractionStatus==='failed';
-     const isExtracting=extractingDocId===doc.id||extractionStatus==='processing';
+     const canExtract=extractionStatus==='pending'||extractionStatus==='failed'||extractionStatus==='processing';
+     const isExtracting=extractingDocId===doc.id;
      const showExtractionSuccess=extractionSuccessDocId===doc.id||extractionStatus==='completed';
      const showReviewPanel=extractionStatus==='completed'&&doc.extractedJson;
      return <li key={doc.id} className={'mhp-license-document-item'+(uploadSuccess?.documentId&&doc.id===uploadSuccess.documentId?' mhp-license-document-item--recent':'')}>
@@ -4542,7 +4545,7 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
        {extractionErrors[doc.id]?.message||extractionErrors[doc.id]}
        {AuthDebug.enabled()&&extractionErrors[doc.id]?.errorCode ? <span className="mhp-license-extract-debug"> · {meta.licenseExtractionDebugLabel||'Diagnostic'}: {extractionErrors[doc.id].errorCode}</span> : null}
       </span> : null}
-     </div> : isExtracting ? <div className="mhp-license-extract-row"><span className="mhp-license-extract-status">{meta.licenseExtracting||'Extracting…'}</span></div> : null}
+     </div> : null}
      {showExtractionSuccess && extractionStatus==='completed' ? <div className="mhp-license-extraction-success" role="status" aria-live="polite">
       <p className="mhp-license-extraction-success-message">{meta.licenseExtractionDraftSuccess||'Draft details extracted. Please review before submitting for Wayfinder review.'}</p>
      </div> : null}
