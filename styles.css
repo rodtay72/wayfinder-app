@@ -278,6 +278,19 @@
   .mhp-license-document-title{font-weight:700;font-size:14px;color:#40514b;margin-bottom:8px;word-break:break-word;}
   .mhp-license-document-meta{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:#666;}
   .mhp-license-extraction-note{margin:10px 0 0;font-size:12px;color:#5d6c66;}
+  .mhp-license-extract-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;}
+  .mhp-license-extract-status{font-size:13px;font-weight:650;color:#5d6c66;}
+  .mhp-license-extract-status--error{color:#8A1F1F;}
+  .mhp-license-extraction-success{margin:12px 0 0;padding:14px 16px;border:1px solid #C8D9C4;border-radius:8px;background:#F2F8F0;}
+  .mhp-license-extraction-success-message{margin:0;font-size:14px;font-weight:700;color:var(--sage-deep);}
+  .mhp-license-review-panel{margin-top:14px;padding:14px 16px;border:1px solid #D8E4D2;border-radius:8px;background:#FBFDFA;}
+  .mhp-license-review-panel h5{margin:0 0 10px;font-size:14px;color:#40514b;}
+  .mhp-license-review-grid{display:grid;gap:8px;}
+  .mhp-license-review-field{display:grid;gap:2px;}
+  .mhp-license-review-label{font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:#7A8A84;}
+  .mhp-license-review-value{font-size:13px;color:#40514b;word-break:break-word;}
+  .mhp-license-review-warning{margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#FFF8EE;border:1px solid #E8DCC8;font-size:12px;color:#7A5E42;}
+  .mhp-license-human-review-pill{display:inline-flex;align-items:center;margin-top:10px;padding:4px 10px;border-radius:999px;background:#F3EDE4;color:#7A5E42;font-size:11px;font-weight:700;}
 
   .dashboard-section{padding:24px;}
   .dashboard-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;}
