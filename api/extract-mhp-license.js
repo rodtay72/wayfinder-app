@@ -416,6 +416,81 @@ const parseHumanDateToIso = (value) => {
   return `${year}-${pad2(month)}-${pad2(day)}`;
 };
 
+const isoDateToMs = (iso) => {
+  const ms = Date.parse(`${String(iso || '').trim()}T00:00:00Z`);
+  return Number.isFinite(ms) ? ms : null;
+};
+
+const normalizeValidityDatePair = (leftHuman, rightHuman) => {
+  const leftLabel = String(leftHuman || '').trim();
+  const rightLabel = String(rightHuman || '').trim();
+  const leftIso = parseHumanDateToIso(leftLabel);
+  const rightIso = parseHumanDateToIso(rightLabel);
+  if (!leftIso && !rightIso) {
+    return { valid_from: null, valid_to: null, raw_validity_text: null };
+  }
+  if (!leftIso || !rightIso) {
+    const singleIso = leftIso || rightIso;
+    const singleHuman = leftIso ? leftLabel : rightLabel;
+    return {
+      valid_from: singleIso,
+      valid_to: null,
+      raw_validity_text: singleHuman
+    };
+  }
+  const leftMs = isoDateToMs(leftIso);
+  const rightMs = isoDateToMs(rightIso);
+  const earlierIso = leftMs <= rightMs ? leftIso : rightIso;
+  const laterIso = leftMs <= rightMs ? rightIso : leftIso;
+  const earlierHuman = leftMs <= rightMs ? leftLabel : rightLabel;
+  const laterHuman = leftMs <= rightMs ? rightLabel : leftLabel;
+  return {
+    valid_from: earlierIso,
+    valid_to: laterIso,
+    raw_validity_text: `${earlierHuman} to ${laterHuman}`
+  };
+};
+
+const normalizeExtractionValidityFields = (fields) => {
+  const next = { ...(fields || {}) };
+  const raw = String(next.raw_validity_text || '').trim();
+  const rawMatch = raw.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\s+(?:to|–|-|—)\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i);
+  if (rawMatch) {
+    const normalized = normalizeValidityDatePair(rawMatch[1], rawMatch[2]);
+    next.valid_from = normalized.valid_from;
+    next.valid_to = normalized.valid_to;
+    next.raw_validity_text = normalized.raw_validity_text;
+    return next;
+  }
+
+  const fromIso = String(next.valid_from || '').trim() || null;
+  const toIso = String(next.valid_to || '').trim() || null;
+  if (fromIso && toIso) {
+    const fromMs = isoDateToMs(fromIso);
+    const toMs = isoDateToMs(toIso);
+    if (fromMs !== null && toMs !== null && fromMs > toMs) {
+      next.valid_from = toIso;
+      next.valid_to = fromIso;
+    }
+  }
+  return next;
+};
+
+const collectHumanDatesFromText = (compact) => {
+  const regex = /\b(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/g;
+  const seen = new Map();
+  let match;
+  while ((match = regex.exec(compact)) !== null) {
+    const human = String(match[1] || '').trim();
+    const iso = parseHumanDateToIso(human);
+    if (iso && !seen.has(iso)) seen.set(iso, human);
+  }
+  return [...seen.entries()]
+    .map(([iso, human]) => ({ iso, human, ms: isoDateToMs(iso) }))
+    .filter((entry) => entry.ms !== null)
+    .sort((a, b) => a.ms - b.ms);
+};
+
 const normalizePdfPlainText = (pdfText) => String(pdfText || '')
   .replace(/\u0000/g, '')
   .replace(/\s+/g, ' ')
@@ -482,13 +557,25 @@ const parseDeterministicLicenseFields = (pdfText) => {
 
   const validityMatch = compact.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\s+(?:to|–|-|—)\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i);
   if (validityMatch) {
-    const rawValidity = `${validityMatch[1]} to ${validityMatch[2]}`;
-    setDeterministicField(fields, confidence, 'raw_validity_text', rawValidity, 0.95);
-    const validFrom = parseHumanDateToIso(validityMatch[1]);
-    const validTo = parseHumanDateToIso(validityMatch[2]);
-    if (validFrom) setDeterministicField(fields, confidence, 'valid_from', validFrom, 0.93);
-    if (validTo) setDeterministicField(fields, confidence, 'valid_to', validTo, 0.93);
+    const normalized = normalizeValidityDatePair(validityMatch[1], validityMatch[2]);
+    if (normalized.valid_from) setDeterministicField(fields, confidence, 'valid_from', normalized.valid_from, 0.93);
+    if (normalized.valid_to) setDeterministicField(fields, confidence, 'valid_to', normalized.valid_to, 0.93);
+    if (normalized.raw_validity_text) setDeterministicField(fields, confidence, 'raw_validity_text', normalized.raw_validity_text, 0.95);
+  } else {
+    const discoveredDates = collectHumanDatesFromText(compact);
+    if (discoveredDates.length >= 2) {
+      const normalized = normalizeValidityDatePair(
+        discoveredDates[0].human,
+        discoveredDates[discoveredDates.length - 1].human
+      );
+      if (normalized.valid_from) setDeterministicField(fields, confidence, 'valid_from', normalized.valid_from, 0.9);
+      if (normalized.valid_to) setDeterministicField(fields, confidence, 'valid_to', normalized.valid_to, 0.9);
+      if (normalized.raw_validity_text) setDeterministicField(fields, confidence, 'raw_validity_text', normalized.raw_validity_text, 0.9);
+    }
   }
+
+  const normalizedFields = normalizeExtractionValidityFields(fields);
+  Object.assign(fields, normalizedFields);
 
   return { fields, confidence };
 };
@@ -568,7 +655,7 @@ const sanitizeExtraction = (value) => {
   const confidence = source.confidence && typeof source.confidence === 'object'
     ? source.confidence
     : {};
-  return {
+  const normalized = normalizeExtractionValidityFields({
     full_name: String(source.full_name || '').trim() || null,
     professional_title: String(source.professional_title || '').trim() || null,
     credential_label: String(source.credential_label || '').trim() || null,
@@ -577,7 +664,18 @@ const sanitizeExtraction = (value) => {
     accreditation_number: String(source.accreditation_number || '').trim() || null,
     valid_from: String(source.valid_from || '').trim() || null,
     valid_to: String(source.valid_to || '').trim() || null,
-    raw_validity_text: String(source.raw_validity_text || '').trim() || null,
+    raw_validity_text: String(source.raw_validity_text || '').trim() || null
+  });
+  return {
+    full_name: normalized.full_name,
+    professional_title: normalized.professional_title,
+    credential_label: normalized.credential_label,
+    issuing_body: normalized.issuing_body,
+    license_registration_number: normalized.license_registration_number,
+    accreditation_number: normalized.accreditation_number,
+    valid_from: normalized.valid_from,
+    valid_to: normalized.valid_to,
+    raw_validity_text: normalized.raw_validity_text,
     confidence,
     requires_human_review: true
   };

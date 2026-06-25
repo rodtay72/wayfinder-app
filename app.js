@@ -4236,6 +4236,15 @@ const mhpStatusLabel=(value)=>{
  return raw.split('_').map(part=>part?part.charAt(0).toUpperCase()+part.slice(1):'').join(' ');
 };
 
+const mhpApplyExtractedFieldsToProfileDraft=(form,fields)=>{
+ const next={...form};
+ if(fields?.fullName) next.fullName=fields.fullName;
+ if(fields?.professionalTitle) next.professionalTitle=fields.professionalTitle;
+ if(fields?.licenseRegistrationNumber) next.licenseRegistrationNumber=fields.licenseRegistrationNumber;
+ if(fields?.issuingBody) next.issuingBody=fields.issuingBody;
+ return next;
+};
+
 const mhpExtractedLicenseFields=(extracted,extractionFallback)=>{
  const source=extracted&&typeof extracted==='object'?extracted:{};
  const fallback=extractionFallback&&typeof extractionFallback==='object'?extractionFallback:{};
@@ -4283,9 +4292,11 @@ const mhpUploadFallbackDocument=(uploadSuccess)=>{
  };
 };
 
-const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate})=>{
+const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate,editable,onApplyExtractedDetails,appliedDocId})=>{
  const fields=mhpExtractedLicenseFields(doc?.extractedJson);
  const display=(value)=>value||'-';
+ const canApply=!!editable&&typeof onApplyExtractedDetails==='function'&&!!(fields.fullName||fields.professionalTitle||fields.licenseRegistrationNumber||fields.issuingBody);
+ const showApplySuccess=!!appliedDocId&&doc?.id===appliedDocId;
  return <div className="mhp-license-review-panel">
   <h5>{meta.licenseExtractionReviewTitle||'Review extracted details'}</h5>
   <div className="mhp-license-review-grid">
@@ -4298,7 +4309,12 @@ const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate})=>{
    <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewValidTo||'Valid to'}</span><span className="mhp-license-review-value">{fields.validTo?fmtDate(fields.validTo):'-'}</span></div>
    <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewRawValidityText||'Raw validity text'}</span><span className="mhp-license-review-value">{display(fields.rawValidityText)}</span></div>
   </div>
+  {canApply ? <div className="mhp-license-review-actions">
+   <button type="button" className="btn btn-secondary" onClick={()=>onApplyExtractedDetails(doc.id,fields)}>{meta.licenseApplyToProfileDraft||'Use these details in my profile draft'}</button>
+  </div> : null}
+  {showApplySuccess ? <p className="mhp-license-apply-success" role="status" aria-live="polite">{meta.licenseApplyToProfileDraftSuccess||'Extracted details applied to your profile draft. Please review before saving.'}</p> : null}
   <span className="mhp-license-human-review-pill">{meta.licenseHumanReviewRequired||'Human review required'}</span>
+  <p className="sub mhp-license-review-workflow-note">{meta.licenseApplyReviewWorkflowNote||'Submit for Wayfinder review will be available after profile and licence review workflow is enabled.'}</p>
   <p className="mhp-license-review-warning">{meta.licenseExtractionAccuracyWarning||'AI extraction may be inaccurate. Check names, registration numbers, issuing body, and expiry dates before submitting.'}</p>
  </div>;
 };
@@ -4337,7 +4353,7 @@ function CounsellorWorkspaceNav({activeStage,reviewMeta,hostingMeta,mhpMeta,onSt
   </div>;
 }
 
-function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
+function MentalHealthProfessionalLicenseSection({user,authSession,meta,editable,onApplyExtractedDetails,appliedExtractDocId}){
  const [documents,setDocuments]=useState([]);
  const [loading,setLoading]=useState(true);
  const [storageUnavailable,setStorageUnavailable]=useState(false);
@@ -4549,7 +4565,7 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
      {showExtractionSuccess && extractionStatus==='completed' ? <div className="mhp-license-extraction-success" role="status" aria-live="polite">
       <p className="mhp-license-extraction-success-message">{meta.licenseExtractionDraftSuccess||'Draft details extracted. Please review before submitting for Wayfinder review.'}</p>
      </div> : null}
-     {showReviewPanel ? <MentalHealthProfessionalLicenseExtractionReview doc={doc} meta={meta} fmtDate={fmtDate}/> : null}
+     {showReviewPanel ? <MentalHealthProfessionalLicenseExtractionReview doc={doc} meta={meta} fmtDate={fmtDate} editable={editable} onApplyExtractedDetails={onApplyExtractedDetails} appliedDocId={appliedExtractDocId}/> : null}
     </li>;
     })}
    </ul>
@@ -4567,6 +4583,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
  const [saveState,setSaveState]=useState('');
  const [saveError,setSaveError]=useState('');
  const [photoBroken,setPhotoBroken]=useState(false);
+ const [appliedExtractDocId,setAppliedExtractDocId]=useState('');
 
  const fmtDate=(value)=>{
   const dt=parseStoredDate(value);
@@ -4644,7 +4661,23 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
 
  const setField=(key,value)=>{setForm(prev=>({...prev,[key]:value}));if(saveState==='saved')setSaveState('');};
 
- if(loading) return <><div className="card mhp-profile-editor"><p className="sub">Loading profile…</p></div><MentalHealthProfessionalLicenseSection user={user} authSession={authSession} meta={meta}/></>;
+ const handleApplyExtractedDetails=(documentId,fields)=>{
+  if(!editable) return;
+  setForm((prev)=>mhpApplyExtractedFieldsToProfileDraft(prev,fields));
+  setAppliedExtractDocId(documentId||'');
+  if(saveState==='saved') setSaveState('');
+ };
+
+ if(loading) return <><div className="card mhp-profile-editor"><p className="sub">Loading profile…</p></div><MentalHealthProfessionalLicenseSection user={user} authSession={authSession} meta={meta} editable={false} onApplyExtractedDetails={null} appliedExtractDocId=""/></>;
+
+ const licenseSectionProps={
+  user,
+  authSession,
+  meta,
+  editable,
+  onApplyExtractedDetails: editable ? handleApplyExtractedDetails : null,
+  appliedExtractDocId
+ };
 
  return <>
   <div className="card mhp-profile-editor">
@@ -4669,6 +4702,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
   </div>
   <p className="mhp-profile-review-notice">{meta.editProfileReviewNotice||'Profile publication requires Wayfinder review. Upload your licence PDF below. AI extraction is coming in the next step.'}</p>
   {!editable ? <p className="sub mhp-profile-readonly-note">{meta.editProfileReadOnlyNotice||'This profile is under review or published.'}</p> : null}
+  {appliedExtractDocId ? <p className="mhp-profile-extracted-apply-notice" role="status" aria-live="polite">{meta.licenseApplyToProfileDraftSuccess||'Extracted details applied to your profile draft. Please review before saving.'}</p> : null}
   <div className="mhp-profile-fields">
    <label className="field"><span>{meta.fieldPhotoUrl||'Photo URL'}</span><input type="url" value={form.photoUrl} disabled={!editable} onChange={e=>{setPhotoBroken(false);setField('photoUrl',e.target.value);}}/></label>
    <label className="field"><span>{meta.fieldFullName||'Full name'}</span><input type="text" value={form.fullName} disabled={!editable} onChange={e=>setField('fullName',e.target.value)}/></label>
@@ -4688,7 +4722,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
   </div>
   </>}
   </div>
-  <MentalHealthProfessionalLicenseSection user={user} authSession={authSession} meta={meta}/>
+  <MentalHealthProfessionalLicenseSection {...licenseSectionProps}/>
  </>;
 }
 
