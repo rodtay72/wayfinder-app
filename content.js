@@ -591,7 +591,7 @@ const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
   editProfileTitle: "Mental Health Professional profile",
   editProfileSubtitle: "Update your professional profile draft. Publication requires Wayfinder review.",
   editProfileUnavailable: "Professional profile storage is not available yet. Your counsellor workspace remains available.",
-  editProfileReviewNotice: "Profile publication requires Wayfinder review. Licence upload and AI extraction are coming in the next step.",
+  editProfileReviewNotice: "Profile publication requires Wayfinder review. Upload your licence PDF below. AI extraction is coming in the next step.",
   editProfileSaveDraft: "Save draft",
   editProfileSaving: "Saving…",
   editProfileSaved: "Draft saved",
@@ -609,7 +609,22 @@ const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
   fieldCountryOfOrigin: "Country of origin",
   fieldEthnicity: "Ethnicity",
   fieldEnquiryEmail: "Enquiry email",
-  fieldEnquiryMobile: "Enquiry mobile"
+  fieldEnquiryMobile: "Enquiry mobile",
+  licenseSectionTitle: "Licence / registration document",
+  licenseSectionIntro: "Upload your licence or registration certificate as a PDF. AI extraction and Wayfinder review will happen in the next step. Your PDF is private and is not shown to parents.",
+  licenseUploadButton: "Upload PDF",
+  licenseUploading: "Uploading…",
+  licenseUploaded: "Uploaded",
+  licenseUploadFailed: "Upload failed",
+  licenseStorageUnavailable: "Licence upload storage is not ready yet. Your counsellor workspace remains available.",
+  licensePdfOnly: "Please choose a PDF file up to 10 MB.",
+  licenseExtractionPending: "Extraction pending",
+  licenseExtractionComingNext: "AI extraction coming next",
+  licensePrivacyNote: "Your PDF is private and not visible to parents.",
+  licenseDocumentStatusLabel: "Document status",
+  licenseExtractionStatusLabel: "Extraction status",
+  licenseUploadedDateLabel: "Uploaded",
+  licenseDocumentsEmpty: "No licence PDF uploaded yet."
 };
 
 // PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)

@@ -4267,6 +4267,99 @@ function CounsellorWorkspaceNav({activeStage,reviewMeta,hostingMeta,mhpMeta,onSt
   <button type="button" className={'counsellor-nav-btn'+(activeStage==='reflections'?' counsellor-nav-btn--active':'')} onClick={()=>onStageChange('reflections')}>{reviewMeta.title||hostingMeta.backToReflections||'Parent shared reflections'}</button>
   <button type="button" className={'counsellor-nav-btn'+(activeStage==='editProfile'?' counsellor-nav-btn--active':'')} onClick={()=>onStageChange('editProfile')}>{mhpMeta.editProfileNavLabel||'Edit profile'}</button>
   <button type="button" className={'counsellor-nav-btn'+(activeStage==='hostedEvents'?' counsellor-nav-btn--active':'')} onClick={()=>onStageChange('hostedEvents')}>{hostingMeta.title||'Events hosting'}</button>
+  </div>;
+}
+
+function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
+ const [documents,setDocuments]=useState([]);
+ const [loading,setLoading]=useState(true);
+ const [storageUnavailable,setStorageUnavailable]=useState(false);
+ const [uploadState,setUploadState]=useState('');
+ const [uploadError,setUploadError]=useState('');
+ const fileInputRef=useRef(null);
+
+ const fmtDate=(value)=>{
+  const dt=parseStoredDate(value);
+  if(!dt||isNaN(dt)) return '-';
+  return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
+ };
+
+ const loadDocuments=async()=>{
+  setLoading(true);
+  setStorageUnavailable(false);
+  setUploadError('');
+  try{
+   const result=await DB.getMyMentalHealthProfessionalLicenseDocuments(user.id,authSession);
+   if(result.unavailable){
+    setStorageUnavailable(true);
+    setDocuments([]);
+    return;
+   }
+   setStorageUnavailable(false);
+   setDocuments(result.documents||[]);
+  }catch(err){
+   setStorageUnavailable(true);
+   AuthDebug.log('[mhp] licence documents load failed:', { message: err?.message || String(err) });
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ useEffect(()=>{if(user?.id&&authSession?.access_token)loadDocuments();},[user?.id,authSession?.access_token]);
+
+ const handleFileChange=async(event)=>{
+  const file=event.target.files&&event.target.files[0];
+  event.target.value='';
+  if(!file) return;
+  setUploadState('uploading');
+  setUploadError('');
+  try{
+   const result=await DB.uploadMentalHealthProfessionalLicenseDocument(user.id,file,authSession);
+   if(result.unavailable||result.errorStage==='storageUnavailable'||result.errorStage==='metadataUnavailable'){
+    setStorageUnavailable(true);
+    setUploadState('');
+    setUploadError(meta.licenseStorageUnavailable||'Licence upload storage is not ready yet.');
+    return;
+   }
+   if(!result.ok){
+    setUploadState('');
+    setUploadError(result.errorStage==='invalidType'||result.errorStage==='tooLarge'
+     ? (meta.licensePdfOnly||'Please choose a PDF file up to 10 MB.')
+     : (meta.licenseUploadFailed||'Upload failed'));
+    return;
+   }
+   setUploadState('uploaded');
+   await loadDocuments();
+  }catch(err){
+   setUploadState('');
+   setUploadError(meta.licenseUploadFailed||'Upload failed');
+   AuthDebug.log('[mhp] licence upload failed:', { message: err?.message || String(err) });
+  }
+ };
+
+ return <div className="card mhp-license-section">
+  <h3>{meta.licenseSectionTitle||'Licence / registration document'}</h3>
+  <p className="dashboard-helper">{meta.licenseSectionIntro||'Upload your licence or registration certificate as a PDF.'}</p>
+  <p className="sub mhp-license-privacy-note">{meta.licensePrivacyNote||'Your PDF is private and not visible to parents.'}</p>
+  {storageUnavailable ? <p className="sub mhp-license-unavailable">{meta.licenseStorageUnavailable||'Licence upload storage is not ready yet.'}</p> : <>
+   <div className="mhp-license-upload-row">
+    <input ref={fileInputRef} type="file" accept="application/pdf,.pdf" className="mhp-license-file-input" onChange={handleFileChange} disabled={uploadState==='uploading'}/>
+    <button type="button" className="btn btn-secondary" disabled={uploadState==='uploading'} onClick={()=>fileInputRef.current?.click()}>{uploadState==='uploading'?(meta.licenseUploading||'Uploading…'):(meta.licenseUploadButton||'Upload PDF')}</button>
+    {uploadState==='uploaded' ? <span className="mhp-license-upload-status">{meta.licenseUploaded||'Uploaded'}</span> : null}
+    {uploadError ? <span className="mhp-license-upload-status mhp-license-upload-status--error">{uploadError}</span> : null}
+   </div>
+   {loading ? <p className="sub">Loading uploaded documents…</p> : documents.length===0 ? <p className="sub">{meta.licenseDocumentsEmpty||'No licence PDF uploaded yet.'}</p> : <ul className="mhp-license-document-list">
+    {documents.map(doc=><li key={doc.id} className="mhp-license-document-item">
+     <div className="mhp-license-document-title">{doc.originalFilename||'Licence document.pdf'}</div>
+     <div className="mhp-license-document-meta">
+      <span>{meta.licenseDocumentStatusLabel||'Document status'}: {mhpStatusLabel(doc.documentStatus)}</span>
+      <span>{meta.licenseExtractionStatusLabel||'Extraction status'}: {doc.extractionStatus==='pending'?(meta.licenseExtractionPending||'Extraction pending'):mhpStatusLabel(doc.extractionStatus)}</span>
+      <span>{meta.licenseUploadedDateLabel||'Uploaded'}: {fmtDate(doc.createdAt)}</span>
+     </div>
+     {doc.extractionStatus==='pending' ? <p className="sub mhp-license-extraction-note">{meta.licenseExtractionComingNext||'AI extraction coming next'}</p> : null}
+    </li>)}
+   </ul>}
+  </>}
  </div>;
 }
 
@@ -4356,10 +4449,11 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
 
  const setField=(key,value)=>{setForm(prev=>({...prev,[key]:value}));if(saveState==='saved')setSaveState('');};
 
- if(loading) return <div className="card mhp-profile-editor"><p className="sub">Loading profile…</p></div>;
- if(unavailable) return <div className="card mhp-profile-editor"><p className="sub">{meta.editProfileUnavailable||'Professional profile storage is not available yet.'}</p></div>;
+ if(loading) return <><div className="card mhp-profile-editor"><p className="sub">Loading profile…</p></div><MentalHealthProfessionalLicenseSection user={user} authSession={authSession} meta={meta}/></>;
 
- return <div className="card mhp-profile-editor">
+ return <>
+  <div className="card mhp-profile-editor">
+  {unavailable ? <p className="sub">{meta.editProfileUnavailable||'Professional profile storage is not available yet.'}</p> : <>
   <div className="topbar mhp-profile-editor-head">
    <div>
     <h2>{meta.editProfileTitle||'Mental Health Professional profile'}</h2>
@@ -4378,7 +4472,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
     </div>
    </div>
   </div>
-  <p className="mhp-profile-review-notice">{meta.editProfileReviewNotice||'Profile publication requires Wayfinder review. Licence upload and AI extraction are coming in the next step.'}</p>
+  <p className="mhp-profile-review-notice">{meta.editProfileReviewNotice||'Profile publication requires Wayfinder review. Upload your licence PDF below. AI extraction is coming in the next step.'}</p>
   {!editable ? <p className="sub mhp-profile-readonly-note">{meta.editProfileReadOnlyNotice||'This profile is under review or published.'}</p> : null}
   <div className="mhp-profile-fields">
    <label className="field"><span>{meta.fieldPhotoUrl||'Photo URL'}</span><input type="url" value={form.photoUrl} disabled={!editable} onChange={e=>{setPhotoBroken(false);setField('photoUrl',e.target.value);}}/></label>
@@ -4397,7 +4491,10 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
    {saveState==='saved' ? <span className="mhp-profile-save-status">{meta.editProfileSaved||'Draft saved'}</span> : null}
    {saveError ? <span className="mhp-profile-save-status mhp-profile-save-status--error">{saveError}</span> : null}
   </div>
- </div>;
+  </>}
+  </div>
+  <MentalHealthProfessionalLicenseSection user={user} authSession={authSession} meta={meta}/>
+ </>;
 }
 
 function CounsellorApp({back,user,profile,authSession,onSignOut}){
