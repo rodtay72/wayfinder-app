@@ -2,7 +2,6 @@ import zlib from 'node:zlib';
 import {
   SUPABASE_URL,
   getAuthUserFromAccessToken,
-  getProfileByUserId,
   parseBody,
   readJson,
   supabaseAdminFetch
@@ -19,6 +18,7 @@ const ERROR_CODES = {
   AUTH_REQUIRED: 'auth_required',
   DOCUMENT_NOT_FOUND: 'document_not_found',
   ROLE_NOT_AUTHORISED: 'role_not_authorised',
+  PROFILE_LOOKUP_FAILED: 'profile_lookup_failed',
   MISSING_OPENAI_KEY: 'missing_openai_key',
   MISSING_SERVICE_ROLE_KEY: 'missing_service_role_key',
   STORAGE_DOWNLOAD_FAILED: 'storage_download_failed',
@@ -213,6 +213,39 @@ Reference example format (Singapore Association for Counselling certificate):
 Certificate text:
 ${pdfText}`;
 
+async function getExtractionProfileRole(userId) {
+  const ownerId = String(userId || '').trim();
+  if (!ownerId) {
+    return { ok: false, profile: null, role: null, status: 400, message: 'Profile lookup requires a user id.' };
+  }
+  const params = new URLSearchParams({
+    select: 'user_id,role',
+    user_id: `eq.${ownerId}`,
+    limit: '1'
+  });
+  try {
+    const data = await supabaseAdminFetch(`/rest/v1/profiles?${params.toString()}`, {
+      method: 'GET'
+    });
+    const profile = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    return {
+      ok: true,
+      profile,
+      role: profile?.role || null,
+      status: 200,
+      message: null
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      profile: null,
+      role: null,
+      status: err?.status || 503,
+      message: err?.message || 'Profile lookup failed'
+    };
+  }
+}
+
 async function getLicenseDocument(documentId, userId) {
   const params = new URLSearchParams({
     select: 'id,user_id,storage_bucket,storage_path,original_filename,mime_type,file_size_bytes,document_status,extraction_status',
@@ -326,7 +359,7 @@ const mapExtractionError = (err) => {
     ? err.status
     : errorCode === ERROR_CODES.PDF_TEXT_UNREADABLE
       ? 422
-      : errorCode === ERROR_CODES.MISSING_OPENAI_KEY || errorCode === ERROR_CODES.MISSING_SERVICE_ROLE_KEY
+      : errorCode === ERROR_CODES.MISSING_OPENAI_KEY || errorCode === ERROR_CODES.MISSING_SERVICE_ROLE_KEY || errorCode === ERROR_CODES.PROFILE_LOOKUP_FAILED
         ? 503
         : err?.status || 500;
   const userMessage = [
@@ -403,14 +436,25 @@ export default async function handler(req, res) {
     diag.userResolved = true;
     userId = user.id;
 
-    const profile = await getProfileByUserId(userId);
-    diag.profileResolved = !!profile;
-    if (!profile || String(profile.role || '').trim().toLowerCase() !== 'counsellor') {
+    const profileLookup = await getExtractionProfileRole(userId);
+    if (!profileLookup.ok) {
+      return fail(res, {
+        status: 503,
+        error_code: ERROR_CODES.PROFILE_LOOKUP_FAILED,
+        error: USER_EXTRACTION_FAILURE,
+        stage: 'profile_lookup',
+        diag
+      });
+    }
+    diag.profileResolved = true;
+
+    const role = String(profileLookup.role || '').trim().toLowerCase();
+    if (!profileLookup.profile || role !== 'counsellor') {
       return fail(res, {
         status: 403,
         error_code: ERROR_CODES.ROLE_NOT_AUTHORISED,
         error: 'Mental Health Professional access required.',
-        stage: 'role',
+        stage: 'profile_lookup',
         diag
       });
     }
