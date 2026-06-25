@@ -299,17 +299,6 @@ const clearInviteFromUrl=()=>{
  }catch(_){}
 };
 
-function ProfessionalOnboardingPlaceholder({meta,onSignOut}){
- return <div className="wrap">
-  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{meta.onboardingPortalLabel||'Mental Health Professional Portal'}</p></div>
-  <div className="card mhp-onboarding-card">
-   <h2>{meta.onboardingTitle||'Complete your Mental Health Professional profile'}</h2>
-   <p className="dashboard-helper">{meta.onboardingSubtitle||'Profile and licence upload are coming in the next step.'}</p>
-   <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
-  </div>
- </div>;
-}
-
 function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
  const [mode,setMode]=useState('signin');
  const [email,setEmail]=useState('');
@@ -589,7 +578,6 @@ function App(){
  const [authMessage,setAuthMessage]=useState('');
  const [authMessageEmail,setAuthMessageEmail]=useState('');
  const [pendingInviteToken,setPendingInviteToken]=useState('');
- const [mhpOnboarding,setMhpOnboarding]=useState({loading:false,required:false});
  const profileLoadRef = useRef({ userId: null, promise: null });
  const passwordRecoveryRef = useRef(false);
  const pendingInviteTokenRef = useRef('');
@@ -873,32 +861,6 @@ function App(){
   return ()=>subscription.unsubscribe();
  },[]);
 
- useEffect(()=>{
-  if(!user?.id||!authSession?.access_token||APP_ROLE!=='counsellor'||!profile||profile.role!=='counsellor'||passwordRecovery.active){
-   setMhpOnboarding({loading:false,required:false});
-   return;
-  }
-  let cancelled=false;
-  (async()=>{
-   setMhpOnboarding({loading:true,required:false});
-   try{
-    const status=await DB.getMentalHealthProfessionalOnboardingStatus(user.id,authSession);
-    if(cancelled) return;
-    const needsOnboarding=!!status.requiresOnboarding
-     || (pendingInviteTokenRef.current&&status.reason==='legacy_counsellor');
-    if(!needsOnboarding){
-     pendingInviteTokenRef.current='';
-     setPendingInviteToken('');
-    }
-    setMhpOnboarding({loading:false,required:needsOnboarding});
-   }catch(err){
-    AuthDebug.log('[mhp] onboarding status check failed:', { message: err?.message || String(err) });
-    if(!cancelled) setMhpOnboarding({loading:false,required:false});
-   }
-  })();
-  return ()=>{ cancelled=true; };
- },[user?.id,authSession?.access_token,profile?.role,APP_ROLE,passwordRecovery.active]);
-
  const refreshAuthSession=async()=>{
   const {data,error}=await Auth.getFreshSession();
   if(error)throw error;
@@ -962,8 +924,6 @@ function App(){
   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
  </div></div>;}
 
- if(APP_ROLE==='counsellor'&&mhpOnboarding.loading){AuthDebug.log('[render] branch: mhp onboarding loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your professional workspace…</div></div>;}
- if(APP_ROLE==='counsellor'&&mhpOnboarding.required){AuthDebug.log('[render] branch: mhp onboarding placeholder');return <ProfessionalOnboardingPlaceholder meta={mhpMeta} onSignOut={signOut}/>;}
  if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} profile={profile} authSession={authSession} onSignOut={signOut}/>;}
  AuthDebug.log('[render] branch: client dashboard');
  return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} authSession={authSession} onSignOut={signOut}/>;
@@ -4270,6 +4230,176 @@ function CounsellorLongitudinalSection({entries,summaries,openState,onToggle,rev
  </div>;
 }
 
+const mhpStatusLabel=(value)=>{
+ const raw=String(value||'').trim().toLowerCase();
+ if(!raw) return 'Not saved';
+ return raw.split('_').map(part=>part?part.charAt(0).toUpperCase()+part.slice(1):'').join(' ');
+};
+
+const mhpDefaultProfileForm=()=>({
+ photoUrl:'',
+ fullName:'',
+ professionalTitle:'',
+ licenseRegistrationNumber:'',
+ issuingBody:'',
+ shortBio:'',
+ countryOfOrigin:'',
+ ethnicity:'',
+ enquiryEmail:'ask.anything@psytec.com.sg',
+ enquiryMobile:'+65 91681166'
+});
+
+const mhpProfileFormFromRow=(profile)=>({
+ photoUrl:profile?.photoUrl||'',
+ fullName:profile?.fullName||'',
+ professionalTitle:profile?.professionalTitle||'',
+ licenseRegistrationNumber:profile?.licenseRegistrationNumber||'',
+ issuingBody:profile?.issuingBody||'',
+ shortBio:profile?.shortBio||'',
+ countryOfOrigin:profile?.countryOfOrigin||'',
+ ethnicity:profile?.ethnicity||'',
+ enquiryEmail:profile?.enquiryEmail||'ask.anything@psytec.com.sg',
+ enquiryMobile:profile?.enquiryMobile||'+65 91681166'
+});
+
+function CounsellorWorkspaceNav({activeStage,reviewMeta,hostingMeta,mhpMeta,onStageChange}){
+ return <div className="counsellor-nav">
+  <button type="button" className={'counsellor-nav-btn'+(activeStage==='reflections'?' counsellor-nav-btn--active':'')} onClick={()=>onStageChange('reflections')}>{reviewMeta.title||hostingMeta.backToReflections||'Parent shared reflections'}</button>
+  <button type="button" className={'counsellor-nav-btn'+(activeStage==='editProfile'?' counsellor-nav-btn--active':'')} onClick={()=>onStageChange('editProfile')}>{mhpMeta.editProfileNavLabel||'Edit profile'}</button>
+  <button type="button" className={'counsellor-nav-btn'+(activeStage==='hostedEvents'?' counsellor-nav-btn--active':'')} onClick={()=>onStageChange('hostedEvents')}>{hostingMeta.title||'Events hosting'}</button>
+ </div>;
+}
+
+function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
+ const [loading,setLoading]=useState(true);
+ const [unavailable,setUnavailable]=useState(false);
+ const [status,setStatus]=useState(null);
+ const [form,setForm]=useState(mhpDefaultProfileForm());
+ const [profileStatus,setProfileStatus]=useState('draft');
+ const [saveState,setSaveState]=useState('');
+ const [saveError,setSaveError]=useState('');
+ const [photoBroken,setPhotoBroken]=useState(false);
+
+ const fmtDate=(value)=>{
+  const dt=parseStoredDate(value);
+  if(!dt||isNaN(dt)) return '';
+  return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
+ };
+
+ const load=async()=>{
+  setLoading(true);
+  setUnavailable(false);
+  setSaveError('');
+  try{
+   const [statusResult,profileResult]=await Promise.all([
+    DB.getMyMentalHealthProfessionalStatus(user.id,authSession),
+    DB.getMyMentalHealthProfessionalProfile(user.id,authSession)
+   ]);
+   if(statusResult.unavailable||profileResult.unavailable){
+    setUnavailable(true);
+    setStatus(null);
+    setForm(mhpDefaultProfileForm());
+    return;
+   }
+   setUnavailable(false);
+   setStatus(statusResult.status||null);
+   const profile=profileResult.profile;
+   setForm(profile?mhpProfileFormFromRow(profile):mhpDefaultProfileForm());
+   setProfileStatus(profile?.profileStatus||statusResult.status?.profileStatus||'draft');
+   setPhotoBroken(false);
+  }catch(err){
+   setUnavailable(true);
+   AuthDebug.log('[mhp] profile editor load failed:', { message: err?.message || String(err) });
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ useEffect(()=>{if(user?.id&&authSession?.access_token)load();},[user?.id,authSession?.access_token]);
+
+ const editable=['hidden','draft','pending_review'].includes(String(profileStatus||'').toLowerCase());
+ const headerName=form.fullName||status?.fullName||'';
+ const headerTitle=form.professionalTitle||status?.professionalTitle||'';
+ const headerPhoto=form.photoUrl||status?.photoUrl||'';
+
+ const handleSave=async()=>{
+  if(!editable||saveState==='saving') return;
+  setSaveState('saving');
+  setSaveError('');
+  try{
+   const result=await DB.saveMyMentalHealthProfessionalProfileDraft(user.id,form,authSession);
+   if(result.unavailable){
+    setUnavailable(true);
+    setSaveState('');
+    setSaveError(meta.editProfileUnavailable||'Professional profile storage is not available yet.');
+    return;
+   }
+   if(!result.ok){
+    setSaveState('');
+    setSaveError(result.errorStage==='notEditable'
+     ? (meta.editProfileReadOnlyNotice||'This profile can no longer be edited here.')
+     : (meta.editProfileSaveError||'Your profile draft could not be saved right now.'));
+    return;
+   }
+   if(result.profile){
+    setForm(mhpProfileFormFromRow(result.profile));
+    setProfileStatus(result.profile.profileStatus||'draft');
+   }
+   setSaveState('saved');
+   await load();
+  }catch(err){
+   setSaveState('');
+   setSaveError(meta.editProfileSaveError||'Your profile draft could not be saved right now.');
+   AuthDebug.log('[mhp] profile save failed:', { message: err?.message || String(err) });
+  }
+ };
+
+ const setField=(key,value)=>{setForm(prev=>({...prev,[key]:value}));if(saveState==='saved')setSaveState('');};
+
+ if(loading) return <div className="card mhp-profile-editor"><p className="sub">Loading profile…</p></div>;
+ if(unavailable) return <div className="card mhp-profile-editor"><p className="sub">{meta.editProfileUnavailable||'Professional profile storage is not available yet.'}</p></div>;
+
+ return <div className="card mhp-profile-editor">
+  <div className="topbar mhp-profile-editor-head">
+   <div>
+    <h2>{meta.editProfileTitle||'Mental Health Professional profile'}</h2>
+    <p className="dashboard-helper">{meta.editProfileSubtitle||'Update your professional profile draft.'}</p>
+   </div>
+  </div>
+  <div className="mhp-profile-status-header">
+   {headerPhoto&&!photoBroken ? <img className="mhp-profile-photo" src={headerPhoto} alt="" onError={()=>setPhotoBroken(true)}/> : <div className="mhp-profile-photo mhp-profile-photo--placeholder" aria-hidden="true">{headerName?headerName.charAt(0).toUpperCase():'M'}</div>}
+   <div className="mhp-profile-status-copy">
+    {headerName ? <h3 className="mhp-profile-display-name">{headerName}</h3> : null}
+    {headerTitle ? <p className="sub mhp-profile-display-title">{headerTitle}</p> : null}
+    <div className="mhp-profile-status-badges">
+     <span className="pill mhp-profile-status-pill">{meta.profileStatusLabel||'Profile status'}: {mhpStatusLabel(profileStatus||status?.profileStatus)}</span>
+     <span className="pill mhp-profile-status-pill">{meta.membershipStatusLabel||'Membership status'}: {mhpStatusLabel(status?.membershipStatus)}</span>
+     {status?.membershipExpiresAt ? <span className="sub mhp-profile-expiry">{meta.membershipExpiresLabel||'Membership expires'}: {fmtDate(status.membershipExpiresAt)}</span> : null}
+    </div>
+   </div>
+  </div>
+  <p className="mhp-profile-review-notice">{meta.editProfileReviewNotice||'Profile publication requires Wayfinder review. Licence upload and AI extraction are coming in the next step.'}</p>
+  {!editable ? <p className="sub mhp-profile-readonly-note">{meta.editProfileReadOnlyNotice||'This profile is under review or published.'}</p> : null}
+  <div className="mhp-profile-fields">
+   <label className="field"><span>{meta.fieldPhotoUrl||'Photo URL'}</span><input type="url" value={form.photoUrl} disabled={!editable} onChange={e=>{setPhotoBroken(false);setField('photoUrl',e.target.value);}}/></label>
+   <label className="field"><span>{meta.fieldFullName||'Full name'}</span><input type="text" value={form.fullName} disabled={!editable} onChange={e=>setField('fullName',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldProfessionalTitle||'Professional title'}</span><input type="text" value={form.professionalTitle} disabled={!editable} onChange={e=>setField('professionalTitle',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldLicenseNumber||'License / registration number'}</span><input type="text" value={form.licenseRegistrationNumber} disabled={!editable} onChange={e=>setField('licenseRegistrationNumber',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldIssuingBody||'Issuing body'}</span><input type="text" value={form.issuingBody} disabled={!editable} onChange={e=>setField('issuingBody',e.target.value)}/></label>
+   <label className="field mhp-profile-field-wide"><span>{meta.fieldShortBio||'Short bio'}</span><textarea rows={4} value={form.shortBio} disabled={!editable} onChange={e=>setField('shortBio',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldCountryOfOrigin||'Country of origin'}</span><input type="text" value={form.countryOfOrigin} disabled={!editable} onChange={e=>setField('countryOfOrigin',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldEthnicity||'Ethnicity'}</span><input type="text" value={form.ethnicity} disabled={!editable} onChange={e=>setField('ethnicity',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldEnquiryEmail||'Enquiry email'}</span><input type="email" value={form.enquiryEmail} disabled={!editable} onChange={e=>setField('enquiryEmail',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldEnquiryMobile||'Enquiry mobile'}</span><input type="text" value={form.enquiryMobile} disabled={!editable} onChange={e=>setField('enquiryMobile',e.target.value)}/></label>
+  </div>
+  <div className="mhp-profile-actions">
+   <button type="button" className="btn btn-primary" disabled={!editable||saveState==='saving'} onClick={handleSave}>{saveState==='saving'?(meta.editProfileSaving||'Saving…'):(meta.editProfileSaveDraft||'Save draft')}</button>
+   {saveState==='saved' ? <span className="mhp-profile-save-status">{meta.editProfileSaved||'Draft saved'}</span> : null}
+   {saveError ? <span className="mhp-profile-save-status mhp-profile-save-status--error">{saveError}</span> : null}
+  </div>
+ </div>;
+}
+
 function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [entries,setEntries]=useState([]);
  const [grantGroups,setGrantGroups]=useState([]);
@@ -4424,6 +4554,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const openGrantGroup=open?grantGroups.find((g)=>(g.entries||[]).some((e)=>e._key===open._key)):null;
  const hostingMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
  const reviewMeta=typeof COUNSELLOR_REVIEW_SHARING!=='undefined'?COUNSELLOR_REVIEW_SHARING:{};
+ const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
 
  if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession} aiEnabled={!usingLegacyJournalAccess} grantGroup={openGrantGroup} reviewMeta={reviewMeta}/>;
 
@@ -4431,12 +4562,15 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
 
  if(counsellorStage==='hostedEvents') return <CounsellorHostedEventsPage user={user} authSession={authSession} onBack={()=>setCounsellorStage('reflections')} onNew={()=>{setEditHostedEvent(null);setCounsellorStage('hostForm');}} onEdit={(ev)=>{setEditHostedEvent(ev);setCounsellorStage('hostForm');}} onSignOut={onSignOut}/>;
 
+ if(counsellorStage==='editProfile') return <div className="wrap">
+  <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
+  <CounsellorWorkspaceNav activeStage="editProfile" reviewMeta={reviewMeta} hostingMeta={hostingMeta} mhpMeta={mhpMeta} onStageChange={setCounsellorStage}/>
+  <MentalHealthProfessionalProfileEditor user={user} authSession={authSession} meta={mhpMeta}/>
+ </div>;
+
  return <div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
-  <div className="counsellor-nav">
-   <button type="button" className="counsellor-nav-btn counsellor-nav-btn--active">{reviewMeta.title||hostingMeta.backToReflections||'Parent shared reflections'}</button>
-   <button type="button" className="counsellor-nav-btn" onClick={()=>setCounsellorStage('hostedEvents')}>{hostingMeta.title||'Events hosting'}</button>
-  </div>
+  <CounsellorWorkspaceNav activeStage="reflections" reviewMeta={reviewMeta} hostingMeta={hostingMeta} mhpMeta={mhpMeta} onStageChange={setCounsellorStage}/>
   <div className="card">
    <div className="topbar"><h2>{reviewMeta.title||'Parent shared reflections'}</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
    <p className="sub" style={{marginBottom:16}}>{reviewMeta.subtitle||'Reflections a parent has chosen to share with you for time-limited ALIGN/CAB review.'}</p>

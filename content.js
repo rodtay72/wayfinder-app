@@ -586,7 +586,30 @@ const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
   inviteSignInNote: "Use the invited email address. Your invite link has been received — you do not need to enter it again.",
   onboardingTitle: "Complete your Mental Health Professional profile",
   onboardingSubtitle: "Profile and licence upload are coming in the next step.",
-  onboardingPortalLabel: "Mental Health Professional Portal"
+  onboardingPortalLabel: "Mental Health Professional Portal",
+  editProfileNavLabel: "Edit profile",
+  editProfileTitle: "Mental Health Professional profile",
+  editProfileSubtitle: "Update your professional profile draft. Publication requires Wayfinder review.",
+  editProfileUnavailable: "Professional profile storage is not available yet. Your counsellor workspace remains available.",
+  editProfileReviewNotice: "Profile publication requires Wayfinder review. Licence upload and AI extraction are coming in the next step.",
+  editProfileSaveDraft: "Save draft",
+  editProfileSaving: "Saving…",
+  editProfileSaved: "Draft saved",
+  editProfileSaveError: "Your profile draft could not be saved right now.",
+  editProfileReadOnlyNotice: "This profile is under review or published. Contact the Wayfinder administrator to request changes.",
+  profileStatusLabel: "Profile status",
+  membershipStatusLabel: "Membership status",
+  membershipExpiresLabel: "Membership expires",
+  fieldPhotoUrl: "Photo URL",
+  fieldFullName: "Full name",
+  fieldProfessionalTitle: "Professional title",
+  fieldLicenseNumber: "License / registration number",
+  fieldIssuingBody: "Issuing body",
+  fieldShortBio: "Short bio",
+  fieldCountryOfOrigin: "Country of origin",
+  fieldEthnicity: "Ethnicity",
+  fieldEnquiryEmail: "Enquiry email",
+  fieldEnquiryMobile: "Enquiry mobile"
 };
 
 // PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)

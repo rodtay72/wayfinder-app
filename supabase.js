@@ -224,7 +224,8 @@ const isMhpProfileContractUnavailable = (status, responseText) => {
   if (text.includes('42p01')) return true;
   const names = [
     'mental_health_professional_profiles',
-    'mental_health_professional_memberships'
+    'mental_health_professional_memberships',
+    'get_my_mental_health_professional_status'
   ];
   return names.some((name) => text.includes(name) && (
     text.includes('does not exist') ||
@@ -233,6 +234,64 @@ const isMhpProfileContractUnavailable = (status, responseText) => {
     text.includes('schema cache')
   ));
 };
+
+const normalizeMhpProfileRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    userId: row.user_id || row.userId || null,
+    profileSlug: row.profile_slug || row.profileSlug || '',
+    photoUrl: row.photo_url || row.photoUrl || '',
+    fullName: row.full_name || row.fullName || '',
+    professionalTitle: row.professional_title || row.professionalTitle || '',
+    licenseRegistrationNumber: row.license_registration_number || row.licenseRegistrationNumber || '',
+    issuingBody: row.issuing_body || row.issuingBody || '',
+    shortBio: row.short_bio || row.shortBio || '',
+    countryOfOrigin: row.country_of_origin || row.countryOfOrigin || '',
+    ethnicity: row.ethnicity || '',
+    enquiryEmail: row.enquiry_email || row.enquiryEmail || 'ask.anything@psytec.com.sg',
+    enquiryMobile: row.enquiry_mobile || row.enquiryMobile || '+65 91681166',
+    profileVisible: !!row.profile_visible,
+    profileStatus: row.profile_status || row.profileStatus || 'draft',
+    createdAt: row.created_at || row.createdAt || null,
+    updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
+const normalizeMhpStatusRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    profileStatus: row.profile_status || row.profileStatus || null,
+    profileVisible: row.profile_visible ?? row.profileVisible ?? null,
+    fullName: row.full_name || row.fullName || '',
+    professionalTitle: row.professional_title || row.professionalTitle || '',
+    photoUrl: row.photo_url || row.photoUrl || '',
+    membershipStatus: row.membership_status || row.membershipStatus || null,
+    institutionName: row.institution_name || row.institutionName || '',
+    membershipExpiresAt: row.membership_expires_at || row.membershipExpiresAt || null,
+    latestDocumentStatus: row.latest_document_status || row.latestDocumentStatus || null,
+    latestExtractionStatus: row.latest_extraction_status || row.latestExtractionStatus || null
+  };
+};
+
+const fetchMhpProfilesSafe = async ({ query, userId, authSession, context }) => fetchReviewGrantsSafe({
+  table: 'mental_health_professional_profiles',
+  query,
+  userId,
+  authSession,
+  context,
+  unavailableCheck: isMhpProfileContractUnavailable
+});
+
+const mhpProfileWriteSafe = async ({ method, userId, authSession, context, body, query = '' }) => reviewGrantWriteSafe({
+  method,
+  userId,
+  authSession,
+  context,
+  body,
+  query,
+  table: 'mental_health_professional_profiles',
+  unavailableCheck: isMhpProfileContractUnavailable
+});
 
 const fetchMhpOnboardingRowsSafe = async ({ userId, authSession, context }) => {
   try {
@@ -482,6 +541,11 @@ const isRpcSignatureUnavailable = (responseText) => {
     text.includes('argument') ||
     text.includes('parameter')
   );
+};
+
+const isMhpRpcUnavailable = (status, responseText) => {
+  if (isMhpProfileContractUnavailable(status, responseText)) return true;
+  return isRpcSignatureUnavailable(responseText);
 };
 
 const isAuthSessionLike = (value) => !!(value && typeof value === 'object' && value.access_token);
@@ -765,6 +829,11 @@ const callReviewResponseRpcSafe = async ({
     return { ok: false, unavailable: false, data: null, responseText: message };
   }
 };
+
+const callMhpRpcSafe = (args) => callReviewResponseRpcSafe({
+  ...args,
+  unavailableCheck: isMhpRpcUnavailable
+});
 
 const callParentFeedbackRpcSafe = (args) => callReviewResponseRpcSafe({
   ...args,
@@ -2345,6 +2414,129 @@ const DB = {
       reason: 'incomplete',
       profileStatus: profile?.profile_status || null,
       membershipStatus: membership?.membership_status || null
+    };
+  },
+
+  getMyMentalHealthProfessionalStatus: async (userId, authSession = null) => {
+    const result = await callMhpRpcSafe({
+      rpcName: 'get_my_mental_health_professional_status',
+      userId,
+      authSession,
+      context: 'getMyMentalHealthProfessionalStatus',
+      body: {}
+    });
+    if (result.unavailable) {
+      return { available: false, unavailable: true, status: null };
+    }
+    if (!result.ok) {
+      return { available: false, unavailable: false, status: null };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    return {
+      available: true,
+      unavailable: false,
+      status: rows.length ? normalizeMhpStatusRow(rows[0]) : null
+    };
+  },
+
+  getMyMentalHealthProfessionalProfile: async (userId, authSession = null) => {
+    const result = await fetchMhpProfilesSafe({
+      query: {
+        select: 'user_id,profile_slug,photo_url,full_name,professional_title,license_registration_number,issuing_body,short_bio,country_of_origin,ethnicity,enquiry_email,enquiry_mobile,profile_visible,profile_status,created_at,updated_at',
+        user_id: `eq.${userId}`,
+        limit: '1'
+      },
+      userId,
+      authSession,
+      context: 'getMyMentalHealthProfessionalProfile'
+    });
+    if (result.unavailable) {
+      return { available: false, unavailable: true, profile: null };
+    }
+    if (!result.ok) {
+      return { available: false, unavailable: false, profile: null };
+    }
+    const row = (result.rows || [])[0];
+    return {
+      available: true,
+      unavailable: false,
+      profile: row ? normalizeMhpProfileRow(row) : null
+    };
+  },
+
+  saveMyMentalHealthProfessionalProfileDraft: async (userId, draftPayload, authSession = null) => {
+    const existingResult = await fetchMhpProfilesSafe({
+      query: {
+        select: 'user_id,profile_status,profile_visible',
+        user_id: `eq.${userId}`,
+        limit: '1'
+      },
+      userId,
+      authSession,
+      context: 'saveMyMentalHealthProfessionalProfileDraft lookup'
+    });
+    if (existingResult.unavailable) {
+      return { ok: false, unavailable: true, profile: null, errorStage: 'unavailable' };
+    }
+    if (!existingResult.ok) {
+      return { ok: false, unavailable: false, profile: null, errorStage: 'lookup' };
+    }
+    const existing = (existingResult.rows || [])[0];
+    const payload = draftPayload || {};
+    const body = {
+      photo_url: String(payload.photoUrl || '').trim() || null,
+      full_name: String(payload.fullName || '').trim() || null,
+      professional_title: String(payload.professionalTitle || '').trim() || null,
+      license_registration_number: String(payload.licenseRegistrationNumber || '').trim() || null,
+      issuing_body: String(payload.issuingBody || '').trim() || null,
+      short_bio: String(payload.shortBio || '').trim() || null,
+      country_of_origin: String(payload.countryOfOrigin || '').trim() || null,
+      ethnicity: String(payload.ethnicity || '').trim() || null,
+      enquiry_email: String(payload.enquiryEmail || 'ask.anything@psytec.com.sg').trim() || 'ask.anything@psytec.com.sg',
+      enquiry_mobile: String(payload.enquiryMobile || '+65 91681166').trim() || '+65 91681166',
+      profile_visible: false
+    };
+    let writeResult;
+    if (!existing) {
+      writeResult = await mhpProfileWriteSafe({
+        method: 'POST',
+        userId,
+        authSession,
+        context: 'saveMyMentalHealthProfessionalProfileDraft insert',
+        body: {
+          user_id: userId,
+          ...body,
+          profile_status: 'draft'
+        }
+      });
+    } else {
+      const currentStatus = existing.profile_status || existing.profileStatus || 'draft';
+      if (currentStatus === 'published' || currentStatus === 'suspended') {
+        return { ok: false, unavailable: false, profile: null, errorStage: 'notEditable' };
+      }
+      writeResult = await mhpProfileWriteSafe({
+        method: 'PATCH',
+        userId,
+        authSession,
+        context: 'saveMyMentalHealthProfessionalProfileDraft update',
+        body: {
+          ...body,
+          profile_status: ['hidden', 'draft', 'pending_review'].includes(currentStatus) ? currentStatus : 'draft'
+        },
+        query: `user_id=eq.${userId}`
+      });
+    }
+    if (writeResult.unavailable) {
+      return { ok: false, unavailable: true, profile: null, errorStage: 'write' };
+    }
+    if (!writeResult.ok || !(writeResult.rows || []).length) {
+      return { ok: false, unavailable: false, profile: null, errorStage: 'write' };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      profile: normalizeMhpProfileRow(writeResult.rows[0]),
+      errorStage: null
     };
   },
 
