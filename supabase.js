@@ -956,10 +956,10 @@ const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, contex
     if (!response.ok) {
       if (unavailableCheck(response.status, responseText)) {
         AuthDebug.log('[db] review grants table unavailable:', { context, status: response.status });
-        return { rows: [], unavailable: true };
+        return { rows: [], unavailable: true, ok: false };
       }
       AuthDebug.log('[db] review grants read failed:', { context, status: response.status, responseText });
-      return { rows: [], unavailable: false };
+      return { rows: [], unavailable: false, ok: false };
     }
     let data = [];
     try {
@@ -967,14 +967,14 @@ const fetchReviewGrantsSafe = async ({ table, query, userId, authSession, contex
     } catch {
       data = [];
     }
-    return { rows: Array.isArray(data) ? data : [], unavailable: false };
+    return { rows: Array.isArray(data) ? data : [], unavailable: false, ok: true };
   } catch (err) {
     const message = String(err?.message || err);
     if (unavailableCheck(0, message)) {
-      return { rows: [], unavailable: true };
+      return { rows: [], unavailable: true, ok: false };
     }
     AuthDebug.log('[db] review grants read exception:', { context, message });
-    return { rows: [], unavailable: false };
+    return { rows: [], unavailable: false, ok: false };
   }
 };
 
@@ -2652,14 +2652,15 @@ const DB = {
       context: 'getMyMentalHealthProfessionalLicenseDocuments'
     });
     if (result.unavailable) {
-      return { available: false, unavailable: true, documents: [] };
+      return { available: false, unavailable: true, ok: false, documents: [] };
     }
     if (!result.ok) {
-      return { available: false, unavailable: false, documents: [] };
+      return { available: false, unavailable: false, ok: false, documents: [] };
     }
     return {
       available: true,
       unavailable: false,
+      ok: true,
       documents: (result.rows || []).map(normalizeMhpLicenseDocumentRow).filter(Boolean)
     };
   },
@@ -2729,6 +2730,7 @@ const DB = {
       ok: true,
       unavailable: false,
       document: normalizeMhpLicenseDocumentRow(insertResult.rows[0]),
+      documentId,
       errorStage: null
     };
   },
@@ -2783,7 +2785,7 @@ const DB = {
         authSession,
         context: 'requestMhpLicenseExtraction refresh'
       });
-      const document = refresh.ok && (refresh.rows || []).length
+      const document = !refresh.unavailable && refresh.ok && (refresh.rows || []).length
         ? normalizeMhpLicenseDocumentRow(refresh.rows[0])
         : null;
       return {

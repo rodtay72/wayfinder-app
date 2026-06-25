@@ -4253,6 +4253,36 @@ const mhpExtractedLicenseFields=(extracted,extractionFallback)=>{
  };
 };
 
+const mhpDedupeLicenseDocuments=(docs)=>{
+ const seen=new Map();
+ (Array.isArray(docs)?docs:[]).forEach((doc)=>{
+  if(doc?.id&&!seen.has(doc.id)) seen.set(doc.id,doc);
+ });
+ return [...seen.values()].sort((a,b)=>{
+  const ad=parseStoredDate(a?.createdAt);
+  const bd=parseStoredDate(b?.createdAt);
+  const aTime=ad&&!isNaN(ad)?ad.getTime():0;
+  const bTime=bd&&!isNaN(bd)?bd.getTime():0;
+  return bTime-aTime;
+ });
+};
+
+const mhpMergeLicenseDocuments=(existing,incoming)=>{
+ return mhpDedupeLicenseDocuments([...(Array.isArray(incoming)?incoming:[]),...(Array.isArray(existing)?existing:[])]);
+};
+
+const mhpUploadFallbackDocument=(uploadSuccess)=>{
+ if(!uploadSuccess?.documentId) return null;
+ return {
+  id: uploadSuccess.documentId,
+  originalFilename: uploadSuccess.filename||'Licence document.pdf',
+  documentStatus: 'uploaded',
+  extractionStatus: 'pending',
+  createdAt: uploadSuccess.uploadedAt||new Date().toISOString(),
+  extractedJson: null
+ };
+};
+
 const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate})=>{
  const fields=mhpExtractedLicenseFields(doc?.extractedJson);
  const display=(value)=>value||'-';
@@ -4339,13 +4369,7 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
 
  const mergeDocument=(doc)=>{
   if(!doc?.id) return;
-  setDocuments((prev)=>{
-   const idx=prev.findIndex((item)=>item.id===doc.id);
-   if(idx===-1) return [doc,...prev];
-   const next=[...prev];
-   next[idx]=doc;
-   return next;
-  });
+  setDocuments((prev)=>mhpMergeLicenseDocuments(prev,[doc]));
  };
 
  const loadDocuments=async()=>{
@@ -4354,13 +4378,16 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
    const result=await DB.getMyMentalHealthProfessionalLicenseDocuments(user.id,authSession);
    if(result.unavailable){
     setStorageUnavailable(true);
-    setDocuments([]);
+    return;
+   }
+   if(!result.ok){
+    AuthDebug.log('[mhp] licence documents read failed without unavailable flag');
     return;
    }
    setStorageUnavailable(false);
-   setDocuments(result.documents||[]);
+   const serverDocs=mhpDedupeLicenseDocuments(result.documents||[]);
+   setDocuments((prev)=>serverDocs.length?serverDocs:mhpMergeLicenseDocuments(prev,serverDocs));
   }catch(err){
-   setStorageUnavailable(true);
    AuthDebug.log('[mhp] licence documents load failed:', { message: err?.message || String(err) });
   }finally{
    setLoading(false);
@@ -4398,13 +4425,16 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
    const uploadedDoc=result.document||null;
    const successFilename=uploadedDoc?.originalFilename||file.name||'Licence document.pdf';
    const successUploadedAt=uploadedDoc?.createdAt||new Date().toISOString();
-   if(uploadedDoc) mergeDocument(uploadedDoc);
-   setUploadSuccess({
+   const successDocumentId=uploadedDoc?.id||result.documentId||null;
+   const nextUploadSuccess={
     filename: successFilename,
     uploadedAt: successUploadedAt,
-    documentId: uploadedDoc?.id||null
-   });
+    documentId: successDocumentId
+   };
+   setUploadSuccess(nextUploadSuccess);
    clearFileInput();
+   const mergedDoc=uploadedDoc||mhpUploadFallbackDocument(nextUploadSuccess);
+   if(mergedDoc) mergeDocument(mergedDoc);
    await loadDocuments();
   }catch(err){
    setUploadError(meta.licenseUploadFailed||'Upload failed');
@@ -4445,6 +4475,15 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
  const chooseLabel=uploadSuccess&&!selectedFile
   ? (meta.licenseChooseAnother||'Choose another PDF')
   : (meta.licenseChooseFile||'Choose PDF');
+ const displayDocuments=(()=>{
+  let list=mhpDedupeLicenseDocuments(documents);
+  if(uploadSuccess?.documentId&&!list.some((doc)=>doc.id===uploadSuccess.documentId)){
+   const fallback=mhpUploadFallbackDocument(uploadSuccess);
+   if(fallback) list=mhpMergeLicenseDocuments(list,[fallback]);
+  }
+  return list;
+ })();
+ const showDocumentList=displayDocuments.length>0;
 
  return <div className="card mhp-license-section">
   <h3>{meta.licenseSectionTitle||'Licence / registration document'}</h3>
@@ -4463,10 +4502,10 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
     {uploadError ? <span className="mhp-license-upload-status mhp-license-upload-status--error">{uploadError}</span> : null}
    </div>
    <p className="sub mhp-license-duplicate-hint">{meta.licenseUploadDuplicateHint||'Upload another document only if you are replacing or adding a newer certificate.'}</p>
-   {loading ? <p className="sub">Loading uploaded documents…</p> : documents.length===0 ? <p className="sub">{meta.licenseDocumentsEmpty||'No licence PDF uploaded yet.'}</p> : <>
+   {loading&&!showDocumentList ? <p className="sub">Loading uploaded documents…</p> : !showDocumentList ? <p className="sub">{meta.licenseDocumentsEmpty||'No licence PDF uploaded yet.'}</p> : <>
     <h4 className="mhp-license-list-title">{meta.licenseUploadListTitle||'Uploaded licence documents'}</h4>
     <ul className="mhp-license-document-list">
-    {documents.map(doc=>{
+    {displayDocuments.map(doc=>{
      const extractionStatus=String(doc.extractionStatus||'pending').trim().toLowerCase();
      const canExtract=extractionStatus==='pending'||extractionStatus==='failed';
      const isExtracting=extractingDocId===doc.id||extractionStatus==='processing';
