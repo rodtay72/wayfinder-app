@@ -290,6 +290,9 @@
   .mhp-license-review-field{display:grid;gap:2px;}
   .mhp-license-review-label{font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:#7A8A84;}
   .mhp-license-review-value{font-size:13px;color:#40514b;word-break:break-word;}
+  .mhp-license-review-actions{margin-top:12px;}
+  .mhp-license-apply-success,.mhp-profile-extracted-apply-notice{margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#EEF6EA;border:1px solid #C8DEC0;font-size:13px;color:#3D5A45;}
+  .mhp-license-review-workflow-note{margin:10px 0 0;font-size:12px;color:#7A8A84;}
   .mhp-license-review-warning{margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#FFF8EE;border:1px solid #E8DCC8;font-size:12px;color:#7A5E42;}
   .mhp-license-human-review-pill{display:inline-flex;align-items:center;margin-top:10px;padding:4px 10px;border-radius:999px;background:#F3EDE4;color:#7A5E42;font-size:11px;font-weight:700;}
 
