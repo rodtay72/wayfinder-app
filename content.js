@@ -632,6 +632,7 @@ const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
   licenseExtractionAccuracyWarning: "AI extraction may be inaccurate. Check names, registration numbers, issuing body, and expiry dates before submitting.",
   licenseHumanReviewRequired: "Human review required",
   licenseExtractionFailed: "Extraction failed. Please try again or contact Wayfinder support.",
+  licenseExtractionTimeout: "Extraction took too long. Please try again later.",
   licenseExtractionDebugLabel: "Diagnostic",
   licenseReviewFullName: "Full name",
   licenseReviewProfessionalTitle: "Professional title / credential",

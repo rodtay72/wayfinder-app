@@ -9,6 +9,9 @@ import {
 
 const MHP_LICENSE_BUCKET = 'professional-license-documents';
 const DEFAULT_MODEL = process.env.MHP_LICENSE_EXTRACTION_MODEL || 'gpt-4o-mini';
+const DETERMINISTIC_MODEL = 'deterministic-pdf-text-v1';
+const OPENAI_TIMEOUT_MS = 12000;
+const MIN_DETERMINISTIC_HIGH_CONFIDENCE_FIELDS = 5;
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_TEXT_CHARS = 12000;
 const MIN_PDF_TEXT_CHARS = 20;
@@ -24,6 +27,7 @@ const ERROR_CODES = {
   STORAGE_DOWNLOAD_FAILED: 'storage_download_failed',
   PDF_TEXT_UNREADABLE: 'pdf_text_unreadable',
   OPENAI_REQUEST_FAILED: 'openai_request_failed',
+  OPENAI_TIMEOUT: 'openai_timeout',
   EXTRACTION_UNAVAILABLE: 'extraction_unavailable'
 };
 
@@ -155,6 +159,181 @@ const extractPdfText = (buffer) => {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
     .slice(0, MAX_TEXT_CHARS);
+};
+
+const MONTHS = {
+  jan: 1, january: 1,
+  feb: 2, february: 2,
+  mar: 3, march: 3,
+  apr: 4, april: 4,
+  may: 5,
+  jun: 6, june: 6,
+  jul: 7, july: 7,
+  aug: 8, august: 8,
+  sep: 9, sept: 9, september: 9,
+  oct: 10, october: 10,
+  nov: 11, november: 11,
+  dec: 12, december: 12
+};
+
+const pad2 = (value) => String(value).padStart(2, '0');
+
+const parseHumanDateToIso = (value) => {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if (!match) return null;
+  const month = MONTHS[match[2].toLowerCase()];
+  if (!month) return null;
+  const day = Number(match[1]);
+  const year = Number(match[3]);
+  if (!Number.isFinite(day) || !Number.isFinite(year) || day < 1 || day > 31) return null;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+};
+
+const normalizePdfPlainText = (pdfText) => String(pdfText || '')
+  .replace(/\u0000/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const setDeterministicField = (fields, confidence, key, value, score) => {
+  const next = String(value || '').trim();
+  if (!next) return;
+  if (!fields[key] || (confidence[key] || 0) <= score) {
+    fields[key] = next;
+    confidence[key] = score;
+  }
+};
+
+const parseDeterministicLicenseFields = (pdfText) => {
+  const compact = normalizePdfPlainText(pdfText);
+  const fields = {
+    full_name: null,
+    professional_title: null,
+    credential_label: null,
+    issuing_body: null,
+    license_registration_number: null,
+    accreditation_number: null,
+    valid_from: null,
+    valid_to: null,
+    raw_validity_text: null
+  };
+  const confidence = {};
+
+  const sacCredential = compact.match(/\bSAC Registered Counsellor\b/i);
+  if (sacCredential) {
+    setDeterministicField(fields, confidence, 'credential_label', 'SAC Registered Counsellor', 0.96);
+    setDeterministicField(fields, confidence, 'professional_title', 'Registered Counsellor', 0.9);
+  } else {
+    const registeredCounsellor = compact.match(/\bRegistered Counsellor\b/i);
+    if (registeredCounsellor) {
+      setDeterministicField(fields, confidence, 'professional_title', 'Registered Counsellor', 0.88);
+    }
+  }
+
+  const sacBody = compact.match(/\bSingapore Association for Counselling\b/i);
+  if (sacBody) {
+    setDeterministicField(fields, confidence, 'issuing_body', 'Singapore Association for Counselling', 0.96);
+  }
+
+  const nameMatch = compact.match(/\b(Mr|Mrs|Ms|Miss|Dr)\.?\s+[A-Z][A-Za-z'’.-]+(?:\s+[A-Z][A-Za-z'’.-]+)+/);
+  if (nameMatch) {
+    setDeterministicField(fields, confidence, 'full_name', nameMatch[0].replace(/\s+/g, ' ').trim(), 0.92);
+  }
+
+  const accreditationMatch = compact.match(/\bAccreditation(?:\s+Number|\s+No\.?)?\s*[:\-]?\s*(C\d{3,6})\b/i)
+    || compact.match(/\b(C0\d{3,5})\b/);
+  if (accreditationMatch) {
+    const number = accreditationMatch[1] || accreditationMatch[0];
+    setDeterministicField(fields, confidence, 'accreditation_number', number, 0.94);
+  }
+
+  const licenseMatch = compact.match(/\b(?:Registration|Certificate|Licence|License)(?:\s+Number|\s+No\.?)?\s*[:\-]?\s*(\d{3,4}\/\d{4})\b/i)
+    || compact.match(/\b(\d{3,4}\/\d{4})\b/);
+  if (licenseMatch) {
+    setDeterministicField(fields, confidence, 'license_registration_number', licenseMatch[1] || licenseMatch[0], 0.94);
+  }
+
+  const validityMatch = compact.match(/(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\s+(?:to|–|-|—)\s+(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i);
+  if (validityMatch) {
+    const rawValidity = `${validityMatch[1]} to ${validityMatch[2]}`;
+    setDeterministicField(fields, confidence, 'raw_validity_text', rawValidity, 0.95);
+    const validFrom = parseHumanDateToIso(validityMatch[1]);
+    const validTo = parseHumanDateToIso(validityMatch[2]);
+    if (validFrom) setDeterministicField(fields, confidence, 'valid_from', validFrom, 0.93);
+    if (validTo) setDeterministicField(fields, confidence, 'valid_to', validTo, 0.93);
+  }
+
+  return { fields, confidence };
+};
+
+const countHighConfidenceDeterministicFields = (fields, confidence) => {
+  const keys = [
+    'full_name',
+    'professional_title',
+    'credential_label',
+    'issuing_body',
+    'license_registration_number',
+    'accreditation_number',
+    'valid_from',
+    'valid_to',
+    'raw_validity_text'
+  ];
+  return keys.filter((key) => {
+    const value = fields[key];
+    if (!value) return false;
+    return (confidence[key] || 0) >= 0.85;
+  }).length;
+};
+
+const isDeterministicExtractionSufficient = (fields, confidence) => (
+  countHighConfidenceDeterministicFields(fields, confidence) >= MIN_DETERMINISTIC_HIGH_CONFIDENCE_FIELDS
+);
+
+const buildExtractionResponse = (extraction, extractionModel, documentId, updated, extractedAt) => ({
+  ok: true,
+  document_id: documentId,
+  document_status: updated?.document_status || 'extracted',
+  extraction_status: updated?.extraction_status || 'completed',
+  extracted_at: updated?.extracted_at || extractedAt,
+  extraction_model: extractionModel,
+  requires_human_review: true,
+  extraction: {
+    full_name: extraction.full_name,
+    professional_title: extraction.professional_title,
+    credential_label: extraction.credential_label,
+    issuing_body: extraction.issuing_body,
+    license_registration_number: extraction.license_registration_number,
+    accreditation_number: extraction.accreditation_number,
+    valid_from: extraction.valid_from,
+    valid_to: extraction.valid_to,
+    raw_validity_text: extraction.raw_validity_text,
+    confidence: extraction.confidence,
+    requires_human_review: true
+  }
+});
+
+const saveCompletedExtraction = async (documentId, userId, extraction, extractionModel) => {
+  const extractedAt = new Date().toISOString();
+  const updatedRows = await patchLicenseDocument(documentId, userId, {
+    extracted_json: {
+      full_name: extraction.full_name,
+      professional_title: extraction.professional_title,
+      credential_label: extraction.credential_label,
+      issuing_body: extraction.issuing_body,
+      license_registration_number: extraction.license_registration_number,
+      accreditation_number: extraction.accreditation_number,
+      valid_from: extraction.valid_from,
+      valid_to: extraction.valid_to,
+      raw_validity_text: extraction.raw_validity_text
+    },
+    extraction_confidence: extraction.confidence,
+    extraction_model: extractionModel,
+    extracted_at: extractedAt,
+    extraction_status: 'completed',
+    document_status: 'extracted'
+  });
+  const updated = Array.isArray(updatedRows) && updatedRows.length > 0 ? updatedRows[0] : null;
+  return { extraction, extractionModel, extractedAt, updated };
 };
 
 const sanitizeExtraction = (value) => {
@@ -315,41 +494,56 @@ async function callExtractionModel(pdfText) {
     error.status = 503;
     throw error;
   }
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      max_tokens: 900,
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: 'You extract structured draft fields from professional licence certificates. Return only valid JSON. Never verify or approve credentials.'
-        },
-        { role: 'user', content: buildExtractionPrompt(pdfText) }
-      ]
-    })
-  });
-  const data = await readJson(response);
-  if (!response.ok) {
-    const error = new Error(data?.error?.message || 'AI extraction request failed');
-    error.error_code = ERROR_CODES.OPENAI_REQUEST_FAILED;
-    error.status = response.status;
-    throw error;
-  }
-  const text = data?.choices?.[0]?.message?.content || '{}';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
   try {
-    return JSON.parse(text);
-  } catch {
-    const error = new Error('AI extraction returned invalid JSON.');
-    error.error_code = ERROR_CODES.OPENAI_REQUEST_FAILED;
-    error.status = 502;
-    throw error;
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        max_tokens: 700,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: 'You extract structured draft fields from professional licence certificates. Return only valid JSON. Never verify or approve credentials.'
+          },
+          { role: 'user', content: buildExtractionPrompt(pdfText) }
+        ]
+      })
+    });
+    const data = await readJson(response);
+    if (!response.ok) {
+      const error = new Error(data?.error?.message || 'AI extraction request failed');
+      error.error_code = ERROR_CODES.OPENAI_REQUEST_FAILED;
+      error.status = response.status;
+      throw error;
+    }
+    const text = data?.choices?.[0]?.message?.content || '{}';
+    try {
+      return JSON.parse(text);
+    } catch {
+      const error = new Error('AI extraction returned invalid JSON.');
+      error.error_code = ERROR_CODES.OPENAI_REQUEST_FAILED;
+      error.status = 502;
+      throw error;
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      const error = new Error('OpenAI extraction timed out.');
+      error.error_code = ERROR_CODES.OPENAI_TIMEOUT;
+      error.status = 504;
+      throw error;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -359,17 +553,33 @@ const mapExtractionError = (err) => {
     ? err.status
     : errorCode === ERROR_CODES.PDF_TEXT_UNREADABLE
       ? 422
+      : errorCode === ERROR_CODES.OPENAI_TIMEOUT
+        ? 504
       : errorCode === ERROR_CODES.MISSING_OPENAI_KEY || errorCode === ERROR_CODES.MISSING_SERVICE_ROLE_KEY || errorCode === ERROR_CODES.PROFILE_LOOKUP_FAILED
         ? 503
         : err?.status || 500;
-  const userMessage = [
+  let userMessage = USER_EXTRACTION_FAILURE;
+  if ([
     ERROR_CODES.AUTH_REQUIRED,
     ERROR_CODES.DOCUMENT_NOT_FOUND,
     ERROR_CODES.ROLE_NOT_AUTHORISED
-  ].includes(errorCode)
-    ? String(err?.message || USER_EXTRACTION_FAILURE)
-    : USER_EXTRACTION_FAILURE;
+  ].includes(errorCode)) {
+    userMessage = String(err?.message || USER_EXTRACTION_FAILURE);
+  } else if (errorCode === ERROR_CODES.OPENAI_TIMEOUT) {
+    userMessage = 'Extraction took too long. Please try again later.';
+  }
   return { status, error_code: errorCode, error: userMessage };
+};
+
+const markExtractionFailed = async (documentId, userId) => {
+  if (!documentId || !userId) return;
+  try {
+    await patchLicenseDocument(documentId, userId, {
+      extraction_status: 'failed'
+    });
+  } catch {
+    // Best-effort failure marker only.
+  }
 };
 
 export default async function handler(req, res) {
@@ -483,16 +693,6 @@ export default async function handler(req, res) {
       });
     }
 
-    const currentExtractionStatus = String(document.extraction_status || 'pending').trim().toLowerCase();
-    if (currentExtractionStatus === 'processing') {
-      return fail(res, {
-        status: 409,
-        error_code: ERROR_CODES.EXTRACTION_UNAVAILABLE,
-        error: USER_EXTRACTION_FAILURE,
-        stage: 'processing',
-        diag
-      });
-    }
 
     await patchLicenseDocument(documentId, userId, {
       extraction_status: 'processing'
@@ -508,59 +708,31 @@ export default async function handler(req, res) {
         throw error;
       }
 
-      const modelResult = await callExtractionModel(pdfText);
-      const extraction = sanitizeExtraction(modelResult);
-      const extractedAt = new Date().toISOString();
-
-      const updatedRows = await patchLicenseDocument(documentId, userId, {
-        extracted_json: {
-          full_name: extraction.full_name,
-          professional_title: extraction.professional_title,
-          credential_label: extraction.credential_label,
-          issuing_body: extraction.issuing_body,
-          license_registration_number: extraction.license_registration_number,
-          accreditation_number: extraction.accreditation_number,
-          valid_from: extraction.valid_from,
-          valid_to: extraction.valid_to,
-          raw_validity_text: extraction.raw_validity_text
-        },
-        extraction_confidence: extraction.confidence,
-        extraction_model: DEFAULT_MODEL,
-        extracted_at: extractedAt,
-        extraction_status: 'completed',
-        document_status: 'extracted'
-      });
-
-      const updated = Array.isArray(updatedRows) && updatedRows.length > 0 ? updatedRows[0] : null;
-      return res.status(200).json({
-        ok: true,
-        document_id: documentId,
-        document_status: updated?.document_status || 'extracted',
-        extraction_status: updated?.extraction_status || 'completed',
-        extracted_at: updated?.extracted_at || extractedAt,
-        requires_human_review: true,
-        extraction: {
-          full_name: extraction.full_name,
-          professional_title: extraction.professional_title,
-          credential_label: extraction.credential_label,
-          issuing_body: extraction.issuing_body,
-          license_registration_number: extraction.license_registration_number,
-          accreditation_number: extraction.accreditation_number,
-          valid_from: extraction.valid_from,
-          valid_to: extraction.valid_to,
-          raw_validity_text: extraction.raw_validity_text,
-          confidence: extraction.confidence,
+      const deterministic = parseDeterministicLicenseFields(pdfText);
+      let extractionModel = DETERMINISTIC_MODEL;
+      let extraction;
+      if (isDeterministicExtractionSufficient(deterministic.fields, deterministic.confidence)) {
+        extraction = sanitizeExtraction({
+          ...deterministic.fields,
+          confidence: deterministic.confidence,
           requires_human_review: true
-        }
-      });
-    } catch (err) {
-      try {
-        await patchLicenseDocument(documentId, userId, {
-          extraction_status: 'failed'
         });
-      } catch {
-        // Best-effort failure marker only.
+      } else {
+        const modelResult = await callExtractionModel(pdfText);
+        extraction = sanitizeExtraction(modelResult);
+        extractionModel = DEFAULT_MODEL;
       }
+
+      const saved = await saveCompletedExtraction(documentId, userId, extraction, extractionModel);
+      return res.status(200).json(buildExtractionResponse(
+        saved.extraction,
+        saved.extractionModel,
+        documentId,
+        saved.updated,
+        saved.extractedAt
+      ));
+    } catch (err) {
+      await markExtractionFailed(documentId, userId);
       const mapped = mapExtractionError(err);
       return fail(res, {
         status: mapped.status,
@@ -571,6 +743,7 @@ export default async function handler(req, res) {
       });
     }
   } catch (error) {
+    await markExtractionFailed(documentId, userId);
     const mapped = mapExtractionError(error);
     return fail(res, {
       status: mapped.status >= 500 ? 500 : mapped.status,
