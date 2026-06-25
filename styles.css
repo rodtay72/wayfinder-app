@@ -228,6 +228,16 @@
   .pdpa-notice-check input[type="checkbox"]{width:1rem;height:1rem;margin:0.2rem 0 0 0;padding:0;position:static;flex:none;accent-color:var(--sage-deep);}
   .pdpa-notice-check span{display:block;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:normal;white-space:normal;line-height:1.45;position:static;font-size:13px;}
   .pdpa-notice-prompt{font-size:13px;line-height:1.55;color:#8a5a00;margin:12px 0 0;padding:10px 12px;background:#fff4d6;border-radius:6px;overflow-wrap:anywhere;word-wrap:break-word;}
+  .auth-forgot-wrap{margin:0 0 12px;text-align:right;}
+  .auth-forgot-link{background:transparent;border:0;padding:0;font:inherit;font-size:13px;font-weight:650;color:var(--sage-deep);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+  .auth-forgot-copy{margin:0 0 16px;line-height:1.6;}
+  .auth-forgot-back{margin-top:10px;}
+  .mhp-invite-card{padding:22px 24px;background:#F6FAF7;border:1px solid #D8E6DC;margin-bottom:16px;}
+  .mhp-invite-card h2{margin:0 0 10px;font-size:20px;color:#40514b;}
+  .mhp-invite-note{margin:10px 0 0;font-size:13px;line-height:1.55;color:#5d6c66;}
+  .mhp-onboarding-card{padding:28px 24px;text-align:left;}
+  .mhp-onboarding-card h2{margin:0 0 12px;font-size:22px;color:#40514b;}
+  .mhp-onboarding-card .dashboard-helper{margin-bottom:20px;}
 
   .dashboard-section{padding:24px;}
   .dashboard-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;}
