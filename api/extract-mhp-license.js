@@ -14,11 +14,13 @@ const OPENAI_TIMEOUT_MS = 10000;
 const FUNCTION_BUDGET_MS = Number(process.env.MHP_EXTRACTION_BUDGET_MS || 8000);
 const MIN_DETERMINISTIC_HIGH_CONFIDENCE_FIELDS = 5;
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
-const MAX_PDF_SCAN_BYTES = 2 * 1024 * 1024;
-const MAX_PDF_STREAMS = 48;
-const MAX_STREAM_BODY_BYTES = 512 * 1024;
 const MAX_TEXT_CHARS = 12000;
 const MIN_PDF_TEXT_CHARS = 20;
+const MAX_PDF_PARSE_MS = 3000;
+const MAX_CANDIDATE_STREAMS = 8;
+const MAX_COMPRESSED_STREAM_BYTES = 64 * 1024;
+const MAX_INFLATED_STREAM_BYTES = 128 * 1024;
+const MAX_DICTIONARY_LOOKBACK_BYTES = 2048;
 const USER_EXTRACTION_FAILURE = 'Extraction failed. Please try again or contact Wayfinder support.';
 const USER_EXTRACTION_TIMEOUT = 'Extraction took too long. Please try again later.';
 
@@ -31,6 +33,7 @@ const ERROR_CODES = {
   MISSING_SERVICE_ROLE_KEY: 'missing_service_role_key',
   STORAGE_DOWNLOAD_FAILED: 'storage_download_failed',
   PDF_TEXT_UNREADABLE: 'pdf_text_unreadable',
+  PDF_TEXT_PARSE_TIMEOUT: 'pdf_text_parse_timeout',
   OPENAI_REQUEST_FAILED: 'openai_request_failed',
   OPENAI_TIMEOUT: 'openai_timeout',
   EXTRACTION_TIMEOUT_GUARD: 'extraction_timeout_guard',
@@ -61,7 +64,21 @@ const createRunMetrics = () => ({
   pdfByteLength: null,
   extractedTextLength: null,
   deterministicFieldCount: null,
-  usedOpenAi: false
+  usedOpenAi: false,
+  scannedStreamCount: null,
+  skippedStreamCount: null,
+  candidateStreamCount: null,
+  inflatedStreamCount: null,
+  parseDurationMs: null
+});
+
+const logPdfParseMetrics = (metrics) => ({
+  scannedStreamCount: metrics?.scannedStreamCount ?? null,
+  skippedStreamCount: metrics?.skippedStreamCount ?? null,
+  candidateStreamCount: metrics?.candidateStreamCount ?? null,
+  inflatedStreamCount: metrics?.inflatedStreamCount ?? null,
+  extractedTextLength: metrics?.extractedTextLength ?? null,
+  parseDurationMs: metrics?.parseDurationMs ?? null
 });
 
 const logExtractionStage = ({ stage, durationMs, status, error_code, diag, metrics, totalElapsedMs }) => {
@@ -75,10 +92,10 @@ const logExtractionStage = ({ stage, durationMs, status, error_code, diag, metri
     profileResolved: !!diag?.profileResolved,
     documentResolved: !!diag?.documentResolved,
     pdfByteLength: metrics?.pdfByteLength ?? null,
-    extractedTextLength: metrics?.extractedTextLength ?? null,
     deterministicFieldCount: metrics?.deterministicFieldCount ?? null,
     usedOpenAi: !!metrics?.usedOpenAi,
-    totalElapsedMs: totalElapsedMs ?? null
+    totalElapsedMs: totalElapsedMs ?? null,
+    ...logPdfParseMetrics(metrics)
   });
 };
 
@@ -94,10 +111,10 @@ const logExtractionFailure = ({ stage, status, error_code, message, diag, metric
     profileResolved: !!diag?.profileResolved,
     documentResolved: !!diag?.documentResolved,
     pdfByteLength: metrics?.pdfByteLength ?? null,
-    extractedTextLength: metrics?.extractedTextLength ?? null,
     deterministicFieldCount: metrics?.deterministicFieldCount ?? null,
     usedOpenAi: !!metrics?.usedOpenAi,
-    totalElapsedMs: totalElapsedMs ?? null
+    totalElapsedMs: totalElapsedMs ?? null,
+    ...logPdfParseMetrics(metrics)
   });
 };
 
@@ -224,36 +241,150 @@ const collectPdfTextFromSegment = (segment, chunks) => {
   }
 };
 
-const extractPdfText = (buffer, assertBudget) => {
-  const scanBuffer = buffer.length > MAX_PDF_SCAN_BYTES ? buffer.subarray(0, MAX_PDF_SCAN_BYTES) : buffer;
-  const raw = scanBuffer.toString('latin1');
-  const chunks = [];
-  collectPdfTextFromSegment(raw, chunks);
-  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
-  let streamMatch;
-  let streamCount = 0;
-  while ((streamMatch = streamRegex.exec(raw)) !== null) {
-    if (++streamCount > MAX_PDF_STREAMS) break;
-    if (assertBudget) assertBudget('pdf_text_extract');
-    const streamBody = streamMatch[1];
-    if (!streamBody || streamBody.length > MAX_STREAM_BODY_BYTES) continue;
-    collectPdfTextFromSegment(streamBody, chunks);
-    try {
-      const inflated = zlib.inflateSync(Buffer.from(streamBody, 'latin1'));
-      if (inflated.length <= MAX_STREAM_BODY_BYTES) {
-        collectPdfTextFromSegment(inflated.toString('latin1'), chunks);
-      }
-    } catch {
-      // Ignore non-deflate streams.
-    }
+const hasPdfTextOperators = (content) => {
+  const raw = String(content || '');
+  return /\bBT\b/.test(raw) && /\bET\b/.test(raw) && (/\bTj\b/.test(raw) || /\bTJ\b/.test(raw));
+};
+
+const findStreamDictionary = (raw, streamIndex) => {
+  const lookbackStart = Math.max(0, streamIndex - MAX_DICTIONARY_LOOKBACK_BYTES);
+  const prefix = raw.slice(lookbackStart, streamIndex);
+  const dictStart = prefix.lastIndexOf('<<');
+  if (dictStart === -1) return '';
+  return prefix.slice(dictStart);
+};
+
+const isSkippableStreamDictionary = (dictText) => {
+  const dict = String(dictText || '');
+  if (/\/Subtype\s*\/Image\b/i.test(dict)) return true;
+  if (/\/Type\s*\/XObject\b/i.test(dict) && /\/Subtype\s*\/Image\b/i.test(dict)) return true;
+  if (/\/FontFile(?:2|3)?\b/i.test(dict)) return true;
+  if (/\/Length1\b/i.test(dict)) return true;
+  if (/\/Subtype\s*\/XML\b/i.test(dict)) return true;
+  return false;
+};
+
+const isCandidateTextStreamDictionary = (dictText, compressedLength) => {
+  const dict = String(dictText || '');
+  if (isSkippableStreamDictionary(dict)) return false;
+  if (compressedLength <= 0 || compressedLength > MAX_COMPRESSED_STREAM_BYTES) return false;
+  if (/\/Filter\s*\/FlateDecode\b/i.test(dict) || /\/Filter\s*\[\s*\/FlateDecode/i.test(dict)) return true;
+  if (/\/Length\s+\d+/i.test(dict) && !/\/Subtype\b/i.test(dict) && !/\/Font\b/i.test(dict)) return true;
+  return false;
+};
+
+const inflateCandidateStream = (streamBody) => {
+  try {
+    return zlib.inflateSync(Buffer.from(streamBody, 'latin1'));
+  } catch {
+    return null;
   }
-  return chunks
-    .join('\n')
-    .replace(/\u0000/g, '')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-    .slice(0, MAX_TEXT_CHARS);
+};
+
+const finalizePdfText = (chunks) => chunks
+  .join('\n')
+  .replace(/\u0000/g, '')
+  .replace(/[ \t]+\n/g, '\n')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim()
+  .slice(0, MAX_TEXT_CHARS);
+
+const extractPdfTextSafe = (buffer, assertBudget) => {
+  const parseStart = Date.now();
+  const stats = {
+    scannedStreamCount: 0,
+    skippedStreamCount: 0,
+    candidateStreamCount: 0,
+    inflatedStreamCount: 0,
+    extractedTextLength: 0,
+    parseDurationMs: 0
+  };
+
+  const assertParseBudget = () => {
+    if (Date.now() - parseStart >= MAX_PDF_PARSE_MS) {
+      const error = new Error('PDF text parsing exceeded time budget.');
+      error.error_code = ERROR_CODES.PDF_TEXT_PARSE_TIMEOUT;
+      error.status = 504;
+      error.stage = 'pdf_text_extract';
+      throw error;
+    }
+    if (assertBudget) assertBudget('pdf_text_extract');
+  };
+
+  const raw = buffer.toString('latin1');
+  const chunks = [];
+  let searchFrom = 0;
+
+  while (searchFrom < raw.length) {
+    assertParseBudget();
+
+    const streamIdx = raw.indexOf('stream', searchFrom);
+    if (streamIdx === -1) break;
+
+    let bodyStart = streamIdx + 6;
+    if (raw[bodyStart] === '\r') bodyStart += 1;
+    if (raw[bodyStart] === '\n') bodyStart += 1;
+    else {
+      searchFrom = streamIdx + 6;
+      continue;
+    }
+
+    const endIdx = raw.indexOf('endstream', bodyStart);
+    if (endIdx === -1) break;
+
+    stats.scannedStreamCount += 1;
+
+    let bodyEnd = endIdx;
+    if (bodyEnd > bodyStart && raw[bodyEnd - 1] === '\n') bodyEnd -= 1;
+    if (bodyEnd > bodyStart && raw[bodyEnd - 1] === '\r') bodyEnd -= 1;
+
+    const streamBody = raw.slice(bodyStart, bodyEnd);
+    const dictText = findStreamDictionary(raw, streamIdx);
+    searchFrom = endIdx + 9;
+
+    if (!isCandidateTextStreamDictionary(dictText, streamBody.length)) {
+      stats.skippedStreamCount += 1;
+      continue;
+    }
+
+    stats.candidateStreamCount += 1;
+    if (stats.inflatedStreamCount >= MAX_CANDIDATE_STREAMS) {
+      stats.skippedStreamCount += 1;
+      continue;
+    }
+
+    const useFlate = /\/Filter\s*\/FlateDecode\b/i.test(dictText)
+      || /\/Filter\s*\[\s*\/FlateDecode/i.test(dictText);
+    let content = streamBody;
+    if (useFlate) {
+      const inflated = inflateCandidateStream(streamBody);
+      if (!inflated || inflated.length === 0 || inflated.length > MAX_INFLATED_STREAM_BYTES) {
+        stats.skippedStreamCount += 1;
+        continue;
+      }
+      content = inflated.toString('latin1');
+      stats.inflatedStreamCount += 1;
+    } else {
+      if (streamBody.length > MAX_INFLATED_STREAM_BYTES) {
+        stats.skippedStreamCount += 1;
+        continue;
+      }
+      stats.inflatedStreamCount += 1;
+    }
+
+    if (!hasPdfTextOperators(content)) {
+      stats.skippedStreamCount += 1;
+      continue;
+    }
+
+    collectPdfTextFromSegment(content.slice(0, MAX_INFLATED_STREAM_BYTES), chunks);
+    if (finalizePdfText(chunks).length >= MIN_PDF_TEXT_CHARS) break;
+  }
+
+  const text = finalizePdfText(chunks);
+  stats.extractedTextLength = text.length;
+  stats.parseDurationMs = Date.now() - parseStart;
+  return { text, stats };
 };
 
 const MONTHS = {
@@ -646,7 +777,7 @@ const mapExtractionError = (err) => {
     ? err.status
     : errorCode === ERROR_CODES.PDF_TEXT_UNREADABLE
       ? 422
-      : errorCode === ERROR_CODES.OPENAI_TIMEOUT || errorCode === ERROR_CODES.EXTRACTION_TIMEOUT_GUARD
+      : errorCode === ERROR_CODES.OPENAI_TIMEOUT || errorCode === ERROR_CODES.EXTRACTION_TIMEOUT_GUARD || errorCode === ERROR_CODES.PDF_TEXT_PARSE_TIMEOUT
         ? 504
       : errorCode === ERROR_CODES.MISSING_OPENAI_KEY || errorCode === ERROR_CODES.MISSING_SERVICE_ROLE_KEY || errorCode === ERROR_CODES.PROFILE_LOOKUP_FAILED
         ? 503
@@ -658,7 +789,7 @@ const mapExtractionError = (err) => {
     ERROR_CODES.ROLE_NOT_AUTHORISED
   ].includes(errorCode)) {
     userMessage = String(err?.message || USER_EXTRACTION_FAILURE);
-  } else if (errorCode === ERROR_CODES.OPENAI_TIMEOUT || errorCode === ERROR_CODES.EXTRACTION_TIMEOUT_GUARD) {
+  } else if (errorCode === ERROR_CODES.OPENAI_TIMEOUT || errorCode === ERROR_CODES.EXTRACTION_TIMEOUT_GUARD || errorCode === ERROR_CODES.PDF_TEXT_PARSE_TIMEOUT) {
     userMessage = USER_EXTRACTION_TIMEOUT;
   }
   return { status, error_code: errorCode, error: userMessage };
@@ -830,11 +961,20 @@ export default async function handler(req, res) {
       const pdfBuffer = await budget.runStage('storage_download', () => downloadLicensePdf(bucket, storagePath));
       metrics.pdfByteLength = pdfBuffer.length;
 
-      const pdfText = await budget.runStage('pdf_text_extract', async () => extractPdfText(
-        pdfBuffer,
-        (stage) => budget.assertBudget(stage)
-      ));
-      metrics.extractedTextLength = pdfText.length;
+      const pdfExtractResult = await budget.runStage('pdf_text_extract', async () => {
+        const result = extractPdfTextSafe(
+          pdfBuffer,
+          (stage) => budget.assertBudget(stage)
+        );
+        metrics.scannedStreamCount = result.stats.scannedStreamCount;
+        metrics.skippedStreamCount = result.stats.skippedStreamCount;
+        metrics.candidateStreamCount = result.stats.candidateStreamCount;
+        metrics.inflatedStreamCount = result.stats.inflatedStreamCount;
+        metrics.extractedTextLength = result.stats.extractedTextLength;
+        metrics.parseDurationMs = result.stats.parseDurationMs;
+        return result.text;
+      });
+      const pdfText = pdfExtractResult;
 
       if (!pdfText || pdfText.length < MIN_PDF_TEXT_CHARS) {
         const error = new Error('Could not extract readable text from the licence PDF.');

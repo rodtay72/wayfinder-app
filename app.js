@@ -4449,7 +4449,7 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
   setExtractingDocId(documentId);
   setExtractionErrors((prev)=>({...prev,[documentId]:null}));
   const setExtractionFailure=(errorCode,errorMessage)=>{
-   const message=errorCode==='openai_timeout'||errorCode==='extraction_timeout_guard'
+   const message=errorCode==='openai_timeout'||errorCode==='extraction_timeout_guard'||errorCode==='pdf_text_parse_timeout'
     ? (meta.licenseExtractionTimeout||'Extraction took too long. Please try again later.')
     : (errorMessage||meta.licenseExtractionFailed||'Extraction failed. Please try again or contact Wayfinder support.');
    setExtractionErrors((prev)=>({
