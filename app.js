@@ -4274,7 +4274,9 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
  const [documents,setDocuments]=useState([]);
  const [loading,setLoading]=useState(true);
  const [storageUnavailable,setStorageUnavailable]=useState(false);
- const [uploadState,setUploadState]=useState('');
+ const [selectedFile,setSelectedFile]=useState(null);
+ const [uploading,setUploading]=useState(false);
+ const [uploadSuccess,setUploadSuccess]=useState(null);
  const [uploadError,setUploadError]=useState('');
  const fileInputRef=useRef(null);
 
@@ -4284,10 +4286,30 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
   return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
  };
 
+ const fmtDateTime=(value)=>{
+  const dt=parseStoredDate(value);
+  if(!dt||isNaN(dt)) return '-';
+  return dt.toLocaleString('en-SG',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ };
+
+ const clearFileInput=()=>{
+  setSelectedFile(null);
+  if(fileInputRef.current) fileInputRef.current.value='';
+ };
+
+ const mergeDocument=(doc)=>{
+  if(!doc?.id) return;
+  setDocuments((prev)=>{
+   const idx=prev.findIndex((item)=>item.id===doc.id);
+   if(idx===-1) return [doc,...prev];
+   const next=[...prev];
+   next[idx]=doc;
+   return next;
+  });
+ };
+
  const loadDocuments=async()=>{
   setLoading(true);
-  setStorageUnavailable(false);
-  setUploadError('');
   try{
    const result=await DB.getMyMentalHealthProfessionalLicenseDocuments(user.id,authSession);
    if(result.unavailable){
@@ -4307,49 +4329,77 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
 
  useEffect(()=>{if(user?.id&&authSession?.access_token)loadDocuments();},[user?.id,authSession?.access_token]);
 
- const handleFileChange=async(event)=>{
+ const handleFileSelect=(event)=>{
   const file=event.target.files&&event.target.files[0];
   event.target.value='';
   if(!file) return;
-  setUploadState('uploading');
+  setSelectedFile(file);
+  setUploadError('');
+ };
+
+ const handleUpload=async()=>{
+  if(!selectedFile||uploading) return;
+  const file=selectedFile;
+  setUploading(true);
   setUploadError('');
   try{
    const result=await DB.uploadMentalHealthProfessionalLicenseDocument(user.id,file,authSession);
    if(result.unavailable||result.errorStage==='storageUnavailable'||result.errorStage==='metadataUnavailable'){
     setStorageUnavailable(true);
-    setUploadState('');
     setUploadError(meta.licenseStorageUnavailable||'Licence upload storage is not ready yet.');
     return;
    }
    if(!result.ok){
-    setUploadState('');
     setUploadError(result.errorStage==='invalidType'||result.errorStage==='tooLarge'
      ? (meta.licensePdfOnly||'Please choose a PDF file up to 10 MB.')
      : (meta.licenseUploadFailed||'Upload failed'));
     return;
    }
-   setUploadState('uploaded');
+   const uploadedDoc=result.document||null;
+   const successFilename=uploadedDoc?.originalFilename||file.name||'Licence document.pdf';
+   const successUploadedAt=uploadedDoc?.createdAt||new Date().toISOString();
+   if(uploadedDoc) mergeDocument(uploadedDoc);
+   setUploadSuccess({
+    filename: successFilename,
+    uploadedAt: successUploadedAt,
+    documentId: uploadedDoc?.id||null
+   });
+   clearFileInput();
    await loadDocuments();
   }catch(err){
-   setUploadState('');
    setUploadError(meta.licenseUploadFailed||'Upload failed');
    AuthDebug.log('[mhp] licence upload failed:', { message: err?.message || String(err) });
+  }finally{
+   setUploading(false);
   }
  };
+
+ const canUpload=!!selectedFile&&!uploading&&!storageUnavailable;
+ const chooseLabel=uploadSuccess&&!selectedFile
+  ? (meta.licenseChooseAnother||'Choose another PDF')
+  : (meta.licenseChooseFile||'Choose PDF');
 
  return <div className="card mhp-license-section">
   <h3>{meta.licenseSectionTitle||'Licence / registration document'}</h3>
   <p className="dashboard-helper">{meta.licenseSectionIntro||'Upload your licence or registration certificate as a PDF.'}</p>
   <p className="sub mhp-license-privacy-note">{meta.licensePrivacyNote||'Your PDF is private and not visible to parents.'}</p>
   {storageUnavailable ? <p className="sub mhp-license-unavailable">{meta.licenseStorageUnavailable||'Licence upload storage is not ready yet.'}</p> : <>
+   {uploadSuccess ? <div className="mhp-license-upload-success" role="status" aria-live="polite">
+    <p className="mhp-license-upload-success-message">{meta.licenseUploadSuccess||'Licence document uploaded. Extraction is pending.'}</p>
+    <p className="mhp-license-upload-success-detail">{uploadSuccess.filename} · {fmtDateTime(uploadSuccess.uploadedAt)}</p>
+   </div> : null}
    <div className="mhp-license-upload-row">
-    <input ref={fileInputRef} type="file" accept="application/pdf,.pdf" className="mhp-license-file-input" onChange={handleFileChange} disabled={uploadState==='uploading'}/>
-    <button type="button" className="btn btn-secondary" disabled={uploadState==='uploading'} onClick={()=>fileInputRef.current?.click()}>{uploadState==='uploading'?(meta.licenseUploading||'Uploading…'):(meta.licenseUploadButton||'Upload PDF')}</button>
-    {uploadState==='uploaded' ? <span className="mhp-license-upload-status">{meta.licenseUploaded||'Uploaded'}</span> : null}
+    <input ref={fileInputRef} type="file" accept="application/pdf,.pdf" className="mhp-license-file-input" onChange={handleFileSelect} disabled={uploading}/>
+    <button type="button" className="btn btn-secondary" disabled={uploading} onClick={()=>fileInputRef.current?.click()}>{chooseLabel}</button>
+    <button type="button" className="btn btn-primary" disabled={!canUpload} onClick={handleUpload}>{uploading?(meta.licenseUploading||'Uploading…'):(meta.licenseUploadButton||'Upload PDF')}</button>
+    {selectedFile ? <span className="mhp-license-selected-file">{selectedFile.name}</span> : null}
     {uploadError ? <span className="mhp-license-upload-status mhp-license-upload-status--error">{uploadError}</span> : null}
    </div>
-   {loading ? <p className="sub">Loading uploaded documents…</p> : documents.length===0 ? <p className="sub">{meta.licenseDocumentsEmpty||'No licence PDF uploaded yet.'}</p> : <ul className="mhp-license-document-list">
-    {documents.map(doc=><li key={doc.id} className="mhp-license-document-item">
+   <p className="sub mhp-license-duplicate-hint">{meta.licenseUploadDuplicateHint||'Upload another document only if you are replacing or adding a newer certificate.'}</p>
+   {loading ? <p className="sub">Loading uploaded documents…</p> : documents.length===0 ? <p className="sub">{meta.licenseDocumentsEmpty||'No licence PDF uploaded yet.'}</p> : <>
+    <h4 className="mhp-license-list-title">{meta.licenseUploadListTitle||'Uploaded licence documents'}</h4>
+    <ul className="mhp-license-document-list">
+    {documents.map(doc=><li key={doc.id} className={'mhp-license-document-item'+(uploadSuccess?.documentId&&doc.id===uploadSuccess.documentId?' mhp-license-document-item--recent':'')}>
      <div className="mhp-license-document-title">{doc.originalFilename||'Licence document.pdf'}</div>
      <div className="mhp-license-document-meta">
       <span>{meta.licenseDocumentStatusLabel||'Document status'}: {mhpStatusLabel(doc.documentStatus)}</span>
@@ -4358,7 +4408,8 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta}){
      </div>
      {doc.extractionStatus==='pending' ? <p className="sub mhp-license-extraction-note">{meta.licenseExtractionComingNext||'AI extraction coming next'}</p> : null}
     </li>)}
-   </ul>}
+   </ul>
+   </>}
   </>}
  </div>;
 }
