@@ -338,6 +338,26 @@ SQL/storage contract (owner-applied, no runtime yet): [supabase-mhp-profile-imag
 
 ---
 
+## 12. Private source photo upload (PR #107)
+
+MHPs can upload a **private source photo** from Edit profile in the MHP portal (`/counsellor.html`).
+
+| Rule | Detail |
+|------|--------|
+| Visibility | Source photo is **private** — not shown to parents/clients |
+| Preview | Logged-in MHP sees a **temporary signed URL** preview only |
+| Publication | Upload does **not** publish profile or activate membership |
+| Photo URL field | **Legacy/transitional** — upload does not copy into `photo_url` |
+| Owner review | Image approval remains a **future PR** (generation + owner admin review) |
+
+**Owner SQL prerequisite:** Apply [supabase-mhp-profile-image-upload-policies.sql](../supabase-mhp-profile-image-upload-policies.sql) after PR #106 table contract. Both buckets must remain **private**.
+
+**File rules:** JPG, PNG, or WebP up to 2 MB.
+
+See [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) for the full image lifecycle.
+
+---
+
 ## Related docs
 
 - [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence

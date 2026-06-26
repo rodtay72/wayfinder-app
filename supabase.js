@@ -298,6 +298,10 @@ const mhpProfileWriteSafe = async ({ method, userId, authSession, context, body,
 
 const MHP_LICENSE_BUCKET = 'professional-license-documents';
 const MHP_LICENSE_MAX_BYTES = 10 * 1024 * 1024;
+const MHP_SOURCE_PHOTO_BUCKET = 'professional-profile-image-sources';
+const MHP_SOURCE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+const MHP_SOURCE_PHOTO_ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MHP_PROFILE_IMAGE_SIGNED_URL_SECONDS = 600;
 const MHP_EXTRACTION_REQUEST_TIMEOUT_MS = 25000;
 
 const normalizeMhpLicenseDocumentRow = (row) => {
@@ -341,6 +345,22 @@ const mhpLicenseDocumentInsertSafe = async ({ userId, authSession, context, body
   unavailableCheck: isMhpProfileContractUnavailable
 });
 
+const isMhpProfileImageStorageUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('bucket not found')) return true;
+  if (text.includes('professional-profile-image-sources')) return true;
+  if (text.includes('row-level security')) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('mental_health_professional_profile_images') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  return false;
+};
+
 const isMhpLicenseStorageUnavailable = (status, responseText) => {
   if (isMhpProfileContractUnavailable(status, responseText)) return true;
   const text = String(responseText || '').toLowerCase();
@@ -355,6 +375,126 @@ const isMhpLicenseStorageUnavailable = (status, responseText) => {
     text.includes('row-level security')
   )) return true;
   return false;
+};
+
+const encodeStorageObjectPath = (storagePath) => String(storagePath || '')
+  .split('/')
+  .filter(Boolean)
+  .map((part) => encodeURIComponent(part))
+  .join('/');
+
+const mhpSourcePhotoExtension = (mimeType) => {
+  const normalized = String(mimeType || '').toLowerCase();
+  if (normalized === 'image/jpeg') return 'jpg';
+  if (normalized === 'image/png') return 'png';
+  if (normalized === 'image/webp') return 'webp';
+  return null;
+};
+
+const buildMhpSourcePhotoStoragePath = (userId, mimeType) => {
+  const ext = mhpSourcePhotoExtension(mimeType);
+  if (!userId || !ext) return null;
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const suffix = Math.random().toString(36).slice(2, 10);
+  return `${userId}/${stamp}-${suffix}.${ext}`;
+};
+
+const normalizeMhpProfileImageRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    id: row.id || null,
+    userId: row.user_id || row.userId || null,
+    imageKind: row.image_kind || row.imageKind || '',
+    storageBucket: row.storage_bucket || row.storageBucket || '',
+    storagePath: row.storage_path || row.storagePath || '',
+    mimeType: row.mime_type || row.mimeType || '',
+    fileSizeBytes: row.file_size_bytes ?? row.fileSizeBytes ?? null,
+    portraitStyle: row.portrait_style || row.portraitStyle || null,
+    imageStatus: row.image_status || row.imageStatus || '',
+    createdAt: row.created_at || row.createdAt || null,
+    selectedAt: row.selected_at || row.selectedAt || null,
+    approvedBy: row.approved_by || row.approvedBy || null,
+    approvedAt: row.approved_at || row.approvedAt || null
+  };
+};
+
+const uploadMhpSourcePhotoSafe = async ({ userId, storagePath, file, mimeType, authSession, context }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const encodedPath = encodeStorageObjectPath(storagePath);
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${MHP_SOURCE_PHOTO_BUCKET}/${encodedPath}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': mimeType || 'application/octet-stream',
+        'x-upsert': 'false'
+      },
+      body: file
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isMhpProfileImageStorageUnavailable(response.status, responseText)) {
+        AuthDebug.log('[db] MHP source photo storage unavailable:', { context, status: response.status });
+        return { ok: false, unavailable: true, responseText };
+      }
+      AuthDebug.log('[db] MHP source photo storage upload failed:', { context, status: response.status, responseText });
+      return { ok: false, unavailable: false, responseText };
+    }
+    return { ok: true, unavailable: false, responseText: null };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isMhpProfileImageStorageUnavailable(0, message)) {
+      return { ok: false, unavailable: true, responseText: message };
+    }
+    AuthDebug.log('[db] MHP source photo storage upload exception:', { context, message });
+    return { ok: false, unavailable: false, responseText: message };
+  }
+};
+
+const createMhpProfileImageSignedUrlSafe = async ({ userId, bucket, storagePath, authSession, context, expiresInSeconds = MHP_PROFILE_IMAGE_SIGNED_URL_SECONDS }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const encodedPath = encodeStorageObjectPath(storagePath);
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucket}/${encodedPath}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ expiresIn: expiresInSeconds })
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isMhpProfileImageStorageUnavailable(response.status, responseText)) {
+        return { ok: false, unavailable: true, signedUrl: null, responseText };
+      }
+      AuthDebug.log('[db] MHP profile image signed URL failed:', { context, status: response.status, responseText });
+      return { ok: false, unavailable: false, signedUrl: null, responseText };
+    }
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      data = null;
+    }
+    const relative = data?.signedURL || data?.signedUrl || null;
+    if (!relative) {
+      return { ok: false, unavailable: false, signedUrl: null, responseText };
+    }
+    const signedUrl = relative.startsWith('http')
+      ? relative
+      : `${SUPABASE_URL}/storage/v1${relative.startsWith('/') ? relative : `/${relative}`}`;
+    return { ok: true, unavailable: false, signedUrl, responseText: null };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isMhpProfileImageStorageUnavailable(0, message)) {
+      return { ok: false, unavailable: true, signedUrl: null, responseText: message };
+    }
+    AuthDebug.log('[db] MHP profile image signed URL exception:', { context, message });
+    return { ok: false, unavailable: false, signedUrl: null, responseText: message };
+  }
 };
 
 const uploadMhpLicensePdfSafe = async ({ userId, storagePath, file, authSession, context }) => {
@@ -3075,5 +3215,139 @@ const DB = {
       };
     }
     return { ok: true, unavailable: false, forbidden: false };
+  },
+
+  uploadMhpSourcePhoto: async (userId, file, authSession = null) => {
+    if (!userId || !file) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'missingFile' };
+    }
+    const mimeType = String(file.type || '').toLowerCase();
+    if (!MHP_SOURCE_PHOTO_ALLOWED_MIME.has(mimeType)) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'unsupportedType' };
+    }
+    if (file.size > MHP_SOURCE_PHOTO_MAX_BYTES) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'tooLarge' };
+    }
+    const storagePath = buildMhpSourcePhotoStoragePath(userId, mimeType);
+    if (!storagePath) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'invalidPath' };
+    }
+    const uploadResult = await uploadMhpSourcePhotoSafe({
+      userId,
+      storagePath,
+      file,
+      mimeType,
+      authSession,
+      context: 'uploadMhpSourcePhoto storage'
+    });
+    if (uploadResult.unavailable) {
+      return { ok: false, unavailable: true, storagePath: null, errorCode: 'storageUnavailable' };
+    }
+    if (!uploadResult.ok) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'storageUpload' };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      storagePath,
+      mimeType,
+      fileSizeBytes: file.size,
+      errorCode: null
+    };
+  },
+
+  insertMhpProfileImageMetadata: async (userId, metadata, authSession = null) => {
+    const storagePath = String(metadata?.storagePath || '').trim();
+    const storageBucket = String(metadata?.storageBucket || MHP_SOURCE_PHOTO_BUCKET).trim();
+    const imageKind = String(metadata?.imageKind || 'source_photo').trim();
+    const imageStatus = String(metadata?.imageStatus || 'uploaded').trim();
+    if (!userId || !storagePath) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    const result = await reviewGrantWriteSafe({
+      method: 'POST',
+      userId,
+      authSession,
+      context: 'insertMhpProfileImageMetadata',
+      table: 'mental_health_professional_profile_images',
+      unavailableCheck: isMhpProfileImageStorageUnavailable,
+      body: {
+        user_id: userId,
+        image_kind: imageKind,
+        storage_bucket: storageBucket,
+        storage_path: storagePath,
+        mime_type: metadata?.mimeType || null,
+        file_size_bytes: metadata?.fileSizeBytes ?? null,
+        portrait_style: metadata?.portraitStyle ?? null,
+        image_status: imageStatus,
+        selected_at: null,
+        approved_by: null,
+        approved_at: null
+      }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, record: null };
+    }
+    if (!result.ok || !(result.rows || []).length) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      record: normalizeMhpProfileImageRow(result.rows[0])
+    };
+  },
+
+  listMyMhpProfileImages: async (userId, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false, rows: [] };
+    }
+    const result = await fetchReviewGrantsSafe({
+      table: 'mental_health_professional_profile_images',
+      query: {
+        select: 'id,user_id,image_kind,storage_bucket,storage_path,mime_type,file_size_bytes,portrait_style,image_status,created_at,selected_at,approved_by,approved_at',
+        user_id: `eq.${userId}`,
+        order: 'created_at.desc'
+      },
+      userId,
+      authSession,
+      context: 'listMyMhpProfileImages',
+      unavailableCheck: isMhpProfileImageStorageUnavailable
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, rows: [] };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, rows: [] };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      rows: (result.rows || []).map(normalizeMhpProfileImageRow).filter(Boolean)
+    };
+  },
+
+  createMhpProfileImageSignedUrl: async (userId, bucket, path, authSession = null, expiresInSeconds = MHP_PROFILE_IMAGE_SIGNED_URL_SECONDS) => {
+    const storageBucket = String(bucket || '').trim();
+    const storagePath = String(path || '').trim();
+    if (!userId || !storageBucket || !storagePath) {
+      return { ok: false, unavailable: false, signedUrl: null, expired: false };
+    }
+    const result = await createMhpProfileImageSignedUrlSafe({
+      userId,
+      bucket: storageBucket,
+      storagePath,
+      authSession,
+      context: 'createMhpProfileImageSignedUrl',
+      expiresInSeconds
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, signedUrl: null, expired: false };
+    }
+    if (!result.ok || !result.signedUrl) {
+      const expired = String(result.responseText || '').toLowerCase().includes('expired');
+      return { ok: false, unavailable: false, signedUrl: null, expired };
+    }
+    return { ok: true, unavailable: false, signedUrl: result.signedUrl, expired: false };
   }
 };

@@ -702,6 +702,16 @@
   .owner-admin-empty{padding:24px;text-align:center;}
   .owner-admin-empty h2{margin-bottom:8px;font-size:18px;}
   .owner-admin-banner{margin-bottom:14px;}
+  .mhp-source-photo-section{margin:0 0 18px;padding:16px 18px;border:1px solid #E0E8DC;border-radius:10px;background:#FAFCFA;}
+  .mhp-source-photo-title{margin:0 0 6px;font-size:16px;color:#40514b;}
+  .mhp-source-photo-helper{margin:0 0 12px;}
+  .mhp-source-photo-preview-wrap{margin:0 0 12px;}
+  .mhp-source-photo-preview{display:block;max-width:180px;max-height:180px;border-radius:12px;border:1px solid #E0E8DC;object-fit:cover;background:#fff;}
+  .mhp-source-photo-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .mhp-source-photo-input{display:none;}
+  .mhp-source-photo-status{margin:10px 0 0;font-size:13px;color:var(--sage-deep);font-weight:600;}
+  .mhp-source-photo-status--error{color:#8A1F1F;font-weight:500;}
+  .mhp-photo-url-legacy-note{display:block;margin-top:6px;font-size:12px;line-height:1.45;color:#777;}
   @media(max-width:720px){
     .owner-admin-mhp-meta{grid-template-columns:1fr;}
     .owner-admin-mhp-actions .btn{width:100%;}
