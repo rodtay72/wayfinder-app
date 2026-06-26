@@ -1,56 +1,72 @@
 # Wayfinder mobile home-screen icons
 
-This document explains how Wayfinder mobile home-screen and PWA icon assets work, and how to replace them later without touching app logic.
+Wayfinder has **two separate user-facing interfaces**. Each portal has its own home-screen name, manifest, and icon folder so Add to Home Screen installs the correct entry point.
 
-## Files that control the mobile home-screen icon
+## 1. Parent interface
 
-Root-level PNG files (stable filenames):
+| Item | Path / value |
+|------|----------------|
+| Entry page | `/index.html` |
+| Home-screen name | **Wayfinder Parent** |
+| Manifest | `/manifest-parent.webmanifest` |
+| Icons folder | `/icons/parent/` |
 
-| File | Purpose |
-|------|---------|
-| `icon-512.png` | PWA manifest large icon |
-| `icon-192.png` | PWA manifest standard icon |
-| `apple-touch-icon.png` | iOS / Apple Add to Home Screen |
-| `favicon-32.png` | Browser tab icon (32 px), optional |
-| `favicon-16.png` | Browser tab icon (16 px), optional |
+Required PNG files:
 
-Related static metadata:
+| File | Size |
+|------|------|
+| `icons/parent/icon-512.png` | 512 × 512 |
+| `icons/parent/icon-192.png` | 192 × 192 |
+| `icons/parent/apple-touch-icon.png` | 180 × 180 |
 
-| File | Purpose |
-|------|---------|
-| `site.webmanifest` | Web app manifest (`name`, `theme_color`, icon list) |
-| `index.html` | Parent portal `<head>` links |
-| `counsellor.html` | Mental Health Professional workspace `<head>` links |
-| `verify.html` | Email verification page `<head>` links |
+Linked from `index.html` only.
 
-Icons are **not** embedded in `app.js`, `content.js`, `images.js`, CSS, or HTML as base64. They are ordinary PNG files at the repo root.
+## 2. Counsellor / Mental Health Professional interface
 
-## Required dimensions
+| Item | Path / value |
+|------|----------------|
+| Entry page | `/counsellor.html` |
+| Home-screen name | **Wayfinder MHP** |
+| Manifest | `/manifest-counsellor.webmanifest` |
+| Icons folder | `/icons/counsellor/` |
 
-- `icon-512.png` — **512 × 512** px
-- `icon-192.png` — **192 × 192** px
-- `apple-touch-icon.png` — **180 × 180** px
-- `favicon-32.png` — **32 × 32** px (if used)
-- `favicon-16.png` — **16 × 16** px (if used)
+Required PNG files:
 
-Current design uses Wayfinder brand colours: soft cream background (`#F7F4EF`) and sage/forest mark (`#2f473d`) with a simple **W** motif. No photos, personal data, or clinical imagery.
+| File | Size |
+|------|------|
+| `icons/counsellor/icon-512.png` | 512 × 512 |
+| `icons/counsellor/icon-192.png` | 192 × 192 |
+| `icons/counsellor/apple-touch-icon.png` | 180 × 180 |
 
-## How to change the icon later
+Linked from `counsellor.html` only.
 
-1. Export your new design at the sizes above.
-2. Replace the PNG files using the **exact same filenames** in the repository root.
-3. Commit only the replaced PNG files (and update `site.webmanifest` only if filenames or sizes change).
-4. Redeploy the app.
-5. On devices that already have a home-screen shortcut, hard refresh the site or remove and re-add the shortcut if the old icon is cached.
+Internal Supabase role remains `counsellor`. **Wayfinder MHP** is the user-facing home-screen label only.
+
+## 3. Verify page (shared utility)
+
+`verify.html` is not a main install target. It may use generic root favicon and theme metadata only. It does **not** link a portal manifest or override either install identity.
+
+Optional shared browser favicons at repo root:
+
+| File | Size |
+|------|------|
+| `favicon-32.png` | 32 × 32 |
+| `favicon-16.png` | 16 × 16 |
+
+## Design notes
+
+- PNG files only — no base64 in HTML, CSS, or JavaScript.
+- No icon data in `app.js`, `content.js`, or `images.js`.
+- Simple brand mark: soft cream background (`#F7F4EF`), sage/forest rounded shape, **W** motif.
+- No parent/child photos, personal data, or clinical imagery.
+
+## How to replace icons later
+
+1. Export your new design at the sizes above for the portal you are updating (**parent** or **counsellor**).
+2. Replace the PNG files using the **exact same filenames** in `icons/parent/` or `icons/counsellor/`.
+3. Update the matching manifest only if filenames or sizes change.
+4. Commit the replaced PNG files (and manifest if needed), redeploy, then hard refresh or remove and re-add the home-screen shortcut if the old icon is cached.
 
 ## Do not change for icon updates alone
 
-Do **not** edit these areas just to change icons:
-
-- Auth, Supabase, SQL, or RLS
-- `app.js` journal, dashboard, profile, invite, or role logic
-- Parent ID / Child ID generation
-- Membership activation or public profile publication
-- ALIGN/CAB product flows
-
-Icon updates should remain static asset replacements plus optional manifest/HTML metadata if paths change.
+Do not edit auth, Supabase, SQL, RLS, `app.js` journal/dashboard/profile/invite logic, Parent ID / Child ID generation, membership activation, or public profile publication just to change icons.
