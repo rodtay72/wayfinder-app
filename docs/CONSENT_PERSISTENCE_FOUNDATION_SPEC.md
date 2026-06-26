@@ -48,6 +48,19 @@ This document is a **foundation spec** for a future implementation sequence.
 
 ---
 
+## Implementation status
+
+| Phase | Status |
+|-------|--------|
+| PR #101 — Foundation spec | Complete — this document |
+| PR #102 — SQL/RLS contract | [`supabase-consent-records.sql`](../supabase-consent-records.sql) — **owner-applied only** |
+| Future runtime PR | Not started — `supabase.js` reads/writes, UI, graceful dashboard degradation |
+| Revocation RPC / UPDATE policy | Deferred — later PR after owner decides revocation UX (§11) |
+
+§4 proposed record shape and §6 RLS requirements are **implemented in the SQL contract (PR #102)** for table/grants/policies only. No app behaviour changes until SQL is owner-applied and a runtime PR merges.
+
+---
+
 ## 3. Consent types to separate
 
 These consent/acknowledgement types must remain **distinct**. They must **not** be collapsed into one vague “I agree”.
@@ -71,7 +84,7 @@ Each type should have its own:
 
 ## 4. Proposed consent record shape
 
-**Draft only — not implemented.** Future SQL PR should review field names, enums, and indexes.
+**Implemented in SQL contract (PR #102)** — [`supabase-consent-records.sql`](../supabase-consent-records.sql). Owner-applied in Supabase; not yet wired to runtime.
 
 | Field | Type (proposed) | Notes |
 |-------|-----------------|-------|
@@ -110,7 +123,7 @@ Consent is **not** a child-risk label, diagnosis field, or behaviour score.
 
 ## 6. RLS design requirements (future SQL PR)
 
-Future SQL/RLS PR must satisfy:
+**Implemented in SQL contract (PR #102)** for SELECT/INSERT own rows only. UPDATE/revocation deferred.
 
 | Requirement | Detail |
 |-------------|--------|

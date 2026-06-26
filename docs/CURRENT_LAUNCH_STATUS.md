@@ -75,12 +75,14 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 |----------------|---------|--------|
 | Issue #52 parent/counsellor feedback workflow | Per-entry counsellor response flow, parent mark-read flow, counsellor response status badges, and Parent Feedback Library merged and owner-verified through PR #69 | Monitoring / verified |
 | Issue #71 MHP onboarding / invite | Owner smoke **PASS** (C6f); C6d/C6e SQL owner-applied and verified; ready to close Issue #71 | Ready to close |
-| PR #101 consent persistence foundation | Docs/spec only — [CONSENT_PERSISTENCE_FOUNDATION_SPEC.md](./CONSENT_PERSISTENCE_FOUNDATION_SPEC.md); no runtime/SQL yet | In flight |
+| PR #101 consent persistence foundation | Spec merged — [CONSENT_PERSISTENCE_FOUNDATION_SPEC.md](./CONSENT_PERSISTENCE_FOUNDATION_SPEC.md) | Complete |
+| PR #102 consent persistence SQL/RLS | SQL contract — [supabase-consent-records.sql](../supabase-consent-records.sql); owner-applied after merge; no runtime yet | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
 
-- **Consent persistence runtime** — spec in PR #101; **not implemented** (no tables, no UI, no persisted signup acknowledgement)
+- **Consent SQL contract (PR #102)** — file ready after merge; **owner must apply** [supabase-consent-records.sql](../supabase-consent-records.sql) in Supabase SQL Editor
+- **Consent persistence runtime** — **not implemented** (no `supabase.js` helpers, no UI, no browser writes, no persisted signup acknowledgement)
 - Mandatory research consent governance (runtime)
 - Questionnaire UI, scoring, or response storage in app
 - DISC profile persistence/display fix
