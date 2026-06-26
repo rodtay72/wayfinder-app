@@ -116,9 +116,9 @@ const ACTIVITY_EVENTS_PAGE = {
 };
 
 const PARENT_REVIEW_SHARING = {
-  title: "Share for counsellor review",
-  subtitle: "You choose which journal or Decode entries a counsellor may review. Sharing is time-limited and you can revoke access.",
-  setupUnavailable: "Counsellor review sharing is not ready yet. The database setup still needs to be completed.",
+  title: "Share for Mental Health Professional review",
+  subtitle: "You choose which journal or Decode entries a Mental Health Professional may review. Sharing is time-limited and you can revoke access.",
+  setupUnavailable: "Mental Health Professional review sharing is not ready yet. The database setup still needs to be completed.",
   counsellorSelectLabel: "Choose your Mental Health Professional",
   counsellorSelectPlaceholder: "Select a practitioner…",
   counsellorSelectLoading: "Loading practitioners…",
@@ -128,7 +128,7 @@ const PARENT_REVIEW_SHARING = {
   consentExpiryNotice: "Shared access lasts 30 days unless you revoke it earlier.",
   consentVersion: "2026-06-1",
   consentTitle: "Consent to share selected reflections",
-  consentBody: "I understand that the selected journal and Decode reflections may be read by the counsellor I identify for up to 30 days. These reflections are for ALIGN/CAB review support — not child diagnosis, behaviour labelling, or scoring. I may revoke access before expiry.",
+  consentBody: "I understand that the selected journal and Decode reflections may be read by the Mental Health Professional I identify for up to 30 days. These reflections are for ALIGN/CAB review support — not child diagnosis, behaviour labelling, or scoring. I may revoke access before expiry.",
   consentCheckbox: "I consent to share the selected entries under these terms.",
   selectEntriesLabel: "Select entries to share",
   previewLabel: "What will be shared",
