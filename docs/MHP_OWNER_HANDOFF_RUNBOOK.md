@@ -323,7 +323,24 @@ Publish + activate and Suspend require confirmation in the UI. MHPs **cannot** s
 
 ---
 
+## 11. MHP profile images (PR #106)
+
+Photo URL on the MHP profile draft is **not** the production image workflow. See [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) for the preferred model:
+
+- Private **source photo** upload (future PR)
+- **Wayfinder-style illustrated portrait** generation/selection (future PR)
+- **Owner/admin image approval** alongside profile publication (future PR)
+- Parent/client sees **approved portrait only** for published + active MHPs (future PR)
+
+SQL/storage contract (owner-applied, no runtime yet): [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-storage.sql)
+
+**Not implemented in PR #106:** upload UI, image generation, admin image review UI, public profile directory image display.
+
+---
+
 ## Related docs
+
+- [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence
 
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — living launch snapshot
 - [MOBILE_APP_ICONS.md](./MOBILE_APP_ICONS.md) — Parent vs MHP install identities
