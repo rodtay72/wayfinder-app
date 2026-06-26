@@ -130,6 +130,27 @@ These items do **not** block owner handoff of the MHP onboarding/invite flow doc
 
 ---
 
+## Owner-applied SQL — practitioner selector names (Issue #71 C6d)
+
+**PR #95** changed frontend selector wording and fallback display only. Real Mental Health Professional names in the parent practitioner dropdown require the owner-applied SQL patch:
+
+- File: [supabase-list-available-counsellors-mhp-names.sql](../supabase-list-available-counsellors-mhp-names.sql)
+- Run manually in the Supabase SQL Editor (not auto-applied on deploy)
+
+After applying, verify in SQL Editor:
+
+```sql
+select * from public.list_available_counsellors();
+```
+
+**Expected:** `C-00001` returns `full_name` **Rodney Tay** (or the populated MHP profile name) when that profile row exists. Other rows may show professional title or institution name, or fall back to `Mental Health Professional C-XXXXX`.
+
+**Must not appear:** emails, Supabase UUIDs, invite tokens, licence files, storage paths, extraction JSON, or other private fields.
+
+This selector is for parent-directed review sharing — not the public professional directory. It does **not** require `profile_visible = true` or `profile_status = 'published'`. It does **not** activate membership or publish profiles.
+
+---
+
 ## Related docs
 
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — living launch snapshot
