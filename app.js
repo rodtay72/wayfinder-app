@@ -2200,28 +2200,83 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
  </div>;
 }
 
+const GARDEN_ALIGN_RANK={A:1,L:2,I:3,G:4,N:5};
+const GARDEN_STAGE_BY_RANK={
+ 0:{visual:'seed',label:'Ready to be tended'},
+ 1:{visual:'sprout',label:'Awareness is opening'},
+ 2:{visual:'leaves',label:'Curiosity is growing'},
+ 3:{visual:'leaves',label:'Connection is forming'},
+ 4:{visual:'bud',label:'A growth practice is being tended'},
+ 5:{visual:'bloom',label:'Repair is being practised'}
+};
+const gardenEntryChildId=(entry)=>{
+ const bag=entry&&typeof entry==='object'?entry:{};
+ const data=bag.data&&typeof bag.data==='object'?bag.data:{};
+ return String(
+  bag.childId||bag.child_id||bag.dyadId||bag.dyad_id||
+  data.childId||data.child_id||data.dyadId||data.dyad_id||''
+ ).trim();
+};
+const gardenActivityPhaseLetter=(entry)=>{
+ if(isBehaviourDecodeEntry(entry)) return null;
+ const bag=entry&&typeof entry==='object'?entry:{};
+ const data=bag.data&&typeof bag.data==='object'?bag.data:{};
+ const raw=String(bag.phase||bag.phaseKey||data.phase||data.phaseKey||'').trim().toUpperCase();
+ return ['A','L','I','G','N'].includes(raw)?raw:null;
+};
+const gardenDecodeExploredLetters=(entry)=>{
+ if(!isBehaviourDecodeEntry(entry)) return [];
+ const align=safeObject(entry?.align)||safeObject(entry?.data?.align);
+ const reminder=decodeReminderFromEntry(entry);
+ const letters=[];
+ const hasText=(v)=>!!String(v||'').trim();
+ const hasList=(v)=>decodeList(v).length>0;
+ if(hasText(reminder.observed_behaviour||reminder.moment_noticed)||hasList(reminder.awareness_signals||reminder.possible_signal_explored)) letters.push('A');
+ if(hasList(reminder.possible_need_worth_staying_curious_about)||hasList(safeObject(align.locate).possible_child_need)) letters.push('L');
+ if(hasText(reminder.thinking)||hasText(reminder.feelings)||hasList(reminder.behaviour_what_i_did)) letters.push('I');
+ if(hasList(reminder.stabilising_response_to_practise)||hasList(safeObject(align.growth).growth_capacity)) letters.push('G');
+ if(hasText(reminder.next_action)||hasText(reminder.repair_intention)||hasText(reminder.what_i_will_observe_next_time)) letters.push('N');
+ return letters;
+};
+const deriveGardenEvidenceForChild=(childId,entries)=>{
+ const target=String(childId||'').trim();
+ const matched=(entries||[]).filter(e=>gardenEntryChildId(e)===target);
+ const activityPhases=[...new Set(matched.map(gardenActivityPhaseLetter).filter(Boolean))];
+ const decodeExplored=[...new Set(matched.flatMap(gardenDecodeExploredLetters))];
+ let rank=0;
+ activityPhases.forEach(phase=>{rank=Math.max(rank,GARDEN_ALIGN_RANK[phase]||0);});
+ // Decode may gently suggest awareness explored only; it does not advance beyond sprout without activity practice.
+ if(rank===0&&decodeExplored.includes('A')) rank=1;
+ return {matched,activityPhases,decodeExplored,rank};
+};
+const gardenStageFromEvidence=(evidence)=>{
+ const rank=evidence?.rank||0;
+ const meta=GARDEN_STAGE_BY_RANK[rank]||GARDEN_STAGE_BY_RANK[0];
+ return {visual:meta.visual,label:meta.label,rank};
+};
+const gardenDebugEnabled=()=>{try{return localStorage.getItem('wayfinder_debug_garden')==='1';}catch{return false;}};
+const logGardenDebug=(childId,evidence,stage)=>{
+ if(!gardenDebugEnabled()) return;
+ console.log('[garden]',{
+  child_id:childId,
+  matched_entry_count:evidence.matched.length,
+  activity_phases:evidence.activityPhases,
+  decode_explored:evidence.decodeExplored,
+  garden_stage:stage.visual,
+  garden_rank:stage.rank
+ });
+};
+
 function RelationshipGarden({dyads,entries}){
  const PLANT_COLORS=['#7FA87A','#BF8066','#8880A0','#5888B4'];
  const colorOf=(id)=>{let h=0;for(let j=0;j<id.length;j++)h=(h*31+id.charCodeAt(j))&0xffff;return PLANT_COLORS[h%PLANT_COLORS.length];};
  const stageOf=(dyad)=>{
   const childId=String(dyad.childId||dyad.child_id||'');
-  if(!childId) return 'seed';
-  const childEntries=(entries||[]).filter(e=>{
-   const eid=String(e?.childId||e?.child_id||e?.dyadId||e?.dyad_id||'');
-   return eid&&eid===childId;
-  });
-  if(childEntries.length===0) return 'seed';
-  // Decode entries reveal ALIGN stage awareness — they are not completed ALIGN practice.
-  // Leaves/Bud/Bloom require explicit ALIGN-stage tags on activity entries (not yet implemented).
-  // Until stage-tagged activities exist, any entry (decode or activity) maps to Sprout at most.
-  const stageTag=(e)=>String(e?.alignStage||e?.align_stage||'').toLowerCase();
-  const hasTag=(s)=>childEntries.some(e=>stageTag(e)===s);
-  if(['a','l','i','g','n'].every(s=>hasTag(s))) return 'bloom';
-  if(hasTag('i')||hasTag('g')) return 'bud';
-  if(hasTag('l')) return 'leaves';
-  return 'sprout';
+  const evidence=deriveGardenEvidenceForChild(childId,entries);
+  const stage=gardenStageFromEvidence(evidence);
+  logGardenDebug(childId,evidence,stage);
+  return stage;
  };
- const STAGE_LABELS={seed:'Seed planted',sprout:'Awareness is opening',leaves:'Locating the need',bud:'Growth is forming',bloom:'Repair is being practised'};
  const renderPlant=(stage,color)=><svg viewBox="0 0 100 140" className="garden-pot-svg" aria-hidden="true" focusable="false">
   <path d="M 22 92 L 29 130 L 71 130 L 78 92 Z" fill="#C88066" stroke="#A86850" strokeWidth="1"/>
   <rect x="17" y="83" width="66" height="9" rx="4" fill="#D49070" stroke="#A86850" strokeWidth="1"/>
@@ -2265,11 +2320,11 @@ function RelationshipGarden({dyads,entries}){
     const childId=String(dyad.childId||dyad.child_id||'');
     const color=colorOf(childId||String(i));
     const stage=stageOf(dyad);
-    const stageLabel=STAGE_LABELS[stage];
+    const stageLabel=stage.label;
     const meta=[dyad.childGender,ageFrom(dyad.childDob,null)].filter(Boolean).join(' · ');
     return <div key={childId||i} className="garden-pot" role="listitem" style={{'--pot-i':i}}
      aria-label={'Relationship tended with Child ID '+childId+': '+stageLabel}>
-     {renderPlant(stage,color)}
+     {renderPlant(stage.visual,color)}
      <div className="garden-pot-id">Child ID: {childId||'—'}</div>
      {meta&&<div className="garden-pot-meta">{meta}</div>}
      <div className="garden-pot-stage">{stageLabel}</div>
