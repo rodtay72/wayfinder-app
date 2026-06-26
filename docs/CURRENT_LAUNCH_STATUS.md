@@ -75,12 +75,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 |----------------|---------|--------|
 | Issue #52 parent/counsellor feedback workflow | Per-entry counsellor response flow, parent mark-read flow, counsellor response status badges, and Parent Feedback Library merged and owner-verified through PR #69 | Monitoring / verified |
 | Issue #71 MHP onboarding / invite | Owner smoke **PASS** (C6f); C6d/C6e SQL owner-applied and verified; ready to close Issue #71 | Ready to close |
+| PR #101 consent persistence foundation | Docs/spec only — [CONSENT_PERSISTENCE_FOUNDATION_SPEC.md](./CONSENT_PERSISTENCE_FOUNDATION_SPEC.md); no runtime/SQL yet | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
 
-- Consent persistence (Phase 7D / 5C–5D — see governance plans)
-- Mandatory research consent governance
+- **Consent persistence runtime** — spec in PR #101; **not implemented** (no tables, no UI, no persisted signup acknowledgement)
+- Mandatory research consent governance (runtime)
 - Questionnaire UI, scoring, or response storage in app
 - DISC profile persistence/display fix
 - HIPAA / security-readiness audit (readiness review only — not a compliance claim)
