@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-26
 
-**Last verified merge:** PR #69 — Parent Feedback Library; parent feedback remains accessible after mark-as-read and dashboard unread notice clears
+**Last verified merge:** PR #97 — Issue #71 C6e complete-profile-only MHP practitioner selector SQL (owner smoke pass recorded in C6f)
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -47,19 +47,20 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 ## Issue #71 — Mental Health Professional onboarding / invite (launch notes)
 
-**Status:** Pending owner production smoke / closure decision — handoff runbook: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md); closure checklist: [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) (C6b added)
+**Status:** **Owner smoke passed / ready to close Issue #71** — handoff runbook: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md); closure checklist: [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) (C6f owner smoke pass recorded)
 
 | Item | Status |
 |------|--------|
-| MHP onboarding / invite flow | Substantially completed on Issue #71 track — **not closed until owner smoke pass** |
+| MHP onboarding / invite flow | **Owner smoke passed** — ready to close Issue #71 |
 | Account enablement | **Owner/admin controlled** — no public MHP signup |
 | MHP profile publication / membership activation | **Guarded** — draft / pending review unless owner explicitly activates |
 | Parent invite | Parent signup link share only |
 | MHP colleague invite | Admin-mediated request only — no automatic account creation |
 | Mobile install identities | Separate **Wayfinder Parent** and **Wayfinder MHP** home-screen names and icons |
-| Production smoke / closure | **Pending owner smoke** — see [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) |
-| Practitioner selector names (C6d) | Owner SQL applied — safe MHP name fields in `list_available_counsellors()` |
-| Practitioner selector complete only (C6e) | Owner SQL pending after merge — apply [supabase-list-available-counsellors-mhp-complete-only.sql](../supabase-list-available-counsellors-mhp-complete-only.sql) to hide incomplete MHP rows |
+| Production smoke / closure | **PASS** — see [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) |
+| Practitioner selector (PR #95) | Merged — MHP/practitioner wording and display fallback |
+| Practitioner selector names (C6d) | Owner SQL applied and verified — safe MHP name fields in `list_available_counsellors()` |
+| Practitioner selector complete only (C6e) | Owner SQL applied and verified — incomplete MHP rows hidden; completed profiles only |
 | Android icon cache on some devices | **Non-blocking follow-up** — static asset/cache; see [MOBILE_APP_ICONS.md](./MOBILE_APP_ICONS.md) |
 
 ## In flight
@@ -67,7 +68,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
 | Issue #52 parent/counsellor feedback workflow | Per-entry counsellor response flow, parent mark-read flow, counsellor response status badges, and Parent Feedback Library merged and owner-verified through PR #69 | Monitoring / verified |
-| Issue #71 MHP onboarding / invite | C6b production smoke closure checklist added; pending owner production smoke / closure decision | Pending owner smoke |
+| Issue #71 MHP onboarding / invite | Owner smoke **PASS** (C6f); C6d/C6e SQL owner-applied and verified; ready to close Issue #71 | Ready to close |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
