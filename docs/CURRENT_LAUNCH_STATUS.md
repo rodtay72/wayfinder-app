@@ -63,6 +63,12 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Practitioner selector complete only (C6e) | Owner SQL applied and verified — incomplete MHP rows hidden; completed profiles only |
 | Android icon cache on some devices | **Non-blocking follow-up** — static asset/cache; see [MOBILE_APP_ICONS.md](./MOBILE_APP_ICONS.md) |
 
+## Parent App Version page (PR #100)
+
+- App Version notes scoped to **parent/client-visible UI/UX only** — MHP/admin/internal ops entries removed from the parent page.
+- **v0.4.2** Relationship Garden release note added (PR #99 garden evidence fix).
+- MHP onboarding (former v0.4.1), security-readiness, and future-research planning notes remain in ops/docs only, not on the parent App Version page.
+
 ## In flight
 
 | Branch / phase | Summary | Status |
