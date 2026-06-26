@@ -497,6 +497,16 @@ const APP_VERSION_PAGE = {
 
 const WAYFINDER_APP_VERSIONS = [
   {
+    id: "v0-4-3-privacy-acknowledgement-record",
+    version: "v0.4.3",
+    date: "June 2026",
+    status: "released",
+    tag: "Privacy",
+    title: "Privacy acknowledgement can now be saved",
+    body: "Wayfinder can now save a simple record that you have seen the current privacy and data-use notice. This supports transparency and parent choice. It does not change your journal, Child IDs, reflections, or how you use Decode and the Relationship Garden.",
+    parentAction: "When the privacy acknowledgement appears, review it and choose Acknowledge. You can keep using Wayfinder if saving the acknowledgement is temporarily unavailable."
+  },
+  {
     id: "v0-4-2-relationship-garden-growth-evidence",
     version: "v0.4.2",
     date: "June 2026",
@@ -701,6 +711,17 @@ const PDPA_SIGNUP_NOTICE = {
   uncheckedMessage: "Please read the privacy and data-use notice and confirm you understand it before creating your account."
 };
 
+const SIGNUP_PRIVACY_ACKNOWLEDGEMENT = {
+  title: "Privacy and data-use acknowledgement",
+  body: "Wayfinder keeps a record that you have seen the current privacy and data-use notice. This helps us keep parent choice and transparency clear. It does not change your journal, Child IDs, or reflections.",
+  button: "Acknowledge",
+  secondaryNote: "You can keep using Wayfinder while this is shown.",
+  successMessage: "Privacy acknowledgement saved.",
+  failureMessage: "We could not save this acknowledgement right now. You can keep using Wayfinder and try again later.",
+  fetchFailureMessage: "We could not verify your privacy acknowledgement right now. You can keep using Wayfinder and try again later.",
+  retryButton: "Try again"
+};
+
 // Export everything
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -729,6 +750,7 @@ if (typeof module !== 'undefined' && module.exports) {
     APP_VERSION_PAGE,
     WAYFINDER_APP_VERSIONS,
     PDPA_SIGNUP_NOTICE,
+    SIGNUP_PRIVACY_ACKNOWLEDGEMENT,
     MENTAL_HEALTH_PROFESSIONAL_ONBOARDING,
     PARENT_SIGNUP_INVITE,
     MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST
