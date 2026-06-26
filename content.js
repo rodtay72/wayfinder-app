@@ -483,6 +483,9 @@ const UI_TEXT = {
 // Workflow: before merging a user-facing PR, add or update an entry at the top of
 // WAYFINDER_APP_VERSIONS with parent-facing copy. Internal-only PRs: note in the PR
 // description that no App Version entry is needed.
+// App Version page is parent/client-facing.
+// Include only parent-visible UI/UX enhancements, privacy notices, or parent workflow improvements.
+// Do not include MHP workspace, admin, SQL/RLS/auth, ops, or internal-only release notes here.
 const APP_VERSION_PAGE = {
   title: "App Version",
   subtitle: "A parent-facing record of Wayfinder updates, privacy reminders, and planned improvements.",
@@ -494,14 +497,14 @@ const APP_VERSION_PAGE = {
 
 const WAYFINDER_APP_VERSIONS = [
   {
-    id: "v0-4-1-mhp-onboarding-invite",
-    version: "v0.4.1",
+    id: "v0-4-2-relationship-garden-growth-evidence",
+    version: "v0.4.2",
     date: "June 2026",
     status: "released",
-    tag: "Professional workspace",
-    title: "Mental Health Professional onboarding and invite flow",
-    body: "Parent invite sharing is clearer — you can share a parent signup link from your dashboard when you want another parent to join Wayfinder. Mental Health Professional accounts remain invitation and administrator controlled; there is no public professional signup. The professional profile review flow is safer and clearer, with details shown for review before you adjust or save. Parent and Mental Health Professional mobile shortcuts now have separate home-screen names so each portal installs with the right entry point.",
-    parentAction: "Use Invite another parent on your dashboard if helpful. If you are a Mental Health Professional colleague, use the admin-mediated invite request in the professional workspace — Wayfinder will guide you to contact the administrator."
+    tag: "Relationship Garden",
+    title: "Relationship Garden now reflects saved practice",
+    body: "Your Relationship Garden now responds more clearly to saved Wayfinder activities for each Child ID. Activity practice may gently move a relationship pot from Awareness toward curiosity, connection, growth practice, or repair. This is not a score, level, diagnosis, or sign that anything is complete — it is a quiet reflection of relationship tending through parent practice.",
+    parentAction: "After saving an activity for a child, return to the dashboard to see how that relationship pot may reflect the practice you are tending."
   },
   {
     id: "v0-4-0-events-listing",
@@ -562,26 +565,6 @@ const WAYFINDER_APP_VERSIONS = [
     title: "Clearer PDPA and research-use notice",
     body: "We are planning clearer consent and research-use notices before registration, so parents can understand what may be used, what is not used, and how anonymised or de-identified learning may support future improvements.",
     parentAction: "We will keep privacy, clarity, and parent choice at the centre."
-  },
-  {
-    id: "upcoming-security-review",
-    version: "Upcoming",
-    date: "Planned",
-    status: "planned",
-    tag: "Security review",
-    title: "HIPAA and security-readiness review",
-    body: "We are reviewing what additional safeguards would be needed if Wayfinder is used in healthcare or counselling contexts that require HIPAA or HIPAA-aligned protection. This is a readiness review, not a compliance claim.",
-    parentAction: "Security, privacy, and appropriate access controls will remain part of future planning."
-  },
-  {
-    id: "upcoming-research",
-    version: "Upcoming",
-    date: "Planned",
-    status: "planned",
-    tag: "Future research",
-    title: "Future parent reflection research",
-    body: "Wayfinder may later support research into parent reflection, emotional regulation, and repair. Any such use should be explained clearly, use anonymised or de-identified learning where appropriate, and respect parent choice.",
-    parentAction: "Future research features should be introduced with clear notice, consent, and privacy safeguards."
   }
 ];
 
