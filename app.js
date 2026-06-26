@@ -2286,6 +2286,53 @@ function RelationshipGarden({dyads,entries}){
 
 const parentCounsellorFeedbackMeta=()=>(typeof PARENT_COUNSELLOR_FEEDBACK!=='undefined'?PARENT_COUNSELLOR_FEEDBACK:{});
 
+const isGenericCounsellorDisplayLabel=(label)=>{
+ const t=String(label||'').trim();
+ if(!t) return true;
+ if(/^Counsellor\s+[A-Z]\s*[·:.]\s*/i.test(t)) return true;
+ if(/^Counsellor\s*[·:.]\s*/i.test(t)) return true;
+ return false;
+};
+const isUnsafePractitionerDisplayValue=(value)=>{
+ const t=String(value||'').trim();
+ if(!t) return true;
+ if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return true;
+ if(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)) return true;
+ return false;
+};
+const pickSafePractitionerDisplayValue=(...values)=>{
+ for(const value of values){
+  const t=String(value||'').trim();
+  if(t&&!isUnsafePractitionerDisplayValue(t)) return t;
+ }
+ return '';
+};
+const practitionerNameFromDisplayLabel=(label,wayfinderId)=>{
+ const raw=String(label||'').trim();
+ const wid=String(wayfinderId||'').trim();
+ if(!raw||isGenericCounsellorDisplayLabel(raw)) return '';
+ if(wid){
+  const withoutId=raw.replace(new RegExp('\\s*[·:.]\\s*'+wid.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim();
+  if(withoutId&&!isGenericCounsellorDisplayLabel(withoutId)&&withoutId!==wid&&!isUnsafePractitionerDisplayValue(withoutId)) return withoutId;
+ }
+ if(!isGenericCounsellorDisplayLabel(raw)&&raw!==wid&&!isUnsafePractitionerDisplayValue(raw)) return raw;
+ return '';
+};
+const practitionerSelectOptionLabel=(row)=>{
+ const wid=String(row?.wayfinder_id||row?.wayfinderId||'').trim();
+ const fullName=pickSafePractitionerDisplayValue(row?.full_name,row?.fullName);
+ const professionalTitle=pickSafePractitionerDisplayValue(row?.professional_title,row?.professionalTitle,row?.credential_label,row?.credentialLabel);
+ const organizationName=pickSafePractitionerDisplayValue(row?.institution_name,row?.institutionName,row?.organization_name,row?.organizationName);
+ const profileName=pickSafePractitionerDisplayValue(row?.display_name,row?.displayName,row?.profile_name,row?.profileName,row?.name);
+ const labelName=practitionerNameFromDisplayLabel(row?.display_label||row?.displayLabel,wid);
+ if(fullName) return fullName;
+ if(professionalTitle) return professionalTitle;
+ if(organizationName) return organizationName;
+ if(profileName) return profileName;
+ if(labelName) return labelName;
+ return wid?('Mental Health Professional '+wid):'Mental Health Professional';
+};
+
 const formatCounsellorFeedbackDate=(value)=>{
  const dt=parseStoredDate(value);
  if(!dt||isNaN(dt)) return '-';
@@ -3317,11 +3364,11 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
     </div>
    </div>}
    <div className="field review-share-counsellor-field">
-    <label>{meta.counsellorSelectLabel||'Choose your counsellor'}</label>
-    {loadingCounsellors ? <p className="sub">Loading counsellors…</p> : counsellorsUnavailable ? <p className="sub review-share-error">{meta.setupUnavailable}</p> : counsellors.length===0 ? <p className="sub review-share-error">{meta.noCounsellorsAvailable}</p> : <>
+    <label>{meta.counsellorSelectLabel||'Choose your Mental Health Professional'}</label>
+    {loadingCounsellors ? <p className="sub">{meta.counsellorSelectLoading||'Loading practitioners…'}</p> : counsellorsUnavailable ? <p className="sub review-share-error">{meta.setupUnavailable}</p> : counsellors.length===0 ? <p className="sub review-share-error">{meta.noCounsellorsAvailable}</p> : <>
      <select value={counsellorId} onChange={ev=>setCounsellorId(ev.target.value)}>
-      <option value="">{meta.counsellorSelectPlaceholder||'Select a counsellor…'}</option>
-      {counsellors.map(c=><option key={c.wayfinder_id} value={c.wayfinder_id}>{c.display_label||('Counsellor · '+c.wayfinder_id)}</option>)}
+      <option value="">{meta.counsellorSelectPlaceholder||'Select a practitioner…'}</option>
+      {counsellors.map(c=><option key={c.wayfinder_id} value={c.wayfinder_id}>{practitionerSelectOptionLabel(c)}</option>)}
      </select>
      <p className="hint">{meta.counsellorSelectHint}</p>
     </>}
