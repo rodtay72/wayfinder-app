@@ -80,14 +80,16 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #102 consent persistence SQL/RLS | SQL contract — [supabase-consent-records.sql](../supabase-consent-records.sql); owner must apply in Supabase | Complete (merge) — owner apply pending |
 | PR #103 signup privacy acknowledgement | Runtime persistence for `signup_privacy` only — dashboard banner, `supabase.js` helpers, App Version v0.4.3 | Complete (merged) |
 | PR #104 MHP owner publication SQL | Owner-admin publish contract — [supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql); published-only parent selector | Complete (merge) — owner apply pending |
-| PR #105 owner admin MHP review page | `/admin.html` review queue + [supabase-mhp-owner-admin-review-rpc.sql](../supabase-mhp-owner-admin-review-rpc.sql); no parent App Version change | In flight |
+| PR #105 owner admin MHP review page | `/admin.html` review queue + [supabase-mhp-owner-admin-review-rpc.sql](../supabase-mhp-owner-admin-review-rpc.sql); no parent App Version change | Complete (merged) — owner SQL apply pending |
+| PR #106 MHP profile image strategy | [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) + [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-storage.sql); planning only — no upload/generation UI | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
 
 - **Consent SQL apply (PR #102)** — **owner must apply** [supabase-consent-records.sql](../supabase-consent-records.sql) in Supabase SQL Editor before PR #103 runtime works in production
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
-- **MHP public profile directory UI** — not implemented
+- **MHP profile image runtime** — upload UI, portrait generation, owner image review, and parent/client portrait display **not implemented** (PR #106 is strategy/SQL contract only)
+- **MHP public profile directory UI** — not implemented; **public profile image display not implemented**
 - **Research consent** — not implemented
 - **Questionnaire/check-in consent and response storage** — not implemented
 - **Consent revocation UX** — not implemented
