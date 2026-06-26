@@ -4241,8 +4241,20 @@ const mhpApplyExtractedFieldsToProfileDraft=(form,fields)=>{
  if(fields?.fullName) next.fullName=fields.fullName;
  if(fields?.professionalTitle) next.professionalTitle=fields.professionalTitle;
  if(fields?.licenseRegistrationNumber) next.licenseRegistrationNumber=fields.licenseRegistrationNumber;
+ if(fields?.accreditationNumber) next.accreditationNumber=fields.accreditationNumber;
  if(fields?.issuingBody) next.issuingBody=fields.issuingBody;
  return next;
+};
+
+const mhpDateInputValue=(value)=>{
+ const raw=String(value||'').trim();
+ if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+ const dt=parseStoredDate(raw);
+ if(!dt||isNaN(dt)) return '';
+ const y=dt.getFullYear();
+ const m=String(dt.getMonth()+1).padStart(2,'0');
+ const d=String(dt.getDate()).padStart(2,'0');
+ return `${y}-${m}-${d}`;
 };
 
 const mhpExtractedLicenseFields=(extracted,extractionFallback)=>{
@@ -4293,26 +4305,73 @@ const mhpUploadFallbackDocument=(uploadSuccess)=>{
 };
 
 const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate,editable,onApplyExtractedDetails,appliedDocId})=>{
- const fields=mhpExtractedLicenseFields(doc?.extractedJson);
+ const [reviewFields,setReviewFields]=useState(()=>mhpExtractedLicenseFields(doc?.extractedJson));
+ useEffect(()=>{
+  setReviewFields(mhpExtractedLicenseFields(doc?.extractedJson));
+ },[doc?.id, doc?.extractedJson]);
+ const setReviewField=(key,value)=>setReviewFields((prev)=>({...prev,[key]:value}));
  const display=(value)=>value||'-';
- const canApply=!!editable&&typeof onApplyExtractedDetails==='function'&&!!(fields.fullName||fields.professionalTitle||fields.licenseRegistrationNumber||fields.issuingBody);
+ const canApply=!!editable&&typeof onApplyExtractedDetails==='function'&&!!(
+  reviewFields.fullName
+  ||reviewFields.professionalTitle
+  ||reviewFields.licenseRegistrationNumber
+  ||reviewFields.accreditationNumber
+  ||reviewFields.issuingBody
+ );
  const showApplySuccess=!!appliedDocId&&doc?.id===appliedDocId;
+ const reviewInput=(key,type='text')=><input
+  type={type}
+  className="mhp-license-review-input"
+  value={type==='date'?mhpDateInputValue(reviewFields[key]):(reviewFields[key]||'')}
+  disabled={!editable}
+  onChange={(e)=>setReviewField(key,e.target.value)}
+ />;
  return <div className="mhp-license-review-panel">
   <h5>{meta.licenseExtractionReviewTitle||'Review extracted details'}</h5>
   <div className="mhp-license-review-grid">
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewFullName||'Full name'}</span><span className="mhp-license-review-value">{display(fields.fullName)}</span></div>
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewProfessionalTitle||'Professional title / credential'}</span><span className="mhp-license-review-value">{display(fields.professionalTitle)}</span></div>
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewIssuingBody||'Issuing body'}</span><span className="mhp-license-review-value">{display(fields.issuingBody)}</span></div>
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewLicenseNumber||'License / registration number'}</span><span className="mhp-license-review-value">{display(fields.licenseRegistrationNumber)}</span></div>
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewAccreditationNumber||'Accreditation number'}</span><span className="mhp-license-review-value">{display(fields.accreditationNumber)}</span></div>
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewValidFrom||'Valid from'}</span><span className="mhp-license-review-value">{fields.validFrom?fmtDate(fields.validFrom):'-'}</span></div>
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewValidTo||'Valid to'}</span><span className="mhp-license-review-value">{fields.validTo?fmtDate(fields.validTo):'-'}</span></div>
-   <div className="mhp-license-review-field"><span className="mhp-license-review-label">{meta.licenseReviewRawValidityText||'Raw validity text'}</span><span className="mhp-license-review-value">{display(fields.rawValidityText)}</span></div>
+   <label className="mhp-license-review-field">
+    <span className="mhp-license-review-label">{meta.licenseReviewFullName||'Full name'}</span>
+    {editable ? reviewInput('fullName') : <span className="mhp-license-review-value">{display(reviewFields.fullName)}</span>}
+   </label>
+   <label className="mhp-license-review-field">
+    <span className="mhp-license-review-label">{meta.licenseReviewProfessionalTitle||'Professional title / credential'}</span>
+    {editable ? reviewInput('professionalTitle') : <span className="mhp-license-review-value">{display(reviewFields.professionalTitle)}</span>}
+   </label>
+   <label className="mhp-license-review-field">
+    <span className="mhp-license-review-label">{meta.licenseReviewIssuingBody||'Issuing body'}</span>
+    {editable ? reviewInput('issuingBody') : <span className="mhp-license-review-value">{display(reviewFields.issuingBody)}</span>}
+   </label>
+   <label className="mhp-license-review-field">
+    <span className="mhp-license-review-label">{meta.licenseReviewLicenseNumber||'Licence / certificate number'}</span>
+    {editable ? reviewInput('licenseRegistrationNumber') : <span className="mhp-license-review-value">{display(reviewFields.licenseRegistrationNumber)}</span>}
+   </label>
+   <label className="mhp-license-review-field">
+    <span className="mhp-license-review-label">{meta.licenseReviewAccreditationNumber||'Accreditation number'}</span>
+    {editable ? reviewInput('accreditationNumber') : <span className="mhp-license-review-value">{display(reviewFields.accreditationNumber)}</span>}
+   </label>
+   <label className="mhp-license-review-field">
+    <span className="mhp-license-review-label">{meta.licenseReviewValidFrom||'Valid from'}</span>
+    {editable ? <>
+     <input type="date" className="mhp-license-review-input" value={mhpDateInputValue(reviewFields.validFrom)} disabled={!editable} onChange={(e)=>setReviewField('validFrom',e.target.value)}/>
+     {reviewFields.validFrom ? <span className="mhp-license-review-date-hint">{fmtDate(reviewFields.validFrom)}</span> : null}
+    </> : <span className="mhp-license-review-value">{reviewFields.validFrom?fmtDate(reviewFields.validFrom):'-'}</span>}
+   </label>
+   <label className="mhp-license-review-field">
+    <span className="mhp-license-review-label">{meta.licenseReviewValidTo||'Valid to'}</span>
+    {editable ? <>
+     <input type="date" className="mhp-license-review-input" value={mhpDateInputValue(reviewFields.validTo)} disabled={!editable} onChange={(e)=>setReviewField('validTo',e.target.value)}/>
+     {reviewFields.validTo ? <span className="mhp-license-review-date-hint">{fmtDate(reviewFields.validTo)}</span> : null}
+    </> : <span className="mhp-license-review-value">{reviewFields.validTo?fmtDate(reviewFields.validTo):'-'}</span>}
+   </label>
+   <label className="mhp-license-review-field mhp-license-review-field-wide">
+    <span className="mhp-license-review-label">{meta.licenseReviewRawValidityText||'Raw validity text'}</span>
+    {editable ? reviewInput('rawValidityText') : <span className="mhp-license-review-value">{display(reviewFields.rawValidityText)}</span>}
+   </label>
   </div>
   {canApply ? <div className="mhp-license-review-actions">
-   <button type="button" className="btn btn-secondary" onClick={()=>onApplyExtractedDetails(doc.id,fields)}>{meta.licenseApplyToProfileDraft||'Use these details in my profile draft'}</button>
+   <button type="button" className="btn btn-secondary" onClick={()=>onApplyExtractedDetails(doc.id,reviewFields)}>{meta.licenseApplyToProfileDraft||'Use reviewed details in my profile draft'}</button>
   </div> : null}
-  {showApplySuccess ? <p className="mhp-license-apply-success" role="status" aria-live="polite">{meta.licenseApplyToProfileDraftSuccess||'Extracted details applied to your profile draft. Please review before saving.'}</p> : null}
+  {showApplySuccess ? <p className="mhp-license-apply-success" role="status" aria-live="polite">{meta.licenseApplyToProfileDraftSuccess||'Reviewed details applied to your profile draft. Please save your draft.'}</p> : null}
   <span className="mhp-license-human-review-pill">{meta.licenseHumanReviewRequired||'Human review required'}</span>
   <p className="sub mhp-license-review-workflow-note">{meta.licenseApplyReviewWorkflowNote||'Submit for Wayfinder review will be available after profile and licence review workflow is enabled.'}</p>
   <p className="mhp-license-review-warning">{meta.licenseExtractionAccuracyWarning||'AI extraction may be inaccurate. Check names, registration numbers, issuing body, and expiry dates before submitting.'}</p>
@@ -4324,6 +4383,7 @@ const mhpDefaultProfileForm=()=>({
  fullName:'',
  professionalTitle:'',
  licenseRegistrationNumber:'',
+ accreditationNumber:'',
  issuingBody:'',
  shortBio:'',
  countryOfOrigin:'',
@@ -4337,6 +4397,7 @@ const mhpProfileFormFromRow=(profile)=>({
  fullName:profile?.fullName||'',
  professionalTitle:profile?.professionalTitle||'',
  licenseRegistrationNumber:profile?.licenseRegistrationNumber||'',
+ accreditationNumber:profile?.accreditationNumber||'',
  issuingBody:profile?.issuingBody||'',
  shortBio:profile?.shortBio||'',
  countryOfOrigin:profile?.countryOfOrigin||'',
@@ -4708,6 +4769,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
    <label className="field"><span>{meta.fieldFullName||'Full name'}</span><input type="text" value={form.fullName} disabled={!editable} onChange={e=>setField('fullName',e.target.value)}/></label>
    <label className="field"><span>{meta.fieldProfessionalTitle||'Professional title'}</span><input type="text" value={form.professionalTitle} disabled={!editable} onChange={e=>setField('professionalTitle',e.target.value)}/></label>
    <label className="field"><span>{meta.fieldLicenseNumber||'License / registration number'}</span><input type="text" value={form.licenseRegistrationNumber} disabled={!editable} onChange={e=>setField('licenseRegistrationNumber',e.target.value)}/></label>
+   <label className="field"><span>{meta.fieldAccreditationNumber||'Accreditation number'}</span><input type="text" value={form.accreditationNumber} disabled={!editable} onChange={e=>setField('accreditationNumber',e.target.value)}/></label>
    <label className="field"><span>{meta.fieldIssuingBody||'Issuing body'}</span><input type="text" value={form.issuingBody} disabled={!editable} onChange={e=>setField('issuingBody',e.target.value)}/></label>
    <label className="field mhp-profile-field-wide"><span>{meta.fieldShortBio||'Short bio'}</span><textarea rows={4} value={form.shortBio} disabled={!editable} onChange={e=>setField('shortBio',e.target.value)}/></label>
    <label className="field"><span>{meta.fieldCountryOfOrigin||'Country of origin'}</span><input type="text" value={form.countryOfOrigin} disabled={!editable} onChange={e=>setField('countryOfOrigin',e.target.value)}/></label>

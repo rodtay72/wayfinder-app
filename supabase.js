@@ -246,6 +246,7 @@ const normalizeMhpProfileRow = (row) => {
     fullName: row.full_name || row.fullName || '',
     professionalTitle: row.professional_title || row.professionalTitle || '',
     licenseRegistrationNumber: row.license_registration_number || row.licenseRegistrationNumber || '',
+    accreditationNumber: row.accreditation_number || row.accreditationNumber || '',
     issuingBody: row.issuing_body || row.issuingBody || '',
     shortBio: row.short_bio || row.shortBio || '',
     countryOfOrigin: row.country_of_origin || row.countryOfOrigin || '',
@@ -2543,7 +2544,7 @@ const DB = {
   getMyMentalHealthProfessionalProfile: async (userId, authSession = null) => {
     const result = await fetchMhpProfilesSafe({
       query: {
-        select: 'user_id,profile_slug,photo_url,full_name,professional_title,license_registration_number,issuing_body,short_bio,country_of_origin,ethnicity,enquiry_email,enquiry_mobile,profile_visible,profile_status,created_at,updated_at',
+        select: 'user_id,profile_slug,photo_url,full_name,professional_title,license_registration_number,accreditation_number,issuing_body,short_bio,country_of_origin,ethnicity,enquiry_email,enquiry_mobile,profile_visible,profile_status,created_at,updated_at',
         user_id: `eq.${userId}`,
         limit: '1'
       },
@@ -2589,6 +2590,7 @@ const DB = {
       full_name: String(payload.fullName || '').trim() || null,
       professional_title: String(payload.professionalTitle || '').trim() || null,
       license_registration_number: String(payload.licenseRegistrationNumber || '').trim() || null,
+      accreditation_number: String(payload.accreditationNumber || '').trim() || null,
       issuing_body: String(payload.issuingBody || '').trim() || null,
       short_bio: String(payload.shortBio || '').trim() || null,
       country_of_origin: String(payload.countryOfOrigin || '').trim() || null,
