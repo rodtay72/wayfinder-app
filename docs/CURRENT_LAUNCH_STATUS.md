@@ -58,6 +58,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | MHP colleague invite | Admin-mediated request only — no automatic account creation |
 | Mobile install identities | Separate **Wayfinder Parent** and **Wayfinder MHP** home-screen names and icons |
 | Production smoke / closure | **Pending owner smoke** — see [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) |
+| Practitioner selector names (C6d) | Owner SQL patch ready — apply [supabase-list-available-counsellors-mhp-names.sql](../supabase-list-available-counsellors-mhp-names.sql) manually for real MHP names in parent dropdown |
 | Android icon cache on some devices | **Non-blocking follow-up** — static asset/cache; see [MOBILE_APP_ICONS.md](./MOBILE_APP_ICONS.md) |
 
 ## In flight

@@ -35,6 +35,8 @@ The Issue #71 track includes:
 | Counsellor self-creating counsellors | **Not enabled** |
 | Mobile install identities | Separate **Wayfinder Parent** and **Wayfinder MHP** home-screen names and icons |
 | Owner handoff runbook | Added — [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) |
+| Parent practitioner selector copy | PR #95 — MHP/practitioner wording and display fallback in app |
+| Parent practitioner selector names | C6d owner SQL — [supabase-list-available-counsellors-mhp-names.sql](../supabase-list-available-counsellors-mhp-names.sql); apply manually for real names |
 
 ---
 
@@ -51,6 +53,8 @@ The Issue #71 track includes:
 - [ ] Decode entries still display if present.
 - [ ] Parent invite modal opens.
 - [ ] Parent invite shares parent signup link only.
+- [ ] Practitioner selector label reads **Choose your Mental Health Professional** (after PR #95).
+- [ ] Practitioner options show real MHP names where profile data exists (after C6d SQL applied).
 - [ ] No parent email, Supabase UUID, or hidden identifiers appear in normal UI.
 
 ### MHP / counsellor portal
