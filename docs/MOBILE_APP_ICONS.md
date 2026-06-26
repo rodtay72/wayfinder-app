@@ -19,6 +19,10 @@ Required PNG files:
 | `icons/parent/icon-192.png` | 192 × 192 |
 | `icons/parent/apple-touch-icon.png` | 180 × 180 |
 
+**Stable filenames** (`icon-512.png`, `icon-192.png`, `apple-touch-icon.png`) are the normal replacement targets when updating artwork.
+
+**Versioned install filenames** (current: `*-20260626.png`) are referenced from `index.html` and `manifest-parent.webmanifest` so mobile browsers fetch a new physical URL instead of reusing a cached old icon.
+
 Linked from `index.html` only.
 
 ## 2. Counsellor / Mental Health Professional interface
@@ -37,6 +41,8 @@ Required PNG files:
 | `icons/counsellor/icon-512.png` | 512 × 512 |
 | `icons/counsellor/icon-192.png` | 192 × 192 |
 | `icons/counsellor/apple-touch-icon.png` | 180 × 180 |
+
+**Stable filenames** are the normal replacement targets. **Versioned install filenames** (current: `*-20260626.png`) are used only to force a mobile cache refresh via new physical URLs in `counsellor.html` and `manifest-counsellor.webmanifest`.
 
 Linked from `counsellor.html` only.
 
@@ -63,9 +69,11 @@ Optional shared browser favicons at repo root:
 ## How to replace icons later
 
 1. Export your new design at the sizes above for the portal you are updating (**parent** or **counsellor**).
-2. Replace the PNG files using the **exact same filenames** in `icons/parent/` or `icons/counsellor/`.
-3. Update the matching manifest only if filenames or sizes change.
-4. Commit the replaced PNG files (and manifest if needed), redeploy, then hard refresh or remove and re-add the home-screen shortcut if the old icon is cached.
+2. Replace the **stable** PNG files using the exact same filenames in `icons/parent/` or `icons/counsellor/`.
+3. Also replace the **current versioned install** PNG files (same pixel dimensions, versioned filenames such as `icon-512-20260626.png`) so stable and install assets stay in sync.
+4. Commit the replaced PNG files, redeploy, then hard refresh or remove and re-add the home-screen shortcut if the old icon is cached.
+
+If icon cache gets stuck again after deploy, create a **new** versioned filename suffix (for example `-20260701`), copy the PNGs to those names, and update only `index.html` / `counsellor.html` plus the matching manifest icon `src` paths. Stable filenames do not need to change for that cache-bust step.
 
 If the old/no icon continues to appear on mobile:
 
