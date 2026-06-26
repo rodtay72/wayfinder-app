@@ -5331,9 +5331,6 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta,editable,
  </div>;
 }
 
- </div>;
-}
-
 function MentalHealthProfessionalSourcePhotoSection({user,authSession,meta,editable}){
  const fileInputRef=useRef(null);
  const [loading,setLoading]=useState(true);
