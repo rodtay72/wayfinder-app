@@ -6,7 +6,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-24
+**Last updated:** 2026-06-26
 
 **Last verified merge:** PR #69 — Parent Feedback Library; parent feedback remains accessible after mark-as-read and dashboard unread notice clears
 
@@ -45,11 +45,26 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Counsellor response status badges | Counsellor workspace shows Pending response, Draft saved, Published, Revoked, and Status unavailable badges on parent-approved entries | PR #67 |
 | Parent Feedback Library | Parent dashboard keeps published counsellor feedback accessible after mark-as-read clears the unread notice | PR #69 |
 
+## Issue #71 — Mental Health Professional onboarding / invite (launch notes)
+
+**Status:** Substantially completed — owner handoff runbook: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md)
+
+| Item | Status |
+|------|--------|
+| MHP onboarding / invite flow | Substantially completed on Issue #71 track |
+| Account enablement | **Owner/admin controlled** — no public MHP signup |
+| MHP profile publication / membership activation | **Guarded** — draft / pending review unless owner explicitly activates |
+| Parent invite | Parent signup link share only |
+| MHP colleague invite | Admin-mediated request only — no automatic account creation |
+| Mobile install identities | Separate **Wayfinder Parent** and **Wayfinder MHP** home-screen names and icons |
+| Android icon cache on some devices | **Non-blocking follow-up** — static asset/cache; see [MOBILE_APP_ICONS.md](./MOBILE_APP_ICONS.md) |
+
 ## In flight
 
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
 | Issue #52 parent/counsellor feedback workflow | Per-entry counsellor response flow, parent mark-read flow, counsellor response status badges, and Parent Feedback Library merged and owner-verified through PR #69 | Monitoring / verified |
+| Issue #71 MHP onboarding / invite | Docs handoff runbook (C6a); runtime merges tracked separately on Issue #71 PRs | In progress / launch notes added |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
