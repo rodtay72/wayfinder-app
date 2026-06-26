@@ -21,7 +21,7 @@ Required PNG files:
 
 **Stable filenames** (`icon-512.png`, `icon-192.png`, `apple-touch-icon.png`) are the normal replacement targets when updating artwork.
 
-**Versioned install filenames** (current: `*-20260626.png`) are referenced from `index.html` and `manifest-parent.webmanifest` so mobile browsers fetch a new physical URL instead of reusing a cached old icon.
+**Versioned install filenames** (optional, from earlier cache-bust passes such as `*-20260626.png`) may remain in the folder for reference. Current HTML/manifest install links use **stable filenames**, often with a query-string cache version such as `?v=20260626-android`.
 
 Linked from `index.html` only.
 
@@ -42,7 +42,7 @@ Required PNG files:
 | `icons/counsellor/icon-192.png` | 192 × 192 |
 | `icons/counsellor/apple-touch-icon.png` | 180 × 180 |
 
-**Stable filenames** are the normal replacement targets. **Versioned install filenames** (current: `*-20260626.png`) are used only to force a mobile cache refresh via new physical URLs in `counsellor.html` and `manifest-counsellor.webmanifest`.
+**Stable filenames** are the normal replacement targets. HTML install links use stable filenames with cache-busting query strings; manifests reference stable icon paths.
 
 Linked from `counsellor.html` only.
 
@@ -52,12 +52,31 @@ Internal Supabase role remains `counsellor`. **Wayfinder MHP** is the user-facin
 
 `verify.html` is not a main install target. It may use generic root favicon and theme metadata only. It does **not** link a portal manifest or override either install identity.
 
-Optional shared browser favicons at repo root:
+Optional shared browser favicons at repo root (parent logo; Android may fall back here):
 
 | File | Size |
 |------|------|
+| `favicon.ico` | multi-size ICO (16, 32, 48) |
 | `favicon-32.png` | 32 × 32 |
 | `favicon-16.png` | 16 × 16 |
+
+## Android Add to Home Screen
+
+Android/Chrome relies on **manifest icons** and normal `rel="icon"` favicons more than `apple-touch-icon`.
+
+Each portal HTML head should include explicit 192×192 and 512×512 `rel="icon"` links for the matching portal folder, plus the portal manifest.
+
+Manifest icon PNGs should **not** be transparent-only or mostly empty. The visible mark should sit clearly in the middle safe area on an **opaque** background (`#F7F4EF`).
+
+If Android still shows an old icon after deploy:
+
+- replace or check `favicon.ico`, `favicon-32.png`, `favicon-16.png`, and the portal manifest icon PNGs
+- delete the old home-screen shortcut
+- Chrome → Settings → Site settings → your site → **Clear & reset**
+- clear Chrome cache if needed
+- reopen the correct portal URL and add to home screen again
+
+Android launcher and Chrome may cache old shortcut icons aggressively.
 
 ## Design notes
 
