@@ -5331,6 +5331,146 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta,editable,
  </div>;
 }
 
+ </div>;
+}
+
+function MentalHealthProfessionalSourcePhotoSection({user,authSession,meta,editable}){
+ const fileInputRef=useRef(null);
+ const [loading,setLoading]=useState(true);
+ const [unavailable,setUnavailable]=useState(false);
+ const [latestRow,setLatestRow]=useState(null);
+ const [previewUrl,setPreviewUrl]=useState('');
+ const [previewExpired,setPreviewExpired]=useState(false);
+ const [uploadState,setUploadState]=useState('');
+ const [statusMessage,setStatusMessage]=useState('');
+
+ const loadPreview=async()=>{
+  if(!user?.id||!authSession?.access_token){
+   setLoading(false);
+   setLatestRow(null);
+   setPreviewUrl('');
+   return;
+  }
+  setLoading(true);
+  setPreviewExpired(false);
+  try{
+   const listResult=await DB.listMyMhpProfileImages(user.id,authSession);
+   if(listResult.unavailable){
+    setUnavailable(true);
+    setLatestRow(null);
+    setPreviewUrl('');
+    return;
+   }
+   setUnavailable(false);
+   const sourceRows=(listResult.rows||[]).filter(row=>row.imageKind==='source_photo');
+   const latest=sourceRows[0]||null;
+   setLatestRow(latest);
+   if(!latest?.storageBucket||!latest?.storagePath){
+    setPreviewUrl('');
+    return;
+   }
+   const signResult=await DB.createMhpProfileImageSignedUrl(user.id,latest.storageBucket,latest.storagePath,authSession);
+   if(signResult.unavailable){
+    setUnavailable(true);
+    setPreviewUrl('');
+    return;
+   }
+   if(!signResult.ok||!signResult.signedUrl){
+    setPreviewUrl('');
+    setPreviewExpired(!!signResult.expired);
+    return;
+   }
+   setPreviewUrl(signResult.signedUrl);
+  }catch(err){
+   AuthDebug.log('[mhp] source photo preview load failed:', { message: err?.message || String(err) });
+   setPreviewUrl('');
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ useEffect(()=>{loadPreview();},[user?.id,authSession?.access_token]);
+
+ const handleChooseFile=()=>{
+  if(!editable||uploadState==='uploading') return;
+  fileInputRef.current?.click();
+ };
+
+ const handleFileChange=async(event)=>{
+  const file=event.target.files?.[0]||null;
+  event.target.value='';
+  if(!file||!user?.id) return;
+  const mime=String(file.type||'').toLowerCase();
+  if(!['image/jpeg','image/png','image/webp'].includes(mime)){
+   setUploadState('error');
+   setStatusMessage(meta.sourcePhotoUnsupportedFile||'Please choose a JPG, PNG, or WebP image up to 2 MB.');
+   return;
+  }
+  if(file.size>2*1024*1024){
+   setUploadState('error');
+   setStatusMessage(meta.sourcePhotoUnsupportedFile||'Please choose a JPG, PNG, or WebP image up to 2 MB.');
+   return;
+  }
+  setUploadState('uploading');
+  setStatusMessage(meta.sourcePhotoUploading||'Uploading…');
+  setPreviewExpired(false);
+  try{
+   const uploadResult=await DB.uploadMhpSourcePhoto(user.id,file,authSession);
+   if(uploadResult.unavailable){
+    setUnavailable(true);
+    setUploadState('error');
+    setStatusMessage(meta.sourcePhotoStorageUnavailable||'Private photo upload is not ready yet.');
+    return;
+   }
+   if(!uploadResult.ok){
+    setUploadState('error');
+    setStatusMessage(meta.sourcePhotoUploadError||'We could not upload this photo. Please try again.');
+    return;
+   }
+   const insertResult=await DB.insertMhpProfileImageMetadata(user.id,{
+    imageKind:'source_photo',
+    storageBucket:'professional-profile-image-sources',
+    storagePath:uploadResult.storagePath,
+    mimeType:uploadResult.mimeType,
+    fileSizeBytes:uploadResult.fileSizeBytes,
+    imageStatus:'uploaded'
+   },authSession);
+   if(insertResult.unavailable||!insertResult.ok){
+    setUploadState('error');
+    setStatusMessage(meta.sourcePhotoUploadError||'We could not upload this photo. Please try again.');
+    return;
+   }
+   setUploadState('uploaded');
+   setStatusMessage(meta.sourcePhotoUploaded||'Private source photo uploaded.');
+   await loadPreview();
+  }catch(err){
+   AuthDebug.log('[mhp] source photo upload failed:', { message: err?.message || String(err) });
+   setUploadState('error');
+   setStatusMessage(meta.sourcePhotoUploadError||'We could not upload this photo. Please try again.');
+  }
+ };
+
+ return <div className="mhp-source-photo-section">
+  <h3 className="mhp-source-photo-title">{meta.sourcePhotoSectionTitle||'Private source photo'}</h3>
+  <p className="dashboard-helper mhp-source-photo-helper">{meta.sourcePhotoHelper||'Upload a private source photo for future Wayfinder portrait review. This image is not public and does not publish your profile.'}</p>
+  {loading ? <p className="sub">Loading private photo preview…</p> : null}
+  {!loading && unavailable ? <p className="sub">{meta.sourcePhotoStorageUnavailable||'Private photo upload is not ready yet.'}</p> : null}
+  {!loading && !unavailable && previewUrl ? <div className="mhp-source-photo-preview-wrap">
+   <img className="mhp-source-photo-preview" src={previewUrl} alt="" onError={()=>{setPreviewUrl('');setPreviewExpired(true);}}/>
+  </div> : null}
+  {!loading && !unavailable && !previewUrl && latestRow ? <p className="sub">{meta.sourcePhotoPreviewExpired||'Preview link expired; refresh to view again.'}</p> : null}
+  {!loading && previewExpired && !previewUrl ? <p className="sub">{meta.sourcePhotoPreviewExpired||'Preview link expired; refresh to view again.'}</p> : null}
+  {statusMessage ? <p className={'mhp-source-photo-status'+(uploadState==='error'?' mhp-source-photo-status--error':'')} role="status" aria-live="polite">{statusMessage}</p> : null}
+  <div className="mhp-source-photo-actions">
+   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="mhp-source-photo-input" onChange={handleFileChange}/>
+   <button type="button" className="btn btn-secondary btn-sm" disabled={!editable||uploadState==='uploading'||unavailable} onClick={handleChooseFile}>
+    {uploadState==='uploading'?(meta.sourcePhotoUploading||'Uploading…'):(meta.sourcePhotoUploadButton||'Upload source photo')}
+   </button>
+   {!loading && latestRow ? <button type="button" className="btn btn-ghost btn-sm" onClick={loadPreview}>Refresh preview</button> : null}
+  </div>
+ </div>;
+}
+
 function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
  const [loading,setLoading]=useState(true);
  const [unavailable,setUnavailable]=useState(false);
@@ -5461,7 +5601,12 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
   {!editable ? <p className="sub mhp-profile-readonly-note">{meta.editProfileReadOnlyNotice||'This profile is under review or published.'}</p> : null}
   {appliedExtractDocId ? <p className="mhp-profile-extracted-apply-notice" role="status" aria-live="polite">{meta.licenseApplyToProfileDraftSuccess||'Extracted details applied to your profile draft. Please review before saving.'}</p> : null}
   <div className="mhp-profile-fields">
-   <label className="field"><span>{meta.fieldPhotoUrl||'Photo URL'}</span><input type="url" value={form.photoUrl} disabled={!editable} onChange={e=>{setPhotoBroken(false);setField('photoUrl',e.target.value);}}/></label>
+   <MentalHealthProfessionalSourcePhotoSection user={user} authSession={authSession} meta={meta} editable={editable}/>
+   <label className="field">
+    <span>{meta.fieldPhotoUrl||'Photo URL'}</span>
+    <input type="url" value={form.photoUrl} disabled={!editable} onChange={e=>{setPhotoBroken(false);setField('photoUrl',e.target.value);}}/>
+    <span className="sub mhp-photo-url-legacy-note">{meta.fieldPhotoUrlLegacyNote||'Legacy optional URL. The preferred workflow is private upload and owner-reviewed portrait.'}</span>
+   </label>
    <label className="field"><span>{meta.fieldFullName||'Full name'}</span><input type="text" value={form.fullName} disabled={!editable} onChange={e=>setField('fullName',e.target.value)}/></label>
    <label className="field"><span>{meta.fieldProfessionalTitle||'Professional title'}</span><input type="text" value={form.professionalTitle} disabled={!editable} onChange={e=>setField('professionalTitle',e.target.value)}/></label>
    <label className="field"><span>{meta.fieldLicenseNumber||'License / registration number'}</span><input type="text" value={form.licenseRegistrationNumber} disabled={!editable} onChange={e=>setField('licenseRegistrationNumber',e.target.value)}/></label>
