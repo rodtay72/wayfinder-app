@@ -586,6 +586,57 @@ const hostedEventWriteSafe = async ({ method, userId, authSession, context, body
   }
 };
 
+const isOwnerAdminRpcUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst202')) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('owner_admin_users') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  if (text.includes('is_wayfinder_owner_admin') && text.includes('does not exist')) return true;
+  if (text.includes('owner_list_mhp_profiles') && text.includes('does not exist')) return true;
+  if (text.includes('owner_set_mhp_publication') && text.includes('does not exist')) return true;
+  return false;
+};
+
+const callOwnerAdminRpcSafe = (args) => callReviewResponseRpcSafe({
+  ...args,
+  unavailableCheck: isOwnerAdminRpcUnavailable
+});
+
+const normalizeOwnerMhpProfileRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    mhpUserId: row.mhp_user_id || row.mhpUserId || null,
+    wayfinderId: row.wayfinder_id || row.wayfinderId || '',
+    fullName: row.full_name || row.fullName || '',
+    professionalTitle: row.professional_title || row.professionalTitle || '',
+    licenseRegistrationNumber: row.license_registration_number || row.licenseRegistrationNumber || '',
+    accreditationNumber: row.accreditation_number || row.accreditationNumber || '',
+    issuingBody: row.issuing_body || row.issuingBody || '',
+    shortBio: row.short_bio || row.shortBio || '',
+    countryOfOrigin: row.country_of_origin || row.countryOfOrigin || '',
+    ethnicity: row.ethnicity || '',
+    enquiryEmail: row.enquiry_email || row.enquiryEmail || '',
+    enquiryMobile: row.enquiry_mobile || row.enquiryMobile || '',
+    photoUrl: row.photo_url || row.photoUrl || '',
+    profileStatus: row.profile_status || row.profileStatus || 'draft',
+    profileVisible: !!row.profile_visible || !!row.profileVisible,
+    profileUpdatedAt: row.profile_updated_at || row.profileUpdatedAt || null,
+    membershipStatus: row.membership_status || row.membershipStatus || 'pending_review',
+    institutionName: row.institution_name || row.institutionName || '',
+    membershipExpiresAt: row.membership_expires_at || row.membershipExpiresAt || null,
+    latestDocumentStatus: row.latest_document_status || row.latestDocumentStatus || '',
+    latestExtractionStatus: row.latest_extraction_status || row.latestExtractionStatus || '',
+    latestOriginalFilename: row.latest_original_filename || row.latestOriginalFilename || '',
+    latestExtractedAt: row.latest_extracted_at || row.latestExtractedAt || null
+  };
+};
+
 const isConsentRecordsUnavailable = (status, responseText) => {
   const text = String(responseText || '').toLowerCase();
   if (status === 404) return true;
@@ -2955,5 +3006,74 @@ const DB = {
       return { ok: false, unavailable: false, record: null };
     }
     return { ok: true, unavailable: false, record: result.rows[0] };
+  },
+
+  isOwnerAdmin: async (userId, authSession = null) => {
+    const result = await callOwnerAdminRpcSafe({
+      rpcName: 'is_wayfinder_owner_admin',
+      userId,
+      authSession,
+      context: 'isOwnerAdmin',
+      body: {}
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, isAdmin: false };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, isAdmin: false };
+    }
+    return { ok: true, unavailable: false, isAdmin: !!result.data };
+  },
+
+  listOwnerMhpProfiles: async (userId, authSession = null) => {
+    const result = await callOwnerAdminRpcSafe({
+      rpcName: 'owner_list_mhp_profiles',
+      userId,
+      authSession,
+      context: 'listOwnerMhpProfiles',
+      body: {}
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, rows: [] };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, rows: [], forbidden: String(result.responseText || '').includes('Owner admin required') };
+    }
+    const rows = Array.isArray(result.data) ? result.data : [];
+    return {
+      ok: true,
+      unavailable: false,
+      rows: rows.map(normalizeOwnerMhpProfileRow).filter(Boolean)
+    };
+  },
+
+  ownerSetMhpPublication: async (userId, mhpUserId, profileStatus, profileVisible, membershipStatus, authSession = null) => {
+    const targetId = String(mhpUserId || '').trim();
+    if (!userId || !targetId) {
+      return { ok: false, unavailable: false, forbidden: false };
+    }
+    const result = await callOwnerAdminRpcSafe({
+      rpcName: 'owner_set_mhp_publication',
+      userId,
+      authSession,
+      context: 'ownerSetMhpPublication',
+      body: {
+        p_mhp_user_id: targetId,
+        p_profile_status: String(profileStatus || '').trim(),
+        p_profile_visible: !!profileVisible,
+        p_membership_status: String(membershipStatus || '').trim()
+      }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, forbidden: false };
+    }
+    if (!result.ok) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: String(result.responseText || '').includes('Owner admin required')
+      };
+    }
+    return { ok: true, unavailable: false, forbidden: false };
   }
 };

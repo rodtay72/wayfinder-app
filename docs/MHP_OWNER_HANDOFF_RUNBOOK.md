@@ -269,8 +269,57 @@ select * from public.list_available_counsellors();
 - No public MHP signup
 - No counsellor self-creation or self-publish
 - No automatic membership activation
-- No owner admin UI (future PR)
 - No public profile directory UI (future PR)
+
+---
+
+## 10. Owner admin page (PR #105)
+
+Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not linked from the parent dashboard** — access it directly when signed in as an owner admin.
+
+### Prerequisites
+
+1. Apply [supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql) (PR #104)
+2. Apply [supabase-mhp-owner-admin-review-rpc.sql](../supabase-mhp-owner-admin-review-rpc.sql) (PR #105)
+3. Insert the owner auth `user_id` into `public.owner_admin_users` (see §9)
+
+### Page behaviour
+
+| State | What the user sees |
+|-------|-------------------|
+| Not signed in | Owner admin **sign-in only** — no signup, no public invite |
+| Signed in, not owner admin | **Owner admin access required.** — no MHP data |
+| Signed in as owner admin | **Mental Health Professional review queue** with filters and publication actions |
+
+### Review queue filters
+
+- **Pending / Draft** — `draft`, `pending_review`
+- **Published** — owner-published profiles
+- **Hidden / Suspended** — withheld or suspended profiles
+- **All** — every counsellor MHP profile row
+
+Each card shows Wayfinder ID, name, licence/accreditation fields, profile and membership status, licence document metadata (not PDFs), enquiry contact fields, and short bio preview. Supabase UUIDs, auth emails, storage paths, and extracted JSON are **not** shown.
+
+### Publication actions (server RPC authority)
+
+| Action | RPC effect | Parent selector |
+|--------|----------|-----------------|
+| **Publish + activate** | `published`, visible, `active` membership | **Appears** when other selector rules pass |
+| **Keep pending review** | `pending_review`, hidden | **Hidden** |
+| **Unpublish / hide** | `hidden`, hidden | **Hidden** |
+| **Suspend** | `suspended`, hidden, suspended membership | **Hidden** |
+
+Publish + activate and Suspend require confirmation in the UI. MHPs **cannot** self-publish through the frontend — `owner_set_mhp_publication` enforces owner admin on the server.
+
+### Manual smoke (after PR #105 merge + SQL apply)
+
+1. Open `/admin.html` and sign in as owner admin → queue loads
+2. Sign in as non-owner → access denied, no queue data
+3. **Publish + activate** an MHP → parent journal-sharing dropdown shows that practitioner
+4. **Keep pending**, **hide**, or **suspend** → MHP removed from parent dropdown
+5. MHP portal (`/counsellor.html`), parent dashboard, Journal Trail, and Relationship Garden still load
+
+**No App Version entry** — this is owner/admin UX only, not parent/client-facing.
 
 ---
 
