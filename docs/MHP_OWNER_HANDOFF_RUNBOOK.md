@@ -149,6 +149,8 @@ select * from public.list_available_counsellors();
 
 This selector is for parent-directed review sharing — not the public professional directory. It does **not** require `profile_visible = true` or `profile_status = 'published'`. It does **not** activate membership or publish profiles.
 
+**Superseded by PR #104:** After owner applies [supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql), the parent selector lists **published + active** MHPs only — see §9 below.
+
 ---
 
 ## Owner-applied SQL — complete MHP profiles only (Issue #71 C6e)
@@ -169,6 +171,106 @@ select * from public.list_available_counsellors();
 ```
 
 **Expected:** Only rows with populated `full_name` (for example **Rodney Tay** for `C-00001`). Incomplete `C-` accounts without `full_name` do **not** appear.
+
+**Superseded by PR #104:** After owner applies [supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql), the parent selector requires **published + active** publication — not merely a populated `full_name`. See §9.
+
+---
+
+## 9. Owner-admin publication model (PR #104)
+
+MHP draft or profile completion is **not** publication. Only Wayfinder owner/admin can approve and publish a Mental Health Professional for parent/client visibility.
+
+### Draft / pending vs published / active
+
+| State | Meaning | Parent selector |
+|-------|---------|-----------------|
+| `profile_status` = `draft` or `pending_review` | MHP is completing profile/licence review | **Hidden** |
+| `profile_status` = `published` + `profile_visible` = true | Owner/admin approved public professional identity | **May appear** if membership also active |
+| `membership_status` = `pending_review` | Membership not yet owner-approved | **Hidden** |
+| `membership_status` = `active` | Owner/admin activated membership | **May appear** if profile also published |
+| `profile_status` = `hidden` or `suspended` | Owner/admin withheld or suspended profile | **Hidden** |
+| `membership_status` = `expired` or `suspended` | Membership lapsed or suspended | **Hidden** |
+
+**Rule:** Parent journal-sharing dropdown (`list_available_counsellors()`) lists only MHPs where **all** of the following are true:
+
+- `profiles.role` = `counsellor` and `parent_id` is set
+- `mental_health_professional_profiles.full_name` is non-blank
+- `profile_status` = `published`
+- `profile_visible` = true
+- `membership_status` = `active`
+- membership expiry is null or in the future
+
+This matches publication status — not merely whether the MHP filled in a name.
+
+### Owner admin setup
+
+1. Owner applies [supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql) in Supabase SQL Editor.
+2. Owner manually inserts their auth `user_id` into `public.owner_admin_users`:
+
+```sql
+insert into public.owner_admin_users (user_id, admin_status)
+values ('<owner-auth-user-uuid>', 'active');
+```
+
+3. While signed in as that owner admin, verify:
+
+```sql
+select public.is_wayfinder_owner_admin();
+```
+
+**Expected:** `true` for the owner admin account; `false` for all other users.
+
+There is **no** authenticated INSERT/UPDATE/DELETE policy on `owner_admin_users`. Only manual owner setup in Supabase.
+
+### Owner publication RPC (only supported path until admin UI)
+
+Until an owner admin review page is built, publication uses:
+
+```sql
+select public.owner_set_mhp_publication(
+  '<mhp-auth-user-uuid>'::uuid,
+  'published',   -- draft | pending_review | published | hidden | suspended
+  true,          -- profile_visible
+  'active'       -- pending_review | active | expired | suspended
+);
+```
+
+**Rules enforced by RPC:**
+
+- Only `is_wayfinder_owner_admin()` callers may run it
+- `published` requires `profile_visible = true` and `membership_status = 'active'`
+- `membership_status = 'active'` alone does **not** publish — owner must set `profile_status = 'published'` explicitly
+- Does **not** change auth role, `profiles.parent_id`, or licence document records
+- Does **not** expose PDFs or extraction JSON
+
+**Example — return MHP to draft review:**
+
+```sql
+select public.owner_set_mhp_publication(
+  '<mhp-auth-user-uuid>'::uuid,
+  'pending_review',
+  false,
+  'pending_review'
+);
+```
+
+### Verify parent selector after publication
+
+```sql
+select * from public.list_available_counsellors();
+```
+
+**Expected:** Only owner-published, active MHP rows with non-blank `full_name`. Draft/pending MHPs with names do **not** appear.
+
+**Must not appear:** emails, Supabase UUIDs, invite tokens, licence files, storage paths, extraction JSON, or hidden identifiers.
+
+### What PR #104 does not do
+
+- No public MHP signup
+- No counsellor self-creation or self-publish
+- No automatic membership activation
+- No owner admin UI (future PR)
+- No public profile directory UI (future PR)
 
 ---
 
