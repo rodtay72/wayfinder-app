@@ -658,6 +658,46 @@ const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
   licenseDocumentsEmpty: "No licence PDF uploaded yet."
 };
 
+const PARENT_SIGNUP_INVITE = {
+  parentButtonLabel: "Invite another parent",
+  parentButtonTitle: "Share only the Wayfinder parent signup link. No referral tracking, journal sharing, or professional account creation.",
+  counsellorButtonLabel: "Invite parents to Wayfinder",
+  counsellorButtonTitle: "Share only the Wayfinder parent signup link. No referral tracking, journal sharing, or professional account creation.",
+  modalTitleParent: "Invite another parent",
+  modalTitleCounsellor: "Invite parents to Wayfinder",
+  modalIntro: "Share the parent signup link below. This is only the Wayfinder parent entry point.",
+  linkLabel: "Parent signup link",
+  copyButton: "Copy link",
+  copiedButton: "Link copied",
+  shareButton: "Share link",
+  closeButton: "Close",
+  privacyNote: "No referral tracking, automatic journal sharing, professional account creation, or counsellor provisioning is included.",
+  shareTitle: "Join Wayfinder",
+  shareText: "Create your Wayfinder parent account using this link.",
+  shareUnavailable: "Copy the link below to share it manually."
+};
+
+const MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST = {
+  panelTitle: "Invite others to Wayfinder",
+  panelIntro: "Share the parent signup link with parents you know. Mental Health Professional colleagues must be invited by the Wayfinder administrator.",
+  parentButtonLabel: "Invite parents to Wayfinder",
+  parentButtonTitle: "Share only the Wayfinder parent signup link.",
+  professionalButtonLabel: "Invite counsellors to Wayfinder",
+  professionalButtonTitle: "Prepare an admin invitation request. No public professional signup link.",
+  modalTitle: "Invite counsellors to Wayfinder",
+  modalIntro: "Mental Health Professional accounts are created by Wayfinder administrator invitation only.",
+  modalAdminNote: "There is no public counsellor or Mental Health Professional signup link. Use the fields below to prepare a request message for the Wayfinder administrator. This does not create an account, send an invitation, create an invite token, or provision another professional.",
+  fieldColleagueName: "Colleague name",
+  fieldColleagueEmail: "Colleague email",
+  fieldNote: "Optional note for Wayfinder admin",
+  copyRequestButton: "Copy request message",
+  copiedRequestButton: "Request message copied",
+  emailAdminButton: "Email Wayfinder admin",
+  closeButton: "Close",
+  requestDraftIntro: "Wayfinder Mental Health Professional invitation request",
+  requestDraftFooter: "Please review and ask the Wayfinder administrator to send an invitation to this colleague if appropriate. No self-serve professional signup is available."
+};
+
 // PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)
 const PDPA_SIGNUP_NOTICE = {
   version: "2026-06-1",
@@ -695,6 +735,8 @@ if (typeof module !== 'undefined' && module.exports) {
     APP_VERSION_PAGE,
     WAYFINDER_APP_VERSIONS,
     PDPA_SIGNUP_NOTICE,
-    MENTAL_HEALTH_PROFESSIONAL_ONBOARDING
+    MENTAL_HEALTH_PROFESSIONAL_ONBOARDING,
+    PARENT_SIGNUP_INVITE,
+    MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST
   };
 }

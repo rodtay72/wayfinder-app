@@ -1830,7 +1830,7 @@ function CounsellorHostEventForm({user,authSession,eventId,existingEvent,unavail
   </div>
  </div>;
 }
-function CounsellorHostedEventsPage({user,authSession,onBack,onNew,onEdit,onSignOut}){
+function CounsellorHostedEventsPage({user,authSession,onBack,onNew,onEdit,onSignOut,invitePanel}){
  const pageMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
  const [events,setEvents]=useState([]);
  const [loading,setLoading]=useState(true);
@@ -1865,6 +1865,7 @@ function CounsellorHostedEventsPage({user,authSession,onBack,onNew,onEdit,onSign
  };
  return <div className="wrap counsellor-hosting-wrap">
   <Bar title={pageMeta.title||'Events hosting'} back={onBack} onSignOut={onSignOut}/>
+  {invitePanel||null}
   <div className="card counsellor-hosting-intro">
    <div className="topbar"><h2>{pageMeta.title||'Events hosting'}</h2><button className="btn btn-primary btn-sm" disabled={unavailable} onClick={onNew}>{pageMeta.newEventLabel||'Host new event'}</button></div>
    <p className="sub">{pageMeta.subtitle||''}</p>
@@ -2530,6 +2531,202 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
  </div>;
 }
 
+const parentSignupInviteMeta=()=>typeof PARENT_SIGNUP_INVITE!=='undefined'?PARENT_SIGNUP_INVITE:{};
+
+const wayfinderParentSignupLink=()=>{
+ try{return new URL('index.html',window.location.origin+'/').toString();}
+ catch(_){return 'index.html';}
+};
+
+function ParentSignupInviteModal({open,context,onClose}){
+ const meta=parentSignupInviteMeta();
+ const [copyState,setCopyState]=useState('');
+ const link=useMemo(()=>wayfinderParentSignupLink(),[]);
+ const isCounsellor=String(context||'').toLowerCase()==='counsellor';
+ const title=isCounsellor
+  ? (meta.modalTitleCounsellor||'Invite parents to Wayfinder')
+  : (meta.modalTitleParent||'Invite another parent');
+
+ useEffect(()=>{if(!open) setCopyState('');},[open]);
+
+ useEffect(()=>{
+  if(!open) return undefined;
+  const onKey=(event)=>{if(event.key==='Escape') onClose();};
+  window.addEventListener('keydown',onKey);
+  return ()=>window.removeEventListener('keydown',onKey);
+ },[open,onClose]);
+
+ if(!open) return null;
+
+ const copyLink=async()=>{
+  try{
+   if(navigator.clipboard&&navigator.clipboard.writeText){
+    await navigator.clipboard.writeText(link);
+    setCopyState('copied');
+    return;
+   }
+  }catch(_){}
+  try{
+   const input=document.createElement('textarea');
+   input.value=link;
+   input.setAttribute('readonly','');
+   input.style.position='absolute';
+   input.style.left='-9999px';
+   document.body.appendChild(input);
+   input.select();
+   document.execCommand('copy');
+   document.body.removeChild(input);
+   setCopyState('copied');
+  }catch(_){
+   setCopyState('failed');
+  }
+ };
+
+ const shareLink=async()=>{
+  if(!navigator.share){
+   setCopyState('share-unavailable');
+   await copyLink();
+   return;
+  }
+  try{
+   await navigator.share({
+    title: meta.shareTitle||'Join Wayfinder',
+    text: meta.shareText||'Create your Wayfinder parent account using this link.',
+    url: link
+   });
+  }catch(err){
+   if(err&&err.name==='AbortError') return;
+   setCopyState('share-unavailable');
+  }
+ };
+
+ return <div className="invite-share-overlay" role="presentation" onClick={onClose}>
+  <div className="invite-share-modal card" role="dialog" aria-modal="true" aria-labelledby="invite-share-title" onClick={(event)=>event.stopPropagation()}>
+   <div className="invite-share-head">
+    <h2 id="invite-share-title">{title}</h2>
+    <button type="button" className="btn btn-ghost btn-sm invite-share-close" onClick={onClose}>{meta.closeButton||'Close'}</button>
+   </div>
+   <p className="dashboard-helper invite-share-intro">{meta.modalIntro||'Share the parent signup link below. This is only the Wayfinder parent entry point.'}</p>
+   <p className="sub invite-share-privacy">{meta.privacyNote||'No referral tracking, automatic journal sharing, professional account creation, or counsellor provisioning is included.'}</p>
+   <label className="field invite-share-link-field">
+    <span>{meta.linkLabel||'Parent signup link'}</span>
+    <input type="text" className="invite-share-link-input" readOnly value={link} onFocus={(event)=>event.target.select()}/>
+   </label>
+   <div className="invite-share-actions">
+    <button type="button" className="btn btn-primary" onClick={copyLink}>{copyState==='copied'?(meta.copiedButton||'Link copied'):(meta.copyButton||'Copy link')}</button>
+    {typeof navigator!=='undefined'&&typeof navigator.share==='function'
+     ? <button type="button" className="btn btn-secondary" onClick={shareLink}>{meta.shareButton||'Share link'}</button>
+     : null}
+   </div>
+   {copyState==='share-unavailable' ? <p className="sub invite-share-status">{meta.shareUnavailable||'Copy the link below to share it manually.'}</p> : null}
+  </div>
+ </div>;
+}
+
+const mhpProfessionalInviteMeta=()=>typeof MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST:{};
+
+// Admin-mediated only: local draft text, clipboard, and mailto. No signup link, invite token, Supabase write, role change, membership, or profile publication.
+function MentalHealthProfessionalInviteRequestModal({open,onClose}){
+ const meta=mhpProfessionalInviteMeta();
+ const [form,setForm]=useState({colleagueName:'',colleagueEmail:'',note:''});
+ const [copyState,setCopyState]=useState('');
+
+ useEffect(()=>{
+  if(!open){
+   setForm({colleagueName:'',colleagueEmail:'',note:''});
+   setCopyState('');
+  }
+ },[open]);
+
+ useEffect(()=>{
+  if(!open) return undefined;
+  const onKey=(event)=>{if(event.key==='Escape') onClose();};
+  window.addEventListener('keydown',onKey);
+  return ()=>window.removeEventListener('keydown',onKey);
+ },[open,onClose]);
+
+ if(!open) return null;
+
+ const buildRequestDraft=()=>{
+  const lines=[
+   meta.requestDraftIntro||'Wayfinder Mental Health Professional invitation request',
+   '',
+   `${meta.fieldColleagueName||'Colleague name'}: ${String(form.colleagueName||'').trim()||'-'}`,
+   `${meta.fieldColleagueEmail||'Colleague email'}: ${String(form.colleagueEmail||'').trim()||'-'}`,
+   ...(String(form.note||'').trim()?[`${meta.fieldNote||'Optional note for Wayfinder admin'}: ${String(form.note||'').trim()}`]:[]),
+   '',
+   meta.requestDraftFooter||'Please review and send a Wayfinder admin invitation to this colleague if appropriate.'
+  ];
+  return lines.join('\n');
+ };
+
+ const copyRequest=async()=>{
+  const draft=buildRequestDraft();
+  try{
+   if(navigator.clipboard&&navigator.clipboard.writeText){
+    await navigator.clipboard.writeText(draft);
+    setCopyState('copied');
+    return;
+   }
+  }catch(_){}
+  try{
+   const input=document.createElement('textarea');
+   input.value=draft;
+   input.setAttribute('readonly','');
+   input.style.position='absolute';
+   input.style.left='-9999px';
+   document.body.appendChild(input);
+   input.select();
+   document.execCommand('copy');
+   document.body.removeChild(input);
+   setCopyState('copied');
+  }catch(_){
+   setCopyState('failed');
+  }
+ };
+
+ const emailAdmin=()=>{
+  const subject=meta.requestDraftIntro||'Wayfinder Mental Health Professional invitation request';
+  const body=buildRequestDraft();
+  window.location.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+ };
+
+ const setField=(key,value)=>setForm((prev)=>({...prev,[key]:value}));
+
+ return <div className="invite-share-overlay" role="presentation" onClick={onClose}>
+  <div className="invite-share-modal invite-request-modal card" role="dialog" aria-modal="true" aria-labelledby="mhp-invite-request-title" onClick={(event)=>event.stopPropagation()}>
+   <div className="invite-share-head">
+    <h2 id="mhp-invite-request-title">{meta.modalTitle||'Invite counsellors to Wayfinder'}</h2>
+    <button type="button" className="btn btn-ghost btn-sm invite-share-close" onClick={onClose}>{meta.closeButton||'Close'}</button>
+   </div>
+   <p className="dashboard-helper invite-share-intro">{meta.modalIntro||'Mental Health Professional accounts are created by Wayfinder administrator invitation only.'}</p>
+   <p className="invite-request-note">{meta.modalAdminNote||'There is no public counsellor or Mental Health Professional signup link.'}</p>
+   <div className="invite-request-fields">
+    <label className="field"><span>{meta.fieldColleagueName||'Colleague name'}</span><input type="text" value={form.colleagueName} onChange={(event)=>setField('colleagueName',event.target.value)}/></label>
+    <label className="field"><span>{meta.fieldColleagueEmail||'Colleague email'}</span><input type="email" value={form.colleagueEmail} onChange={(event)=>setField('colleagueEmail',event.target.value)}/></label>
+    <label className="field"><span>{meta.fieldNote||'Optional note for Wayfinder admin'}</span><textarea rows={3} value={form.note} onChange={(event)=>setField('note',event.target.value)}/></label>
+   </div>
+   <div className="invite-share-actions">
+    <button type="button" className="btn btn-primary" onClick={copyRequest}>{copyState==='copied'?(meta.copiedRequestButton||'Request message copied'):(meta.copyRequestButton||'Copy request message')}</button>
+    <button type="button" className="btn btn-secondary" onClick={emailAdmin}>{meta.emailAdminButton||'Email Wayfinder admin'}</button>
+   </div>
+  </div>
+ </div>;
+}
+
+function MentalHealthProfessionalInvitePanel({inviteShareMeta,professionalInviteMeta,onInviteParents,onInviteProfessionals}){
+ const parentMeta=inviteShareMeta||parentSignupInviteMeta();
+ const professionalMeta=professionalInviteMeta||mhpProfessionalInviteMeta();
+ return <div className="card mhp-invite-panel">
+  <h2>{professionalMeta.panelTitle||'Invite others to Wayfinder'}</h2>
+  <p className="mhp-invite-panel-intro">{professionalMeta.panelIntro||'Share the parent signup link with parents you know. Mental Health Professional colleagues must be invited by the Wayfinder administrator.'}</p>
+  <div className="mhp-invite-panel-actions">
+   <button type="button" className="btn btn-secondary" title={professionalMeta.parentButtonTitle||parentMeta.counsellorButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={onInviteParents}>{professionalMeta.parentButtonLabel||parentMeta.counsellorButtonLabel||'Invite parents to Wayfinder'}</button>
+   <button type="button" className="btn btn-ghost" title={professionalMeta.professionalButtonTitle||'Prepare an admin invitation request.'} onClick={onInviteProfessionals}>{professionalMeta.professionalButtonLabel||'Invite counsellors to Wayfinder'}</button>
+  </div>
+ </div>;
+}
+
 function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut}){
  const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
@@ -2545,6 +2742,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [feedbackNotice,setFeedbackNotice]=useState({loading:false,available:false,unreadCount:0,rows:[]});
  const [feedbackLibrary,setFeedbackLibrary]=useState({loading:false,available:false,rows:[]});
  const feedbackMeta=parentCounsellorFeedbackMeta();
+ const inviteShareMeta=parentSignupInviteMeta();
+ const [inviteShareOpen,setInviteShareOpen]=useState(false);
 
  const refreshFeedbackNotice=async()=>{
   if(!user?.id||!authSession?.access_token){
@@ -2720,7 +2919,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   const recentEntries=[...entries]
    .sort((a,b)=>entryTime(b)-entryTime(a))
    .slice(0,5);
-  return <div className="wrap dashboard-wrap">
+  return <><div className="wrap dashboard-wrap">
    <div className="card banner dashboard-hero">
     <div className="dashboard-hero-copy">
      <p className="dashboard-kicker">Welcome back</p>
@@ -2732,6 +2931,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch" onClick={startNewEntry}>Start new activity</button>
      <button className="switch switch-trail" onClick={()=>setStage('trail')}>Journal trail</button>
      <button className="switch switch-trail" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardActionLabel||'Share for counsellor review'}</button>
+     <button type="button" className="switch switch-trail" title={inviteShareMeta.parentButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={()=>setInviteShareOpen(true)}>{inviteShareMeta.parentButtonLabel||'Invite another parent'}</button>
      <button className="switch switch-trail" onClick={()=>setStage('events')}>Events</button>
      <button className="switch switch-muted" onClick={()=>setStage('appVersion')}>App Version</button>
      <button className="switch switch-muted" onClick={onSignOut}>Sign out</button>
@@ -2859,7 +3059,9 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
     <p className="dashboard-lean-words">{shiftWords.join(' · ')}</p>
     <p className="dashboard-helper">Possible needs to stay curious about: {CHILD_NEEDS_WORDS.join(' · ')}</p>
    </div>
- </div>;
+  </div>
+  <ParentSignupInviteModal open={inviteShareOpen} context="parent" onClose={()=>setInviteShareOpen(false)}/>
+ </>;
  }
 
  if(stage==='decode') return <DecodeMomentFlow
@@ -4807,6 +5009,8 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [hostingUnavailable,setHostingUnavailable]=useState(false);
  const [reviewGrantsUnavailable,setReviewGrantsUnavailable]=useState(false);
  const [usingLegacyJournalAccess,setUsingLegacyJournalAccess]=useState(false);
+ const [inviteShareOpen,setInviteShareOpen]=useState(false);
+ const [mhpInviteRequestOpen,setMhpInviteRequestOpen]=useState(false);
 
  const entryChildAge=(e)=>{
   if(!e.childDob||!e.date) return 'unknown';
@@ -4947,22 +5151,32 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const hostingMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
  const reviewMeta=typeof COUNSELLOR_REVIEW_SHARING!=='undefined'?COUNSELLOR_REVIEW_SHARING:{};
  const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
+ const inviteShareMeta=parentSignupInviteMeta();
+ const professionalInviteMeta=mhpProfessionalInviteMeta();
+ const inviteShareModal=<ParentSignupInviteModal open={inviteShareOpen} context="counsellor" onClose={()=>setInviteShareOpen(false)}/>;
+ const mhpInviteRequestModal=<MentalHealthProfessionalInviteRequestModal open={mhpInviteRequestOpen} onClose={()=>setMhpInviteRequestOpen(false)}/>;
+ const openInviteShare=()=>setInviteShareOpen(true);
+ const openMhpInviteRequest=()=>setMhpInviteRequestOpen(true);
+ const invitePanel=<MentalHealthProfessionalInvitePanel inviteShareMeta={inviteShareMeta} professionalInviteMeta={professionalInviteMeta} onInviteParents={openInviteShare} onInviteProfessionals={openMhpInviteRequest}/>;
+ const workspaceModals=<>{inviteShareModal}{mhpInviteRequestModal}</>;
 
  if(open) return <CounsellorReview entry={open} back={()=>{setOpenId(null);refresh();}} user={user} authSession={authSession} aiEnabled={!usingLegacyJournalAccess} grantGroup={openGrantGroup} reviewMeta={reviewMeta}/>;
 
  if(counsellorStage==='hostForm') return <CounsellorHostEventForm user={user} authSession={authSession} eventId={editHostedEvent?.id||null} existingEvent={editHostedEvent} unavailable={hostingUnavailable} onBack={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}} onSaved={()=>{setEditHostedEvent(null);setCounsellorStage('hostedEvents');}}/>;
 
- if(counsellorStage==='hostedEvents') return <CounsellorHostedEventsPage user={user} authSession={authSession} onBack={()=>setCounsellorStage('reflections')} onNew={()=>{setEditHostedEvent(null);setCounsellorStage('hostForm');}} onEdit={(ev)=>{setEditHostedEvent(ev);setCounsellorStage('hostForm');}} onSignOut={onSignOut}/>;
+ if(counsellorStage==='hostedEvents') return <>{workspaceModals}<CounsellorHostedEventsPage user={user} authSession={authSession} onBack={()=>setCounsellorStage('reflections')} onNew={()=>{setEditHostedEvent(null);setCounsellorStage('hostForm');}} onEdit={(ev)=>{setEditHostedEvent(ev);setCounsellorStage('hostForm');}} onSignOut={onSignOut} invitePanel={invitePanel}/></>;
 
- if(counsellorStage==='editProfile') return <div className="wrap">
+ if(counsellorStage==='editProfile') return <><div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
   <CounsellorWorkspaceNav activeStage="editProfile" reviewMeta={reviewMeta} hostingMeta={hostingMeta} mhpMeta={mhpMeta} onStageChange={setCounsellorStage}/>
+  {invitePanel}
   <MentalHealthProfessionalProfileEditor user={user} authSession={authSession} meta={mhpMeta}/>
- </div>;
+ </div>{workspaceModals}</>;
 
- return <div className="wrap">
+ return <><div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
   <CounsellorWorkspaceNav activeStage="reflections" reviewMeta={reviewMeta} hostingMeta={hostingMeta} mhpMeta={mhpMeta} onStageChange={setCounsellorStage}/>
+  {invitePanel}
   <div className="card">
    <div className="topbar"><h2>{reviewMeta.title||'Parent shared reflections'}</h2><button className="btn btn-ghost" onClick={refresh}>Refresh</button></div>
    <p className="sub" style={{marginBottom:16}}>{reviewMeta.subtitle||'Reflections a parent has chosen to share with you for time-limited ALIGN/CAB review.'}</p>
@@ -4999,7 +5213,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
     </>
    }
   </div>
- </div>;
+ </div>{workspaceModals}</>;
 }
 function CounsellorReview({entry,back,user,authSession,aiEnabled=true,grantGroup=null,reviewMeta={}}){
  const responseTabLabel=reviewMeta.responseTabLabel||'Parent-Facing Response';
