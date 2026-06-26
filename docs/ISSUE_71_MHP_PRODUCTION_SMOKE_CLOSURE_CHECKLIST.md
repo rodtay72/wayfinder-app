@@ -38,6 +38,7 @@ The Issue #71 track includes:
 | Parent practitioner selector copy | PR #95 — MHP/practitioner wording and display fallback in app |
 | Parent practitioner selector names | C6d owner SQL — [supabase-list-available-counsellors-mhp-names.sql](../supabase-list-available-counsellors-mhp-names.sql); apply manually for real names |
 | Parent practitioner selector complete only (C6e) | Owner SQL patch — [supabase-list-available-counsellors-mhp-complete-only.sql](../supabase-list-available-counsellors-mhp-complete-only.sql); hide incomplete MHP rows without full_name |
+| Owner production smoke (C6f) | **PASS** — ready to close Issue #71 |
 
 ---
 
@@ -97,17 +98,26 @@ The Issue #71 track includes:
 
 | Date | Environment | Owner result | Notes |
 |------|-------------|--------------|-------|
-| 2026-06-26 | Production | Pending owner smoke | Fill after Rodney confirms |
+| 2026-06-26 | Production | **PASS** | Owner confirmed after PR #95, C6d SQL, and C6e SQL |
 
-**Important:** Do **not** mark PASS unless Rodney explicitly confirms production smoke success. For now, leave as **Pending owner smoke**.
+**Owner-confirmed (non-sensitive):**
+
+- Parent portal loaded.
+- MHP practitioner selector displayed completed practitioner profile(s) only.
+- Incomplete `C-` accounts were hidden from the selector.
+- Real MHP name / professional identity displayed (not generic Counsellor fallback rows).
+- No generic Counsellor fallback rows remained in the selector.
+- No private identifiers (email, Supabase UUID, tokens) were exposed in normal UI.
+
+**Basis:** PR #95 selector wording/display fallback merged; C6d safe MHP names SQL owner-applied; C6e complete-profile-only selector SQL owner-applied and verified.
 
 ---
 
 ## Closure decision
 
-- [ ] Ready to close Issue #71 after owner confirms smoke pass.
+- [x] Ready to close Issue #71 after owner confirms smoke pass.
 - [ ] Keep Issue #71 open if any auth, RLS, journal, dashboard, invite, membership, or profile-publication issue appears.
-- [ ] Move Android icon cache to separate asset-only follow-up if needed.
+- [x] Move Android icon cache to separate asset-only follow-up if needed.
 
 ---
 
