@@ -313,9 +313,11 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
  const [resetLoading,setResetLoading]=useState(false);
  const [resetStatus,setResetStatus]=useState('');
  const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
- const allowSignup=role!=='counsellor'||!!inviteToken;
+ const allowSignup=(role!=='counsellor'&&role!=='admin')||!!inviteToken;
  const activeMode=allowSignup?mode:'signin';
- const portalLabel=role==='counsellor'
+ const portalLabel=role==='admin'
+  ? 'Wayfinder Owner Admin'
+  : role==='counsellor'
   ? (inviteToken?(mhpMeta.onboardingPortalLabel||'Mental Health Professional Portal'):'Counsellor Portal')
   : 'A space to find your way back to each other';
  const pdpaNotice=typeof PDPA_SIGNUP_NOTICE!=='undefined'?PDPA_SIGNUP_NOTICE:{};
@@ -427,7 +429,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
    <button className="btn btn-primary btn-block" onClick={submit} disabled={loading||(activeMode==='signup'&&!pdpaAcknowledged)}>{loading?'Please wait…':activeMode==='signin'?'Sign in':'Create account'}</button>
    {allowSignup ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
     {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
-   </p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{inviteToken?'Create an account with your invited email, or sign in if you already have one.':'Counsellor accounts are provisioned by the Wayfinder administrator.'}</p>}
+   </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{inviteToken?'Create an account with your invited email, or sign in if you already have one.':'Counsellor accounts are provisioned by the Wayfinder administrator.'}</p>}
    </>}
    </div>
   </div>
@@ -561,6 +563,255 @@ function PasswordRecoveryScreen({status, role, onSubmit, onSignOut}){
    {error&&<div style={{color:'#8a5a00',fontSize:13,marginBottom:12,padding:'10px 12px',background:'#fff4d6',borderRadius:6}}>{error}</div>}
    <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>{loading?'Updating...':'Update password'}</button>
    <button className="btn btn-ghost btn-block" style={{marginTop:10}} onClick={onSignOut} disabled={loading}>Cancel</button>
+  </div>
+ </div>;
+}
+
+const isSafeHttpsPhotoUrl=(value)=>{
+ try{
+  const url=new URL(String(value||'').trim());
+  return url.protocol==='https:';
+ }catch(_){
+  return false;
+ }
+};
+
+const formatOwnerAdminTimestamp=(value)=>{
+ const dt=parseStoredDate(value);
+ if(!dt||isNaN(dt)) return '-';
+ return dt.toLocaleString('en-SG',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+};
+
+const ownerMhpMatchesFilter=(row,filter)=>{
+ const status=String(row?.profileStatus||'').toLowerCase();
+ if(filter==='pending_draft') return status==='draft'||status==='pending_review';
+ if(filter==='published') return status==='published';
+ if(filter==='hidden_suspended') return status==='hidden'||status==='suspended';
+ return true;
+};
+
+const OWNER_MHP_FILTERS=[
+ {id:'pending_draft',label:'Pending / Draft'},
+ {id:'published',label:'Published'},
+ {id:'hidden_suspended',label:'Hidden / Suspended'},
+ {id:'all',label:'All'}
+];
+
+function OwnerAdminMhpCard({row,actionState,onAction}){
+ const busy=actionState?.busy;
+ const cardError=actionState?.error||'';
+ const cardSuccess=actionState?.success||'';
+ const bioPreview=String(row.shortBio||'').trim();
+ const bioShort=bioPreview.length>160?`${bioPreview.slice(0,157)}…`:bioPreview;
+ return <article className="card owner-admin-mhp-card">
+  <div className="owner-admin-mhp-card-head">
+   <div>
+    <p className="pill owner-admin-mhp-pill">{row.wayfinderId||'MHP profile'}</p>
+    <h3>{row.fullName||'Name not saved yet'}</h3>
+    {row.professionalTitle ? <p className="owner-admin-mhp-subtitle">{row.professionalTitle}</p> : null}
+   </div>
+   {isSafeHttpsPhotoUrl(row.photoUrl) ? <img className="owner-admin-photo-preview" src={row.photoUrl} alt="" loading="lazy"/> : null}
+  </div>
+  <dl className="owner-admin-mhp-meta">
+   <div><dt>Licence / registration</dt><dd>{row.licenseRegistrationNumber||'-'}</dd></div>
+   <div><dt>Accreditation number</dt><dd>{row.accreditationNumber||'-'}</dd></div>
+   <div><dt>Issuing body</dt><dd>{row.issuingBody||'-'}</dd></div>
+   <div><dt>Institution</dt><dd>{row.institutionName||'-'}</dd></div>
+   <div><dt>Profile status</dt><dd>{row.profileStatus||'-'}</dd></div>
+   <div><dt>Membership status</dt><dd>{row.membershipStatus||'-'}</dd></div>
+   <div><dt>Profile visible</dt><dd>{row.profileVisible?'Yes':'No'}</dd></div>
+   <div><dt>Licence document</dt><dd>{row.latestDocumentStatus||'-'} {row.latestOriginalFilename?`· ${row.latestOriginalFilename}`:''}</dd></div>
+   <div><dt>Extraction</dt><dd>{row.latestExtractionStatus||'-'} {row.latestExtractedAt?`· ${formatOwnerAdminTimestamp(row.latestExtractedAt)}`:''}</dd></div>
+   <div><dt>Enquiry email</dt><dd>{row.enquiryEmail||'-'}</dd></div>
+   <div><dt>Enquiry mobile</dt><dd>{row.enquiryMobile||'-'}</dd></div>
+  </dl>
+  {bioShort ? <p className="owner-admin-bio-preview"><span className="owner-admin-bio-label">Short bio</span> {bioShort}</p> : null}
+  {cardError ? <p className="review-share-error" role="alert">{cardError}</p> : null}
+  {cardSuccess ? <p className="review-share-status" role="status">{cardSuccess}</p> : null}
+  <div className="owner-admin-mhp-actions">
+   <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={()=>onAction(row,'publish')}>Publish + activate</button>
+   <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={()=>onAction(row,'pending')}>Keep pending review</button>
+   <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={()=>onAction(row,'hide')}>Unpublish / hide</button>
+   <button type="button" className="btn btn-ghost btn-sm owner-admin-action-danger" disabled={busy} onClick={()=>onAction(row,'suspend')}>Suspend</button>
+  </div>
+ </article>;
+}
+
+function OwnerAdminApp({user,authSession,onSignOut}){
+ const [adminGate,setAdminGate]=useState({loading:true,isAdmin:false,unavailable:false});
+ const [profiles,setProfiles]=useState([]);
+ const [queueLoading,setQueueLoading]=useState(false);
+ const [filter,setFilter]=useState('pending_draft');
+ const [banner,setBanner]=useState({type:'',message:''});
+ const [actionState,setActionState]=useState({});
+
+ const loadQueue=async()=>{
+  if(!user?.id||!authSession?.access_token) return;
+  setQueueLoading(true);
+  setBanner({type:'',message:''});
+  try{
+   const result=await DB.listOwnerMhpProfiles(user.id,authSession);
+   if(result.unavailable){
+    setProfiles([]);
+    setBanner({type:'error',message:'MHP review storage is not available yet. Apply the owner admin SQL contract in Supabase.'});
+    return;
+   }
+   if(!result.ok){
+    setProfiles([]);
+    setBanner({type:'error',message:'We could not load the Mental Health Professional review queue right now.'});
+    return;
+   }
+   setProfiles(result.rows||[]);
+  }catch(err){
+   AuthDebug.log('[owner admin] queue load failed:', { message: err?.message || String(err) });
+   setProfiles([]);
+   setBanner({type:'error',message:'We could not load the Mental Health Professional review queue right now.'});
+  }finally{
+   setQueueLoading(false);
+  }
+ };
+
+ useEffect(()=>{
+  let cancelled=false;
+  const checkAdmin=async()=>{
+   if(!user?.id||!authSession?.access_token){
+    if(!cancelled) setAdminGate({loading:false,isAdmin:false,unavailable:false});
+    return;
+   }
+   setAdminGate({loading:true,isAdmin:false,unavailable:false});
+   try{
+    const result=await DB.isOwnerAdmin(user.id,authSession);
+    if(cancelled) return;
+    if(result.unavailable){
+     setAdminGate({loading:false,isAdmin:false,unavailable:true});
+     return;
+    }
+    setAdminGate({loading:false,isAdmin:!!result.isAdmin,unavailable:false});
+   }catch(err){
+    AuthDebug.log('[owner admin] admin check failed:', { message: err?.message || String(err) });
+    if(!cancelled) setAdminGate({loading:false,isAdmin:false,unavailable:false});
+   }
+  };
+  checkAdmin();
+  return ()=>{cancelled=true;};
+ },[user?.id,authSession?.access_token]);
+
+ useEffect(()=>{
+  if(!adminGate.isAdmin) return;
+  loadQueue();
+ },[user?.id,authSession?.access_token,adminGate.isAdmin]);
+
+ const filteredProfiles=profiles.filter(row=>ownerMhpMatchesFilter(row,filter));
+
+ const runPublicationAction=async(row,actionKey)=>{
+  const mhpUserId=row?.mhpUserId;
+  if(!mhpUserId||!user?.id) return;
+  const actionMap={
+   publish:{profileStatus:'published',profileVisible:true,membershipStatus:'active',confirm:'Publish and activate this Mental Health Professional for parent selection?'},
+   pending:{profileStatus:'pending_review',profileVisible:false,membershipStatus:'pending_review',confirm:null},
+   hide:{profileStatus:'hidden',profileVisible:false,membershipStatus:'pending_review',confirm:null},
+   suspend:{profileStatus:'suspended',profileVisible:false,membershipStatus:'suspended',confirm:'Suspend this Mental Health Professional? They will be removed from parent selection.'}
+  };
+  const action=actionMap[actionKey];
+  if(!action) return;
+  if(action.confirm&&!window.confirm(action.confirm)) return;
+
+  setActionState(prev=>({...prev,[mhpUserId]:{busy:true,error:'',success:''}}));
+  setBanner({type:'',message:''});
+  try{
+   const result=await DB.ownerSetMhpPublication(
+    user.id,
+    mhpUserId,
+    action.profileStatus,
+    action.profileVisible,
+    action.membershipStatus,
+    authSession
+   );
+   if(result.unavailable){
+    setActionState(prev=>({...prev,[mhpUserId]:{busy:false,error:'Publication controls are not available yet. Apply the owner admin SQL contract in Supabase.',success:''}}));
+    return;
+   }
+   if(!result.ok){
+    setActionState(prev=>({...prev,[mhpUserId]:{busy:false,error:'This publication change could not be saved right now.',success:''}}));
+    return;
+   }
+   const successLabels={
+    publish:'Published and activated.',
+    pending:'Set to pending review.',
+    hide:'Unpublished and hidden.',
+    suspend:'Suspended.'
+   };
+   setActionState(prev=>({...prev,[mhpUserId]:{busy:false,error:'',success:successLabels[actionKey]||'Saved.'}}));
+   await loadQueue();
+  }catch(err){
+   AuthDebug.log('[owner admin] publication action failed:', { message: err?.message || String(err) });
+   setActionState(prev=>({...prev,[mhpUserId]:{busy:false,error:'This publication change could not be saved right now.',success:''}}));
+  }
+ };
+
+ if(adminGate.loading){
+  return <div className="wrap owner-admin-wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Checking owner admin access…</div></div>;
+ }
+
+ if(adminGate.unavailable){
+  return <div className="wrap owner-admin-wrap"><div className="card owner-admin-access-card">
+   <h2>Owner admin unavailable</h2>
+   <p className="dashboard-helper">The owner admin contract is not available yet. Apply the owner publication SQL in Supabase, then reload this page.</p>
+   <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
+  </div></div>;
+ }
+
+ if(!adminGate.isAdmin){
+  return <div className="wrap owner-admin-wrap"><div className="card owner-admin-access-card">
+   <h2>Owner admin access required.</h2>
+   <p className="dashboard-helper">This page is for Wayfinder owner administrators only. Mental Health Professional profiles are not shown here unless your account is listed in owner admin settings.</p>
+   <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
+  </div></div>;
+ }
+
+ return <div className="wrap owner-admin-wrap">
+  <div className="card banner owner-admin-hero">
+   <div className="owner-admin-hero-copy">
+    <p className="dashboard-kicker">Wayfinder Owner Admin</p>
+    <h1>Mental Health Professional review queue</h1>
+    <p className="dashboard-helper">Review draft and pending profiles, then publish or suspend only through owner-controlled publication. MHP draft completion is not publication.</p>
+   </div>
+   <div className="owner-admin-hero-actions">
+    <button type="button" className="switch switch-muted" onClick={loadQueue} disabled={queueLoading}>{queueLoading?'Refreshing…':'Refresh queue'}</button>
+    <button type="button" className="switch switch-muted" onClick={onSignOut}>Sign out</button>
+   </div>
+  </div>
+
+  {banner.message ? <div className={`card review-share-notice owner-admin-banner${banner.type==='error'?' review-share-notice--legacy':''}`} role={banner.type==='error'?'alert':'status'}>{banner.message}</div> : null}
+
+  <div className="owner-admin-filters" role="tablist" aria-label="MHP review filters">
+   {OWNER_MHP_FILTERS.map(item=><button
+    key={item.id}
+    type="button"
+    role="tab"
+    aria-selected={filter===item.id}
+    className={`owner-admin-filter${filter===item.id?' is-active':''}`}
+    onClick={()=>setFilter(item.id)}
+   >{item.label}</button>)}
+  </div>
+
+  {queueLoading && !profiles.length ? <div className="card owner-admin-empty">Loading Mental Health Professional profiles…</div> : null}
+
+  {!queueLoading && !filteredProfiles.length ? <div className="card owner-admin-empty">
+   <h2>No profiles in this view</h2>
+   <p className="dashboard-helper">Try another filter, or refresh after an MHP completes their profile draft.</p>
+  </div> : null}
+
+  <div className="owner-admin-queue">
+   {filteredProfiles.map(row=>{
+    const key=row.mhpUserId||row.wayfinderId||row.fullName;
+    return <OwnerAdminMhpCard
+     key={key}
+     row={row}
+     actionState={actionState[row.mhpUserId]||{}}
+     onAction={runPublicationAction}
+    />;
+   })}
   </div>
  </div>;
 }
@@ -739,7 +990,8 @@ function App(){
 
     if(profileLoadRef.current.userId!==session.user.id||!profilePromise){
      const counsellorUsesExisting=APP_ROLE==='counsellor'&&!pendingInviteTokenRef.current;
-     profilePromise=counsellorUsesExisting
+     const adminUsesExisting=APP_ROLE==='admin';
+     profilePromise=adminUsesExisting||counsellorUsesExisting
       ? Profile.getExisting(session.user.id,session)
       : Profile.getOrCreate(session.user.id,APP_ROLE,session);
      profileLoadRef.current={userId:session.user.id,promise:profilePromise};
@@ -914,16 +1166,17 @@ function App(){
   <p className="sub">{profileError}</p>
   <button className="btn btn-primary" style={{marginTop:18}} onClick={()=>location.reload()}>Refresh</button>
  </div></div>;}
- if(!profile){AuthDebug.log('[render] branch: profile loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;}
+ if(!profile&&APP_ROLE!=='admin'){AuthDebug.log('[render] branch: profile loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your Wayfinder profile…</div></div>;}
 
   // Wrong portal check
-  if(profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
+  if(APP_ROLE!=='admin'&&profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
    <h2 style={{marginBottom:12}}>{APP_ROLE==='counsellor'?'Access denied: counsellor role required':'Wrong portal'}</h2>
    <p className="sub">Your account is registered as a <b>{profile.role}</b>.</p>
   <p className="sub" style={{marginTop:8}}>{profile.role==='parent'?'Please go to the main app to sign in.':'Please go to the counsellor portal to sign in.'}</p>
   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
  </div></div>;}
 
+ if(APP_ROLE==='admin'){AuthDebug.log('[render] branch: owner admin app');return <OwnerAdminApp user={user} authSession={authSession} onSignOut={signOut}/>;}
  if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} profile={profile} authSession={authSession} onSignOut={signOut}/>;}
  AuthDebug.log('[render] branch: client dashboard');
  return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} authSession={authSession} onSignOut={signOut}/>;
