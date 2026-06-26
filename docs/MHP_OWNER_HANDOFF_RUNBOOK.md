@@ -151,6 +151,27 @@ This selector is for parent-directed review sharing — not the public professio
 
 ---
 
+## Owner-applied SQL — complete MHP profiles only (Issue #71 C6e)
+
+**C6d** made safe MHP name fields available in `list_available_counsellors()`. **C6e** narrows parent selector visibility to completed MHP profile identities.
+
+- File: [supabase-list-available-counsellors-mhp-complete-only.sql](../supabase-list-available-counsellors-mhp-complete-only.sql)
+- Run manually in the Supabase SQL Editor after C6d (replaces the same function)
+
+**Behaviour:** Only Mental Health Professionals with a non-blank `full_name` in `mental_health_professional_profiles` appear in the parent practitioner selector. Incomplete MHP accounts may remain internal but are **hidden** from parent selection until `full_name` is populated.
+
+**Does not:** publish profiles, activate memberships, expose emails/UUIDs/tokens/licence files, or weaken RLS.
+
+After applying, verify:
+
+```sql
+select * from public.list_available_counsellors();
+```
+
+**Expected:** Only rows with populated `full_name` (for example **Rodney Tay** for `C-00001`). Incomplete `C-` accounts without `full_name` do **not** appear.
+
+---
+
 ## Related docs
 
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — living launch snapshot
