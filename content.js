@@ -493,6 +493,16 @@ const APP_VERSION_PAGE = {
 
 const WAYFINDER_APP_VERSIONS = [
   {
+    id: "v0-4-1-mhp-onboarding-invite",
+    version: "v0.4.1",
+    date: "June 2026",
+    status: "released",
+    tag: "Professional workspace",
+    title: "Mental Health Professional onboarding and invite flow",
+    body: "Parent invite sharing is clearer — you can share a parent signup link from your dashboard when you want another parent to join Wayfinder. Mental Health Professional accounts remain invitation and administrator controlled; there is no public professional signup. The professional profile review flow is safer and clearer, with details shown for review before you adjust or save. Parent and Mental Health Professional mobile shortcuts now have separate home-screen names so each portal installs with the right entry point.",
+    parentAction: "Use Invite another parent on your dashboard if helpful. If you are a Mental Health Professional colleague, use the admin-mediated invite request in the professional workspace — Wayfinder will guide you to contact the administrator."
+  },
+  {
     id: "v0-4-0-events-listing",
     version: "v0.4.0",
     date: "June 2026",
