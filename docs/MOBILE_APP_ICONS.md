@@ -67,6 +67,16 @@ Optional shared browser favicons at repo root:
 3. Update the matching manifest only if filenames or sizes change.
 4. Commit the replaced PNG files (and manifest if needed), redeploy, then hard refresh or remove and re-add the home-screen shortcut if the old icon is cached.
 
+If the old/no icon continues to appear on mobile:
+
+- remove the existing home-screen shortcut
+- hard refresh the page
+- clear site data/cache if needed
+- reopen the correct portal URL
+- add to home screen again
+
+Mobile browsers may cache manifest and apple-touch-icon metadata aggressively.
+
 ## Do not change for icon updates alone
 
 Do not edit auth, Supabase, SQL, RLS, `app.js` journal/dashboard/profile/invite logic, Parent ID / Child ID generation, membership activation, or public profile publication just to change icons.
