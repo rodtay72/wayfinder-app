@@ -4306,11 +4306,14 @@ const mhpUploadFallbackDocument=(uploadSuccess)=>{
 
 const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate,editable,onApplyExtractedDetails,appliedDocId})=>{
  const [reviewFields,setReviewFields]=useState(()=>mhpExtractedLicenseFields(doc?.extractedJson));
+ const [isAdjusting,setIsAdjusting]=useState(false);
  useEffect(()=>{
   setReviewFields(mhpExtractedLicenseFields(doc?.extractedJson));
+  setIsAdjusting(false);
  },[doc?.id, doc?.extractedJson]);
  const setReviewField=(key,value)=>setReviewFields((prev)=>({...prev,[key]:value}));
  const display=(value)=>value||'-';
+ const showInputs=!!editable&&isAdjusting;
  const canApply=!!editable&&typeof onApplyExtractedDetails==='function'&&!!(
   reviewFields.fullName
   ||reviewFields.professionalTitle
@@ -4323,50 +4326,51 @@ const MentalHealthProfessionalLicenseExtractionReview=({doc,meta,fmtDate,editabl
   type={type}
   className="mhp-license-review-input"
   value={type==='date'?mhpDateInputValue(reviewFields[key]):(reviewFields[key]||'')}
-  disabled={!editable}
   onChange={(e)=>setReviewField(key,e.target.value)}
  />;
- return <div className="mhp-license-review-panel">
+ const reviewViewerField=(label,value,{wide=false,date=false}={})=><div className={'mhp-license-review-field mhp-license-review-field--viewer'+(wide?' mhp-license-review-field-wide':'')}>
+  <span className="mhp-license-review-label">{label}</span>
+  <span className="mhp-license-review-value">{date?(value?fmtDate(value):'-'):display(value)}</span>
+ </div>;
+ const reviewEditorField=(label,key,{wide=false,type='text'}={})=><label className={'mhp-license-review-field mhp-license-review-field--editing'+(wide?' mhp-license-review-field-wide':'')}>
+  <span className="mhp-license-review-label">{label}</span>
+  {type==='date' ? <>
+   <input type="date" className="mhp-license-review-input" value={mhpDateInputValue(reviewFields[key])} onChange={(e)=>setReviewField(key,e.target.value)}/>
+   {reviewFields[key] ? <span className="mhp-license-review-date-hint">{fmtDate(reviewFields[key])}</span> : null}
+  </> : reviewInput(key,type)}
+ </label>;
+ return <div className={'mhp-license-review-panel'+(showInputs?' mhp-license-review-panel--adjusting':' mhp-license-review-panel--viewer')}>
   <h5>{meta.licenseExtractionReviewTitle||'Review extracted details'}</h5>
-  <div className="mhp-license-review-grid">
-   <label className="mhp-license-review-field">
-    <span className="mhp-license-review-label">{meta.licenseReviewFullName||'Full name'}</span>
-    {editable ? reviewInput('fullName') : <span className="mhp-license-review-value">{display(reviewFields.fullName)}</span>}
-   </label>
-   <label className="mhp-license-review-field">
-    <span className="mhp-license-review-label">{meta.licenseReviewProfessionalTitle||'Professional title / credential'}</span>
-    {editable ? reviewInput('professionalTitle') : <span className="mhp-license-review-value">{display(reviewFields.professionalTitle)}</span>}
-   </label>
-   <label className="mhp-license-review-field">
-    <span className="mhp-license-review-label">{meta.licenseReviewIssuingBody||'Issuing body'}</span>
-    {editable ? reviewInput('issuingBody') : <span className="mhp-license-review-value">{display(reviewFields.issuingBody)}</span>}
-   </label>
-   <label className="mhp-license-review-field">
-    <span className="mhp-license-review-label">{meta.licenseReviewLicenseNumber||'Licence / certificate number'}</span>
-    {editable ? reviewInput('licenseRegistrationNumber') : <span className="mhp-license-review-value">{display(reviewFields.licenseRegistrationNumber)}</span>}
-   </label>
-   <label className="mhp-license-review-field">
-    <span className="mhp-license-review-label">{meta.licenseReviewAccreditationNumber||'Accreditation number'}</span>
-    {editable ? reviewInput('accreditationNumber') : <span className="mhp-license-review-value">{display(reviewFields.accreditationNumber)}</span>}
-   </label>
-   <label className="mhp-license-review-field">
-    <span className="mhp-license-review-label">{meta.licenseReviewValidFrom||'Valid from'}</span>
-    {editable ? <>
-     <input type="date" className="mhp-license-review-input" value={mhpDateInputValue(reviewFields.validFrom)} disabled={!editable} onChange={(e)=>setReviewField('validFrom',e.target.value)}/>
-     {reviewFields.validFrom ? <span className="mhp-license-review-date-hint">{fmtDate(reviewFields.validFrom)}</span> : null}
-    </> : <span className="mhp-license-review-value">{reviewFields.validFrom?fmtDate(reviewFields.validFrom):'-'}</span>}
-   </label>
-   <label className="mhp-license-review-field">
-    <span className="mhp-license-review-label">{meta.licenseReviewValidTo||'Valid to'}</span>
-    {editable ? <>
-     <input type="date" className="mhp-license-review-input" value={mhpDateInputValue(reviewFields.validTo)} disabled={!editable} onChange={(e)=>setReviewField('validTo',e.target.value)}/>
-     {reviewFields.validTo ? <span className="mhp-license-review-date-hint">{fmtDate(reviewFields.validTo)}</span> : null}
-    </> : <span className="mhp-license-review-value">{reviewFields.validTo?fmtDate(reviewFields.validTo):'-'}</span>}
-   </label>
-   <label className="mhp-license-review-field mhp-license-review-field-wide">
-    <span className="mhp-license-review-label">{meta.licenseReviewRawValidityText||'Raw validity text'}</span>
-    {editable ? reviewInput('rawValidityText') : <span className="mhp-license-review-value">{display(reviewFields.rawValidityText)}</span>}
-   </label>
+  <div className="mhp-license-review-intro">
+   <p>{meta.licenseReviewIntroPrivatePdf||'Review values from your private licence PDF.'}</p>
+   <p>{meta.licenseReviewIntroAdjustOnly||'Adjust only if extraction is wrong.'}</p>
+   <p>{meta.licenseReviewIntroApplyAbove||'Apply values to the profile draft above, then save from the top form.'}</p>
+  </div>
+  {editable ? <div className="mhp-license-review-mode-actions">
+   {showInputs
+    ? <button type="button" className="btn btn-secondary btn-sm" onClick={()=>setIsAdjusting(false)}>{meta.licenseReviewDoneAdjusting||'Done adjusting'}</button>
+    : <button type="button" className="btn btn-ghost btn-sm" onClick={()=>setIsAdjusting(true)}>{meta.licenseReviewAdjustDetails||'Adjust extracted details'}</button>}
+  </div> : null}
+  <div className={'mhp-license-review-grid'+(showInputs?' mhp-license-review-grid--adjusting':' mhp-license-review-grid--viewer')}>
+   {showInputs ? <>
+    {reviewEditorField(meta.licenseReviewFullName||'Full name','fullName')}
+    {reviewEditorField(meta.licenseReviewProfessionalTitle||'Professional title / credential','professionalTitle')}
+    {reviewEditorField(meta.licenseReviewIssuingBody||'Issuing body','issuingBody')}
+    {reviewEditorField(meta.licenseReviewLicenseNumber||'Licence / certificate number','licenseRegistrationNumber')}
+    {reviewEditorField(meta.licenseReviewAccreditationNumber||'Accreditation number','accreditationNumber')}
+    {reviewEditorField(meta.licenseReviewValidFrom||'Valid from','validFrom',{type:'date'})}
+    {reviewEditorField(meta.licenseReviewValidTo||'Valid to','validTo',{type:'date'})}
+    {reviewEditorField(meta.licenseReviewRawValidityText||'Raw validity text','rawValidityText',{wide:true})}
+   </> : <>
+    {reviewViewerField(meta.licenseReviewFullName||'Full name',reviewFields.fullName)}
+    {reviewViewerField(meta.licenseReviewProfessionalTitle||'Professional title / credential',reviewFields.professionalTitle)}
+    {reviewViewerField(meta.licenseReviewIssuingBody||'Issuing body',reviewFields.issuingBody)}
+    {reviewViewerField(meta.licenseReviewLicenseNumber||'Licence / certificate number',reviewFields.licenseRegistrationNumber)}
+    {reviewViewerField(meta.licenseReviewAccreditationNumber||'Accreditation number',reviewFields.accreditationNumber)}
+    {reviewViewerField(meta.licenseReviewValidFrom||'Valid from',reviewFields.validFrom,{date:true})}
+    {reviewViewerField(meta.licenseReviewValidTo||'Valid to',reviewFields.validTo,{date:true})}
+    {reviewViewerField(meta.licenseReviewRawValidityText||'Raw validity text',reviewFields.rawValidityText,{wide:true})}
+   </>}
   </div>
   {canApply ? <div className="mhp-license-review-actions">
    <button type="button" className="btn btn-secondary" onClick={()=>onApplyExtractedDetails(doc.id,reviewFields)}>{meta.licenseApplyToProfileDraft||'Use reviewed details in my profile draft'}</button>
