@@ -25,8 +25,8 @@ Today, `mental_health_professional_profiles.photo_url` supports a simple **Photo
 
 This document defines the preferred **private upload → illustrated portrait → owner review → publish** model aligned with the existing MHP **draft → review → publish** publication contract (PR #104 / PR #105).
 
-**User-facing label:** Mental Health Professional / MHP  
-**Internal role:** `counsellor` (unchanged)
+- **User-facing label:** Mental Health Professional / MHP
+- **Internal role:** `counsellor` (unchanged)
 
 **No App Version entry** — MHP/admin infrastructure only.
 
@@ -151,8 +151,8 @@ Storage **policies** are documented in [supabase-mhp-profile-image-storage.sql](
 
 Separate table recommended (not only `photo_url`):
 
-**Table:** `public.mental_health_professional_profile_images`  
-**Contract file:** [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-storage.sql)
+- **Table:** `public.mental_health_professional_profile_images`
+- **Contract file:** [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-storage.sql)
 
 | Field | Purpose |
 |-------|---------|
