@@ -47,16 +47,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 ## Issue #71 — Mental Health Professional onboarding / invite (launch notes)
 
-**Status:** Substantially completed — owner handoff runbook: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md)
+**Status:** Pending owner production smoke / closure decision — handoff runbook: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md); closure checklist: [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) (C6b added)
 
 | Item | Status |
 |------|--------|
-| MHP onboarding / invite flow | Substantially completed on Issue #71 track |
+| MHP onboarding / invite flow | Substantially completed on Issue #71 track — **not closed until owner smoke pass** |
 | Account enablement | **Owner/admin controlled** — no public MHP signup |
 | MHP profile publication / membership activation | **Guarded** — draft / pending review unless owner explicitly activates |
 | Parent invite | Parent signup link share only |
 | MHP colleague invite | Admin-mediated request only — no automatic account creation |
 | Mobile install identities | Separate **Wayfinder Parent** and **Wayfinder MHP** home-screen names and icons |
+| Production smoke / closure | **Pending owner smoke** — see [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) |
 | Android icon cache on some devices | **Non-blocking follow-up** — static asset/cache; see [MOBILE_APP_ICONS.md](./MOBILE_APP_ICONS.md) |
 
 ## In flight
@@ -64,7 +65,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Branch / phase | Summary | Status |
 |----------------|---------|--------|
 | Issue #52 parent/counsellor feedback workflow | Per-entry counsellor response flow, parent mark-read flow, counsellor response status badges, and Parent Feedback Library merged and owner-verified through PR #69 | Monitoring / verified |
-| Issue #71 MHP onboarding / invite | Docs handoff runbook (C6a); runtime merges tracked separately on Issue #71 PRs | In progress / launch notes added |
+| Issue #71 MHP onboarding / invite | C6b production smoke closure checklist added; pending owner production smoke / closure decision | Pending owner smoke |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
