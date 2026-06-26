@@ -1,0 +1,64 @@
+-- ============================================================
+-- Wayfinder parent-safe MHP selector names — complete profiles only
+-- Issue #71 C6e
+-- ============================================================
+-- Purpose:
+--   Replace list_available_counsellors() so parent review sharing displays only
+--   Mental Health Professionals with a completed parent-safe display identity.
+--
+-- Guardrails:
+--   - User-facing label: Mental Health Professional / practitioner.
+--   - Internal role value remains: counsellor.
+--   - Does not expose auth UUIDs, emails, invite tokens, licence PDFs,
+--     storage paths, extraction JSON, review notes, or hidden identifiers.
+--   - Does not create public MHP signup.
+--   - Does not activate membership.
+--   - Does not publish profiles.
+--   - Does not weaken RLS.
+--   - This is not the public professional directory.
+--
+-- Owner-applied only. Run manually in Supabase SQL Editor.
+
+drop function if exists public.list_available_counsellors();
+
+create function public.list_available_counsellors()
+returns table(
+  wayfinder_id text,
+  display_label text,
+  full_name text,
+  professional_title text,
+  institution_name text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    p.parent_id as wayfinder_id,
+    coalesce(
+      nullif(trim(mhp.full_name), ''),
+      nullif(trim(mhp.professional_title), ''),
+      nullif(trim(m.institution_name), ''),
+      'Mental Health Professional ' || p.parent_id
+    ) as display_label,
+    nullif(trim(mhp.full_name), '') as full_name,
+    nullif(trim(mhp.professional_title), '') as professional_title,
+    nullif(trim(m.institution_name), '') as institution_name
+  from public.profiles p
+  join public.mental_health_professional_profiles mhp
+    on mhp.user_id = p.user_id
+  left join public.mental_health_professional_memberships m
+    on m.user_id = p.user_id
+  where p.role = 'counsellor'
+    and p.parent_id is not null
+    and nullif(trim(mhp.full_name), '') is not null
+    and coalesce(mhp.profile_status, 'draft') not in ('hidden', 'suspended')
+    and coalesce(m.membership_status, 'pending_review') <> 'suspended'
+  order by
+    nullif(trim(mhp.full_name), '') asc,
+    p.parent_id asc;
+$$;
+
+revoke all on function public.list_available_counsellors() from public;
+grant execute on function public.list_available_counsellors() to authenticated;

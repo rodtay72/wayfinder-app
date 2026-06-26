@@ -37,6 +37,7 @@ The Issue #71 track includes:
 | Owner handoff runbook | Added — [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) |
 | Parent practitioner selector copy | PR #95 — MHP/practitioner wording and display fallback in app |
 | Parent practitioner selector names | C6d owner SQL — [supabase-list-available-counsellors-mhp-names.sql](../supabase-list-available-counsellors-mhp-names.sql); apply manually for real names |
+| Parent practitioner selector complete only (C6e) | Owner SQL patch — [supabase-list-available-counsellors-mhp-complete-only.sql](../supabase-list-available-counsellors-mhp-complete-only.sql); hide incomplete MHP rows without full_name |
 
 ---
 
@@ -55,6 +56,8 @@ The Issue #71 track includes:
 - [ ] Parent invite shares parent signup link only.
 - [ ] Practitioner selector label reads **Choose your Mental Health Professional** (after PR #95).
 - [ ] Practitioner options show real MHP names where profile data exists (after C6d SQL applied).
+- [ ] Parent practitioner selector only shows MHP profiles with completed parent-safe `full_name` (after C6e SQL applied).
+- [ ] Incomplete `C-` accounts without `full_name` do not appear in the selector.
 - [ ] No parent email, Supabase UUID, or hidden identifiers appear in normal UI.
 
 ### MHP / counsellor portal
