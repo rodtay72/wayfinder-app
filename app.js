@@ -2340,6 +2340,18 @@ function RelationshipGarden({dyads,entries}){
 }
 
 const parentCounsellorFeedbackMeta=()=>(typeof PARENT_COUNSELLOR_FEEDBACK!=='undefined'?PARENT_COUNSELLOR_FEEDBACK:{});
+const signupPrivacyAcknowledgementMeta=()=>(typeof SIGNUP_PRIVACY_ACKNOWLEDGEMENT!=='undefined'?SIGNUP_PRIVACY_ACKNOWLEDGEMENT:{});
+const signupPrivacyNoticeMeta=()=>(typeof PDPA_SIGNUP_NOTICE!=='undefined'?PDPA_SIGNUP_NOTICE:{});
+const buildSignupPrivacyConsentSnapshot=(notice)=>{
+ const title=String(notice?.title||'').trim();
+ const body=String(notice?.body||'').trim();
+ const checkbox=String(notice?.checkboxLabel||'').trim();
+ const parts=[];
+ if(title) parts.push(`Title: ${title}`);
+ if(body) parts.push(`Body: ${body}`);
+ if(checkbox) parts.push(`Checkbox: ${checkbox}`);
+ return parts.join('\n\n');
+};
 
 const isGenericCounsellorDisplayLabel=(label)=>{
  const t=String(label||'').trim();
@@ -2393,6 +2405,34 @@ const formatCounsellorFeedbackDate=(value)=>{
  if(!dt||isNaN(dt)) return '-';
  return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
 };
+
+function SignupPrivacyAcknowledgement({meta,loading,showBanner,submitting,successMessage,errorMessage,fetchFailed,onAcknowledge,onRetry}){
+ if(loading) return null;
+ if(successMessage){
+  return <div className="card review-share-notice privacy-ack-notice" role="status">{successMessage}</div>;
+ }
+ if(showBanner){
+  return <div className="card parent-feedback-notification privacy-ack-banner">
+   <div className="parent-feedback-notification-copy">
+    <p className="pill parent-feedback-notification-pill">Privacy</p>
+    <h2>{meta.title||'Privacy and data-use acknowledgement'}</h2>
+    <p className="dashboard-helper">{meta.body||''}</p>
+    <p className="review-share-expiry">{meta.secondaryNote||'You can keep using Wayfinder while this is shown.'}</p>
+    {errorMessage ? <p className="review-share-error" role="alert">{errorMessage}</p> : null}
+   </div>
+   <button type="button" className="btn btn-primary" disabled={submitting} onClick={onAcknowledge}>
+    {submitting?'Saving…':(meta.button||'Acknowledge')}
+   </button>
+  </div>;
+ }
+ if(fetchFailed&&errorMessage){
+  return <div className="card review-share-notice review-share-notice--legacy privacy-ack-notice" role="status">
+   <p className="dashboard-helper" style={{margin:0}}>{errorMessage}</p>
+   {onRetry ? <button type="button" className="btn btn-ghost btn-sm" style={{marginTop:10}} onClick={onRetry}>{meta.retryButton||'Try again'}</button> : null}
+  </div>;
+ }
+ return null;
+}
 
 function ParentCounsellorFeedbackNotification({meta,loading,available,unreadCount,unreadRows,onOpenFeedback}){
  if(loading||!available||!unreadCount) return null;
@@ -2845,7 +2885,85 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [feedbackLibrary,setFeedbackLibrary]=useState({loading:false,available:false,rows:[]});
  const feedbackMeta=parentCounsellorFeedbackMeta();
  const inviteShareMeta=parentSignupInviteMeta();
+ const privacyAckMeta=signupPrivacyAcknowledgementMeta();
+ const privacyNotice=signupPrivacyNoticeMeta();
+ const privacyNoticeVersion=String(privacyNotice.version||'').trim();
  const [inviteShareOpen,setInviteShareOpen]=useState(false);
+ const [privacyAck,setPrivacyAck]=useState({loading:true,showBanner:false,submitting:false,successMessage:'',errorMessage:'',fetchFailed:false});
+
+ const refreshSignupPrivacyAcknowledgement=async()=>{
+  if(!user?.id||!authSession?.access_token||!privacyNoticeVersion){
+   setPrivacyAck({loading:false,showBanner:false,submitting:false,successMessage:'',errorMessage:'',fetchFailed:false});
+   return;
+  }
+  setPrivacyAck(prev=>({...prev,loading:true,successMessage:'',errorMessage:'',fetchFailed:false}));
+  try{
+   const result=await DB.hasAcceptedSignupPrivacyConsent(user.id,privacyNoticeVersion,authSession);
+   if(result.unavailable||!result.ok){
+    setPrivacyAck({
+     loading:false,
+     showBanner:false,
+     submitting:false,
+     successMessage:'',
+     errorMessage:privacyAckMeta.fetchFailureMessage||privacyAckMeta.failureMessage||'',
+     fetchFailed:true
+    });
+    return;
+   }
+   if(result.accepted){
+    setPrivacyAck({loading:false,showBanner:false,submitting:false,successMessage:'',errorMessage:'',fetchFailed:false});
+    return;
+   }
+   setPrivacyAck({loading:false,showBanner:true,submitting:false,successMessage:'',errorMessage:'',fetchFailed:false});
+  }catch(err){
+   AuthDebug.log('[privacy ack] fetch failed:', { message: err?.message || String(err) });
+   setPrivacyAck({
+    loading:false,
+    showBanner:false,
+    submitting:false,
+    successMessage:'',
+    errorMessage:privacyAckMeta.fetchFailureMessage||privacyAckMeta.failureMessage||'',
+    fetchFailed:true
+   });
+  }
+ };
+
+ const acknowledgeSignupPrivacy=async()=>{
+  if(!user?.id||!authSession?.access_token||!privacyNoticeVersion) return;
+  const snapshot=buildSignupPrivacyConsentSnapshot(privacyNotice);
+  if(!snapshot.trim()) return;
+  setPrivacyAck(prev=>({...prev,submitting:true,errorMessage:''}));
+  try{
+   const result=await DB.insertSignupPrivacyConsent(user.id,parentId,{
+    consentVersion:privacyNoticeVersion,
+    consentTextSnapshot:snapshot,
+    sourcePage:'dashboard_privacy_acknowledgement'
+   },authSession);
+   if(result.ok){
+    setPrivacyAck({
+     loading:false,
+     showBanner:false,
+     submitting:false,
+     successMessage:privacyAckMeta.successMessage||'Privacy acknowledgement saved.',
+     errorMessage:'',
+     fetchFailed:false
+    });
+    return;
+   }
+   setPrivacyAck(prev=>({
+    ...prev,
+    submitting:false,
+    errorMessage:privacyAckMeta.failureMessage||'We could not save this acknowledgement right now. You can keep using Wayfinder and try again later.'
+   }));
+  }catch(err){
+   AuthDebug.log('[privacy ack] insert failed:', { message: err?.message || String(err) });
+   setPrivacyAck(prev=>({
+    ...prev,
+    submitting:false,
+    errorMessage:privacyAckMeta.failureMessage||'We could not save this acknowledgement right now. You can keep using Wayfinder and try again later.'
+   }));
+  }
+ };
 
  const refreshFeedbackNotice=async()=>{
   if(!user?.id||!authSession?.access_token){
@@ -3013,6 +3131,11 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   refreshFeedbackNotice();
  },[user.id,authSession?.access_token,stage]);
 
+ useEffect(()=>{
+  if(!authSession?.access_token||stage!=='dashboard') return;
+  refreshSignupPrivacyAcknowledgement();
+ },[user.id,parentId,authSession?.access_token,stage]);
+
  if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your space...</div></div>;
 
  if(stage==='dashboard'){
@@ -3039,6 +3162,18 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch switch-muted" onClick={onSignOut}>Sign out</button>
    </div>
   </div>
+
+   <SignupPrivacyAcknowledgement
+    meta={privacyAckMeta}
+    loading={privacyAck.loading}
+    showBanner={privacyAck.showBanner}
+    submitting={privacyAck.submitting}
+    successMessage={privacyAck.successMessage}
+    errorMessage={privacyAck.errorMessage}
+    fetchFailed={privacyAck.fetchFailed}
+    onAcknowledge={acknowledgeSignupPrivacy}
+    onRetry={refreshSignupPrivacyAcknowledgement}
+   />
 
    <ParentCounsellorFeedbackNotification
     meta={feedbackMeta}

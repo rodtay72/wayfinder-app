@@ -586,6 +586,20 @@ const hostedEventWriteSafe = async ({ method, userId, authSession, context, body
   }
 };
 
+const isConsentRecordsUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('42p01')) return true;
+  if (text.includes('consent_records') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  return false;
+};
+
 const isReviewGrantsUnavailable = (status, responseText) => {
   const text = String(responseText || '').toLowerCase();
   if (status === 404) return true;
@@ -2874,5 +2888,72 @@ const DB = {
       available: true,
       locks: parentFeedbackRpcRows(result.data).map(normalizeParentEntryReviewLockRow).filter(Boolean)
     };
+  },
+
+  hasAcceptedSignupPrivacyConsent: async (userId, consentVersion, authSession = null) => {
+    const version = String(consentVersion || '').trim();
+    if (!userId || !version) {
+      return { ok: false, unavailable: false, accepted: false };
+    }
+    const result = await fetchReviewGrantsSafe({
+      table: 'consent_records',
+      query: {
+        select: 'id,consent_type,consent_version,consent_status',
+        user_id: `eq.${userId}`,
+        consent_type: 'eq.signup_privacy',
+        consent_version: `eq.${version}`,
+        consent_status: 'eq.accepted',
+        limit: '1'
+      },
+      userId,
+      authSession,
+      context: 'hasAcceptedSignupPrivacyConsent',
+      unavailableCheck: isConsentRecordsUnavailable
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, accepted: false };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, accepted: false };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      accepted: (result.rows || []).length > 0
+    };
+  },
+
+  insertSignupPrivacyConsent: async (userId, parentId, payload, authSession = null) => {
+    const consentVersion = String(payload?.consentVersion || '').trim();
+    const consentTextSnapshot = String(payload?.consentTextSnapshot || '').trim();
+    const sourcePage = String(payload?.sourcePage || 'dashboard_privacy_acknowledgement').trim();
+    if (!userId || !consentVersion || !consentTextSnapshot) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    const result = await reviewGrantWriteSafe({
+      method: 'POST',
+      userId,
+      authSession,
+      context: 'insertSignupPrivacyConsent',
+      table: 'consent_records',
+      unavailableCheck: isConsentRecordsUnavailable,
+      body: {
+        user_id: userId,
+        parent_id: parentId || null,
+        consent_type: 'signup_privacy',
+        consent_version: consentVersion,
+        consent_status: 'accepted',
+        consent_text_snapshot: consentTextSnapshot,
+        accepted_at: new Date().toISOString(),
+        source_page: sourcePage
+      }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, record: null };
+    }
+    if (!result.ok || !(result.rows || []).length) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    return { ok: true, unavailable: false, record: result.rows[0] };
   }
 };
