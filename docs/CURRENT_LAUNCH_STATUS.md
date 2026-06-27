@@ -84,7 +84,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #106 MHP profile image strategy | [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) + [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-storage.sql); planning only — no upload/generation UI | Complete (merged) — owner SQL apply pending |
 | PR #107 MHP private source photo upload | Source photo upload + signed preview — [supabase-mhp-profile-image-upload-policies.sql](../supabase-mhp-profile-image-upload-policies.sql); no parent App Version change | Complete (merged) |
 | PR #108 counsellor blank page hotfix | Remove orphan JSX block before source photo section | Complete (merged) |
-| PR #109 published MHP source photo upload | Allow private source photo upload when profile is published (not tied to profile draft edit) | In flight |
+| PR #109 published MHP source photo upload | Allow private source photo upload when profile is published (not tied to profile draft edit) | Complete (merged) — owner smoke passed |
+| PR #110 owner admin source photo preview | Owner/admin temporary signed preview of private MHP source photo on `/admin.html` — [supabase-mhp-owner-image-review-rpc.sql](../supabase-mhp-owner-image-review-rpc.sql); no parent App Version change | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
