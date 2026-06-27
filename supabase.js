@@ -299,6 +299,7 @@ const mhpProfileWriteSafe = async ({ method, userId, authSession, context, body,
 const MHP_LICENSE_BUCKET = 'professional-license-documents';
 const MHP_LICENSE_MAX_BYTES = 10 * 1024 * 1024;
 const MHP_SOURCE_PHOTO_BUCKET = 'professional-profile-image-sources';
+const MHP_APPROVED_PORTRAIT_BUCKET = 'professional-profile-portraits';
 const MHP_SOURCE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 const MHP_SOURCE_PHOTO_ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MHP_PROFILE_IMAGE_SIGNED_URL_SECONDS = 600;
@@ -350,6 +351,7 @@ const isMhpProfileImageStorageUnavailable = (status, responseText) => {
   if (status === 404) return true;
   if (text.includes('bucket not found')) return true;
   if (text.includes('professional-profile-image-sources')) return true;
+  if (text.includes('professional-profile-portraits')) return true;
   if (text.includes('row-level security')) return true;
   if (text.includes('pgrst205')) return true;
   if (text.includes('mental_health_professional_profile_images') && (
@@ -397,6 +399,14 @@ const buildMhpSourcePhotoStoragePath = (userId, mimeType) => {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const suffix = Math.random().toString(36).slice(2, 10);
   return `${userId}/${stamp}-${suffix}.${ext}`;
+};
+
+const buildOwnerApprovedPortraitStoragePath = (mhpUserId, mimeType) => {
+  const ext = mhpSourcePhotoExtension(mimeType);
+  if (!mhpUserId || !ext) return null;
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const suffix = Math.random().toString(36).slice(2, 10);
+  return `mhp/${mhpUserId}/approved/${stamp}-${suffix}.${ext}`;
 };
 
 const normalizeMhpProfileImageRow = (row) => {
@@ -448,6 +458,40 @@ const uploadMhpSourcePhotoSafe = async ({ userId, storagePath, file, mimeType, a
       return { ok: false, unavailable: true, responseText: message };
     }
     AuthDebug.log('[db] MHP source photo storage upload exception:', { context, message });
+    return { ok: false, unavailable: false, responseText: message };
+  }
+};
+
+const uploadOwnerApprovedPortraitSafe = async ({ userId, storagePath, file, mimeType, authSession, context }) => {
+  try {
+    const session = await getAuthenticatedReadSession(userId, context, authSession);
+    const encodedPath = encodeStorageObjectPath(storagePath);
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${MHP_APPROVED_PORTRAIT_BUCKET}/${encodedPath}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': mimeType || 'application/octet-stream',
+        'x-upsert': 'false'
+      },
+      body: file
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (isMhpProfileImageStorageUnavailable(response.status, responseText)) {
+        AuthDebug.log('[db] owner approved portrait storage unavailable:', { context, status: response.status });
+        return { ok: false, unavailable: true, responseText };
+      }
+      AuthDebug.log('[db] owner approved portrait storage upload failed:', { context, status: response.status, responseText });
+      return { ok: false, unavailable: false, responseText };
+    }
+    return { ok: true, unavailable: false, responseText: null };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isMhpProfileImageStorageUnavailable(0, message)) {
+      return { ok: false, unavailable: true, responseText: message };
+    }
+    AuthDebug.log('[db] owner approved portrait storage upload exception:', { context, message });
     return { ok: false, unavailable: false, responseText: message };
   }
 };
@@ -3296,6 +3340,86 @@ const DB = {
       return { ok: false, unavailable: false, signedUrl: null, expired };
     }
     return { ok: true, unavailable: false, signedUrl: result.signedUrl, expired: false };
+  },
+
+  uploadOwnerApprovedMhpPortrait: async (ownerUserId, mhpUserId, file, authSession = null) => {
+    if (!ownerUserId || !mhpUserId || !file) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'missingFile' };
+    }
+    const mimeType = String(file.type || '').toLowerCase();
+    if (!MHP_SOURCE_PHOTO_ALLOWED_MIME.has(mimeType)) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'unsupportedType' };
+    }
+    if (file.size > MHP_SOURCE_PHOTO_MAX_BYTES) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'tooLarge' };
+    }
+    const storagePath = buildOwnerApprovedPortraitStoragePath(mhpUserId, mimeType);
+    if (!storagePath) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'invalidPath' };
+    }
+    const uploadResult = await uploadOwnerApprovedPortraitSafe({
+      userId: ownerUserId,
+      storagePath,
+      file,
+      mimeType,
+      authSession,
+      context: 'uploadOwnerApprovedMhpPortrait storage'
+    });
+    if (uploadResult.unavailable) {
+      return { ok: false, unavailable: true, storagePath: null, errorCode: 'storageUnavailable' };
+    }
+    if (!uploadResult.ok) {
+      return { ok: false, unavailable: false, storagePath: null, errorCode: 'storageUpload' };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      storagePath,
+      mimeType,
+      fileSizeBytes: file.size,
+      errorCode: null
+    };
+  },
+
+  insertOwnerApprovedMhpPortraitMetadata: async (ownerUserId, mhpUserId, metadata, authSession = null) => {
+    const targetMhpId = String(mhpUserId || '').trim();
+    const storagePath = String(metadata?.storagePath || '').trim();
+    if (!ownerUserId || !targetMhpId || !storagePath) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    const now = new Date().toISOString();
+    const result = await reviewGrantWriteSafe({
+      method: 'POST',
+      userId: ownerUserId,
+      authSession,
+      context: 'insertOwnerApprovedMhpPortraitMetadata',
+      table: 'mental_health_professional_profile_images',
+      unavailableCheck: isMhpProfileImageStorageUnavailable,
+      body: {
+        user_id: targetMhpId,
+        image_kind: 'approved_portrait',
+        storage_bucket: MHP_APPROVED_PORTRAIT_BUCKET,
+        storage_path: storagePath,
+        mime_type: metadata?.mimeType || null,
+        file_size_bytes: metadata?.fileSizeBytes ?? null,
+        portrait_style: 'wayfinder_manual',
+        image_status: 'approved',
+        selected_at: now,
+        approved_by: ownerUserId,
+        approved_at: now
+      }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, record: null };
+    }
+    if (!result.ok || !(result.rows || []).length) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      record: normalizeMhpProfileImageRow(result.rows[0])
+    };
   },
 
   uploadMhpSourcePhoto: async (userId, file, authSession = null) => {
