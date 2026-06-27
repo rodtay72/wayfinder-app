@@ -2,6 +2,19 @@
 
 Wayfinder has **two separate user-facing interfaces**. Each portal has its own home-screen name, manifest, and icon folder so Add to Home Screen installs the correct entry point.
 
+## Login branding (PR #111)
+
+All auth/login screens (parent, MHP/counsellor, owner admin) show the Wayfinder logo above the sign-in form.
+
+| Item | Path / value |
+|------|----------------|
+| Login logo (served URL) | `/assets/brand/wayfinder-logo.png` |
+| Repo path | `assets/brand/wayfinder-logo.png` |
+| Source asset | `design-assets/pr-111/wayfinder-logo-source.jpeg` |
+| Alt text | `Wayfinder` |
+
+Admin (`/admin.html`) has **no separate PWA manifest** — it uses root favicons only and is not an install target.
+
 ## 1. Parent interface
 
 | Item | Path / value |
@@ -10,6 +23,8 @@ Wayfinder has **two separate user-facing interfaces**. Each portal has its own h
 | Home-screen name | **Wayfinder Parent** |
 | Manifest | `/manifest-parent.webmanifest` |
 | Icons folder | `/icons/parent/` |
+| Install artwork | **Brown family icon** (parent portal only) |
+| Source asset | `design-assets/pr-111/parent-brown-install-icon-source.png` |
 
 Required PNG files:
 
@@ -21,7 +36,7 @@ Required PNG files:
 
 **Stable filenames** (`icon-512.png`, `icon-192.png`, `apple-touch-icon.png`) are the normal replacement targets when updating artwork.
 
-**Versioned install filenames** (optional, from earlier cache-bust passes such as `*-20260626.png`) may remain in the folder for reference. Current HTML/manifest install links use **stable filenames**, often with a query-string cache version such as `?v=20260626-android`.
+**Versioned install filenames** (optional cache-bust copies such as `*-20260619-pr111.png`) may remain in the folder for reference. Current HTML/manifest install links use **stable filenames** with a query-string cache version such as `?v=20260619-pr111`.
 
 Linked from `index.html` only.
 
@@ -33,6 +48,8 @@ Linked from `index.html` only.
 | Home-screen name | **Wayfinder MHP** |
 | Manifest | `/manifest-counsellor.webmanifest` |
 | Icons folder | `/icons/counsellor/` |
+| Install artwork | **Green counselling icon** (MHP portal only — do not use on parent) |
+| Source asset | `design-assets/pr-111/mhp-green-install-icon-source.png` |
 
 Required PNG files:
 
@@ -52,7 +69,7 @@ Internal Supabase role remains `counsellor`. **Wayfinder MHP** is the user-facin
 
 `verify.html` is not a main install target. It may use generic root favicon and theme metadata only. It does **not** link a portal manifest or override either install identity.
 
-Optional shared browser favicons at repo root (parent logo; Android may fall back here):
+Optional shared browser favicons at repo root (parent brown icon; Android may fall back here):
 
 | File | Size |
 |------|------|
@@ -66,7 +83,7 @@ Android/Chrome relies on **manifest icons** and normal `rel="icon"` favicons mor
 
 Each portal HTML head should include explicit 192×192 and 512×512 `rel="icon"` links for the matching portal folder, plus the portal manifest.
 
-Manifest icon PNGs should **not** be transparent-only or mostly empty. The visible mark should sit clearly in the middle safe area on an **opaque** background (`#F7F4EF`).
+Manifest icon PNGs use an **opaque** cream background (`#F7F4EF`) when flattening source artwork for install reliability.
 
 If Android still shows an old icon after deploy:
 
@@ -76,21 +93,25 @@ If Android still shows an old icon after deploy:
 - clear Chrome cache if needed
 - reopen the correct portal URL and add to home screen again
 
-Android launcher and Chrome may cache old shortcut icons aggressively.
+Android launcher and Chrome may cache old shortcut icons aggressively. **Removing and re-adding** the installed app is often required after an icon refresh.
 
 ## Design notes
 
 - PNG files only — no base64 in HTML, CSS, or JavaScript.
 - No icon data in `app.js`, `content.js`, or `images.js`.
-- Simple brand mark: soft cream background (`#F7F4EF`), sage/forest rounded shape, **W** motif.
-- No parent/child photos, personal data, or clinical imagery.
+- **Parent install icon:** brown family artwork — never use on counsellor/MHP manifest.
+- **Counsellor/MHP install icon:** green counselling artwork — never use on parent manifest.
+- **Login logo:** pink Wayfinder logo with tagline — all portals, not used as PWA install icon.
+- No parent/child photos, personal data, or clinical imagery in login branding beyond supplied brand assets.
 
 ## How to replace icons later
 
-1. Export your new design at the sizes above for the portal you are updating (**parent** or **counsellor**).
-2. Replace the **stable** PNG files using the exact same filenames in `icons/parent/` or `icons/counsellor/`.
-3. Also replace the **current versioned install** PNG files (same pixel dimensions, versioned filenames such as `icon-512-20260626.png`) so stable and install assets stay in sync.
-4. Commit the replaced PNG files, redeploy, then hard refresh or remove and re-add the home-screen shortcut if the old icon is cached.
+1. Place updated source files in `design-assets/` (or replace the PR #111 sources).
+2. Export your new design at the sizes above for the portal you are updating (**parent** or **counsellor**).
+3. Replace the **stable** PNG files using the exact same filenames in `icons/parent/` or `icons/counsellor/`.
+4. Also replace the **current versioned install** PNG files (same pixel dimensions, versioned filenames such as `icon-512-20260619-pr111.png`) so stable and install assets stay in sync.
+5. Bump the `?v=` cache query on `index.html` / `counsellor.html` icon and manifest links.
+6. Commit the replaced PNG files, redeploy, then hard refresh or remove and re-add the home-screen shortcut if the old icon is cached.
 
 If icon cache gets stuck again after deploy, create a **new** versioned filename suffix (for example `-20260701`), copy the PNGs to those names, and update only `index.html` / `counsellor.html` plus the matching manifest icon `src` paths. Stable filenames do not need to change for that cache-bust step.
 

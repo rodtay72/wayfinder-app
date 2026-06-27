@@ -497,6 +497,16 @@ const APP_VERSION_PAGE = {
 
 const WAYFINDER_APP_VERSIONS = [
   {
+    id: "v0-4-4-login-branding-install-icon",
+    version: "v0.4.4",
+    date: "June 2026",
+    status: "released",
+    tag: "Branding",
+    title: "Wayfinder login branding and app icon refreshed",
+    body: "Wayfinder now shows clearer branding on the login experience, and the installed parent app uses a dedicated Wayfinder icon. This is a visual update only and does not change your journal, Child IDs, privacy settings, or reflections.",
+    parentAction: "If your phone still shows the old icon, remove the old home-screen shortcut and install Wayfinder again."
+  },
+  {
     id: "v0-4-3-privacy-acknowledgement-record",
     version: "v0.4.3",
     date: "June 2026",
