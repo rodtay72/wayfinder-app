@@ -607,7 +607,7 @@ const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
   fieldPhotoUrl: "Photo URL",
   fieldPhotoUrlLegacyNote: "Legacy optional URL. The preferred workflow is private upload and owner-reviewed portrait.",
   sourcePhotoSectionTitle: "Private source photo",
-  sourcePhotoHelper: "Upload a private source photo for future Wayfinder portrait review. This image is not public and does not publish your profile.",
+  sourcePhotoHelper: "Upload a private source photo for future Wayfinder portrait review. This image is not public, does not edit your published profile, and does not publish your portrait.",
   sourcePhotoUploadButton: "Upload source photo",
   sourcePhotoChooseFile: "Choose image",
   sourcePhotoUploading: "Uploading…",

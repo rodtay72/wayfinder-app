@@ -5331,7 +5331,7 @@ function MentalHealthProfessionalLicenseSection({user,authSession,meta,editable,
  </div>;
 }
 
-function MentalHealthProfessionalSourcePhotoSection({user,authSession,meta,editable}){
+function MentalHealthProfessionalSourcePhotoSection({user,authSession,meta,canUpload}){
  const fileInputRef=useRef(null);
  const [loading,setLoading]=useState(true);
  const [unavailable,setUnavailable]=useState(false);
@@ -5389,14 +5389,14 @@ function MentalHealthProfessionalSourcePhotoSection({user,authSession,meta,edita
  useEffect(()=>{loadPreview();},[user?.id,authSession?.access_token]);
 
  const handleChooseFile=()=>{
-  if(!editable||uploadState==='uploading') return;
+  if(!canUpload||uploadState==='uploading') return;
   fileInputRef.current?.click();
  };
 
  const handleFileChange=async(event)=>{
   const file=event.target.files?.[0]||null;
   event.target.value='';
-  if(!file||!user?.id) return;
+  if(!file||!user?.id||!canUpload) return;
   const mime=String(file.type||'').toLowerCase();
   if(!['image/jpeg','image/png','image/webp'].includes(mime)){
    setUploadState('error');
@@ -5449,7 +5449,7 @@ function MentalHealthProfessionalSourcePhotoSection({user,authSession,meta,edita
 
  return <div className="mhp-source-photo-section">
   <h3 className="mhp-source-photo-title">{meta.sourcePhotoSectionTitle||'Private source photo'}</h3>
-  <p className="dashboard-helper mhp-source-photo-helper">{meta.sourcePhotoHelper||'Upload a private source photo for future Wayfinder portrait review. This image is not public and does not publish your profile.'}</p>
+  <p className="dashboard-helper mhp-source-photo-helper">{meta.sourcePhotoHelper||'Upload a private source photo for future Wayfinder portrait review. This image is not public, does not edit your published profile, and does not publish your portrait.'}</p>
   {loading ? <p className="sub">Loading private photo preview…</p> : null}
   {!loading && unavailable ? <p className="sub">{meta.sourcePhotoStorageUnavailable||'Private photo upload is not ready yet.'}</p> : null}
   {!loading && !unavailable && previewUrl ? <div className="mhp-source-photo-preview-wrap">
@@ -5460,7 +5460,7 @@ function MentalHealthProfessionalSourcePhotoSection({user,authSession,meta,edita
   {statusMessage ? <p className={'mhp-source-photo-status'+(uploadState==='error'?' mhp-source-photo-status--error':'')} role="status" aria-live="polite">{statusMessage}</p> : null}
   <div className="mhp-source-photo-actions">
    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="mhp-source-photo-input" onChange={handleFileChange}/>
-   <button type="button" className="btn btn-secondary btn-sm" disabled={!editable||uploadState==='uploading'||unavailable} onClick={handleChooseFile}>
+   <button type="button" className="btn btn-secondary btn-sm" disabled={!canUpload||uploadState==='uploading'||unavailable} onClick={handleChooseFile}>
     {uploadState==='uploading'?(meta.sourcePhotoUploading||'Uploading…'):(meta.sourcePhotoUploadButton||'Upload source photo')}
    </button>
    {!loading && latestRow ? <button type="button" className="btn btn-ghost btn-sm" onClick={loadPreview}>Refresh preview</button> : null}
@@ -5517,6 +5517,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
  useEffect(()=>{if(user?.id&&authSession?.access_token)load();},[user?.id,authSession?.access_token]);
 
  const editable=['hidden','draft','pending_review'].includes(String(profileStatus||'').toLowerCase());
+ const sourcePhotoUploadAllowed=!!user?.id&&!!authSession?.access_token&&String(profileStatus||'').toLowerCase()!=='suspended'&&String(status?.membershipStatus||'').toLowerCase()!=='suspended';
  const headerName=form.fullName||status?.fullName||'';
  const headerTitle=form.professionalTitle||status?.professionalTitle||'';
  const headerPhoto=form.photoUrl||status?.photoUrl||'';
@@ -5598,7 +5599,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
   {!editable ? <p className="sub mhp-profile-readonly-note">{meta.editProfileReadOnlyNotice||'This profile is under review or published.'}</p> : null}
   {appliedExtractDocId ? <p className="mhp-profile-extracted-apply-notice" role="status" aria-live="polite">{meta.licenseApplyToProfileDraftSuccess||'Extracted details applied to your profile draft. Please review before saving.'}</p> : null}
   <div className="mhp-profile-fields">
-   <MentalHealthProfessionalSourcePhotoSection user={user} authSession={authSession} meta={meta} editable={editable}/>
+   <MentalHealthProfessionalSourcePhotoSection user={user} authSession={authSession} meta={meta} canUpload={sourcePhotoUploadAllowed}/>
    <label className="field">
     <span>{meta.fieldPhotoUrl||'Photo URL'}</span>
     <input type="url" value={form.photoUrl} disabled={!editable} onChange={e=>{setPhotoBroken(false);setField('photoUrl',e.target.value);}}/>
