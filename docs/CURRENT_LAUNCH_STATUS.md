@@ -68,7 +68,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - App Version notes scoped to **parent/client-visible UI/UX only** — MHP/admin/internal ops entries removed from the parent page.
 - **v0.4.2** Relationship Garden release note added (PR #99 garden evidence fix).
 - **v0.4.3** Privacy acknowledgement record (PR #103 — merged).
-- **v0.4.4** Login branding and parent install icon refresh (PR #111 — in flight).
+- **v0.4.4** Login branding and parent install icon refresh (PR #111 — merged).
 - MHP onboarding (former v0.4.1), security-readiness, and future-research planning notes remain in ops/docs only, not on the parent App Version page.
 
 ## In flight
@@ -87,7 +87,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #108 counsellor blank page hotfix | Remove orphan JSX block before source photo section | Complete (merged) |
 | PR #109 published MHP source photo upload | Allow private source photo upload when profile is published (not tied to profile draft edit) | Complete (merged) — owner smoke passed |
 | PR #110 owner admin source photo preview | Owner/admin temporary signed preview of private MHP source photo on `/admin.html` — [supabase-mhp-owner-image-review-rpc.sql](../supabase-mhp-owner-image-review-rpc.sql); no parent App Version change | Complete (merged) |
-| PR #111 login branding and install icons | Wayfinder logo on all login pages; parent brown + MHP green PWA icons; App Version v0.4.4; no auth/runtime/data changes | In flight |
+| PR #111 login branding and install icons | Wayfinder logo on all login pages; parent brown + MHP green PWA icons; App Version v0.4.4; no auth/runtime/data changes | Complete (merged) |
+| PR #112 PWA install icon separation | Separate manifest `id`/`scope` per portal; versioned manifest icon paths; fixes MHP showing parent brown icon after Add to Home Screen | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started

@@ -15,6 +15,26 @@ All auth/login screens (parent, MHP/counsellor, owner admin) show the Wayfinder 
 
 Admin (`/admin.html`) has **no separate PWA manifest** — it uses root favicons only and is not an install target.
 
+## Separate PWA install identities (PR #112)
+
+Parent and MHP must **not** share the same install identity. Each manifest has its own `id`, `scope`, and versioned icon paths so mobile browsers do not conflate the two home-screen apps.
+
+| Portal | Manifest `id` | `start_url` | `scope` | Manifest icon `src` |
+|--------|---------------|-------------|---------|---------------------|
+| Parent | `/index.html?wayfinder-pwa=parent` | `/index.html` | `/index.html` | `/icons/parent/icon-*-20260619-pr111.png` |
+| MHP | `/counsellor.html?wayfinder-pwa=mhp` | `/counsellor.html` | `/counsellor.html` | `/icons/counsellor/icon-*-20260619-pr111.png` |
+
+HTML head links (`index.html` / `counsellor.html`) use stable icon filenames with cache-bust query `?v=20260627-pr112`. Manifest JSON references **versioned** icon filenames directly (no query string).
+
+After deploy, if the wrong icon still appears:
+
+1. **Remove both** old home-screen shortcuts (Wayfinder Parent and Wayfinder MHP).
+2. Clear Chrome/Safari site install cache if needed.
+3. Open `/index.html` and add to home screen — expect **brown family** icon.
+4. Open `/counsellor.html` and add to home screen — expect **green counselling** icon.
+
+Android may cache the previous broad `scope: "/"` manifest identity until both shortcuts are removed and reinstalled.
+
 ## 1. Parent interface
 
 | Item | Path / value |
@@ -36,7 +56,7 @@ Required PNG files:
 
 **Stable filenames** (`icon-512.png`, `icon-192.png`, `apple-touch-icon.png`) are the normal replacement targets when updating artwork.
 
-**Versioned install filenames** (optional cache-bust copies such as `*-20260619-pr111.png`) may remain in the folder for reference. Current HTML/manifest install links use **stable filenames** with a query-string cache version such as `?v=20260619-pr111`.
+**Versioned install filenames** (cache-bust copies such as `*-20260619-pr111.png`) are referenced by **manifest JSON** `icons[].src`. HTML head links use **stable filenames** with query-string cache version such as `?v=20260627-pr112`.
 
 Linked from `index.html` only.
 
@@ -59,7 +79,7 @@ Required PNG files:
 | `icons/counsellor/icon-192.png` | 192 × 192 |
 | `icons/counsellor/apple-touch-icon.png` | 180 × 180 |
 
-**Stable filenames** are the normal replacement targets. HTML install links use stable filenames with cache-busting query strings; manifests reference stable icon paths.
+**Stable filenames** are the normal replacement targets for HTML `rel="icon"` links. **Manifest JSON** references versioned install filenames (for example `icon-512-20260619-pr111.png`). HTML uses stable filenames with cache-busting query strings.
 
 Linked from `counsellor.html` only.
 
