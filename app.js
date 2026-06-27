@@ -682,7 +682,7 @@ function OwnerAdminMhpSourcePhotoSection({mhpUserId,user,authSession}){
  </div>;
 }
 
-function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession}){
+function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession,refreshKey=0}){
  const fileInputRef=useRef(null);
  const [loading,setLoading]=useState(true);
  const [unavailable,setUnavailable]=useState(false);
@@ -737,7 +737,7 @@ function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession}){
   }
  };
 
- useEffect(()=>{loadPreview();},[mhpUserId,user?.id,authSession?.access_token]);
+ useEffect(()=>{loadPreview();},[mhpUserId,user?.id,authSession?.access_token,refreshKey]);
 
  const handleChooseFile=()=>{
   if(uploadState==='uploading'||unavailable) return;
@@ -822,7 +822,151 @@ function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession}){
  </div>;
 }
 
+function OwnerAdminMhpGeneratedSketchSection({mhpUserId,user,authSession,onApprovedPortraitSaved}){
+ const [loading,setLoading]=useState(true);
+ const [unavailable,setUnavailable]=useState(false);
+ const [generatedRow,setGeneratedRow]=useState(null);
+ const [previewUrl,setPreviewUrl]=useState('');
+ const [previewExpired,setPreviewExpired]=useState(false);
+ const [workflowState,setWorkflowState]=useState('');
+ const [statusMessage,setStatusMessage]=useState('');
+
+ const loadPreview=async()=>{
+  if(!user?.id||!authSession?.access_token||!mhpUserId){
+   setLoading(false);
+   setGeneratedRow(null);
+   setPreviewUrl('');
+   return;
+  }
+  setLoading(true);
+  setPreviewExpired(false);
+  try{
+   const listResult=await DB.ownerListMhpProfileImages(user.id,mhpUserId,authSession);
+   if(listResult.unavailable||listResult.forbidden||!listResult.ok){
+    setUnavailable(true);
+    setGeneratedRow(null);
+    setPreviewUrl('');
+    return;
+   }
+   setUnavailable(false);
+   const generatedRows=(listResult.rows||[]).filter(row=>row.imageKind==='generated_portrait');
+   const latest=generatedRows[0]||null;
+   setGeneratedRow(latest);
+   if(!latest?.storageBucket||!latest?.storagePath){
+    setPreviewUrl('');
+    return;
+   }
+   const signResult=await DB.createOwnerMhpProfileImageSignedUrl(user.id,latest.storageBucket,latest.storagePath,authSession);
+   if(signResult.unavailable){
+    setUnavailable(true);
+    setPreviewUrl('');
+    return;
+   }
+   if(!signResult.ok||!signResult.signedUrl){
+    setPreviewUrl('');
+    setPreviewExpired(!!signResult.expired);
+    return;
+   }
+   setPreviewUrl(signResult.signedUrl);
+  }catch(err){
+   AuthDebug.log('[owner-admin] generated sketch preview load failed:', { message: err?.message || String(err) });
+   setPreviewUrl('');
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ useEffect(()=>{loadPreview();},[mhpUserId,user?.id,authSession?.access_token]);
+
+ const handleGenerate=async()=>{
+  if(!user?.id||!mhpUserId||workflowState==='generating'||workflowState==='approving') return;
+  setWorkflowState('generating');
+  setStatusMessage('Generating sketch… this may take up to two minutes.');
+  setPreviewExpired(false);
+  try{
+   const result=await DB.generateOwnerMhpSketchPortrait(user.id,mhpUserId,authSession);
+   if(result.unavailable){
+    setUnavailable(true);
+    setWorkflowState('error');
+    setStatusMessage(result.errorMessage||'Generated portrait storage is not ready yet. Apply PR #114 SQL.');
+    return;
+   }
+   if(result.forbidden||!result.ok){
+    setWorkflowState('error');
+    setStatusMessage(result.errorMessage||'The sketch could not be generated. Please try another source image or generate manually.');
+    return;
+   }
+   setWorkflowState('');
+   setStatusMessage('Wayfinder sketch generated.');
+   await loadPreview();
+  }catch(err){
+   AuthDebug.log('[owner-admin] sketch generation failed:', { message: err?.message || String(err) });
+   setWorkflowState('error');
+   setStatusMessage('The sketch could not be generated. Please try another source image or generate manually.');
+  }
+ };
+
+ const handleApprove=async()=>{
+  const imageId=generatedRow?.imageId||generatedRow?.id;
+  if(!user?.id||!mhpUserId||!imageId||workflowState==='generating'||workflowState==='approving') return;
+  setWorkflowState('approving');
+  setStatusMessage('Saving as approved portrait…');
+  try{
+   const result=await DB.approveOwnerGeneratedMhpPortrait(user.id,mhpUserId,imageId,authSession);
+   if(result.unavailable){
+    setUnavailable(true);
+    setWorkflowState('error');
+    setStatusMessage(result.errorMessage||'Generated portrait storage is not ready yet. Apply PR #114 SQL.');
+    return;
+   }
+   if(result.forbidden||!result.ok){
+    setWorkflowState('error');
+    setStatusMessage(result.errorMessage||'The sketch could not be saved as approved. Please try again.');
+    return;
+   }
+   setWorkflowState('');
+   setStatusMessage('Saved as approved portrait.');
+   onApprovedPortraitSaved?.();
+  }catch(err){
+   AuthDebug.log('[owner-admin] sketch approval failed:', { message: err?.message || String(err) });
+   setWorkflowState('error');
+   setStatusMessage('The sketch could not be saved as approved. Please try again.');
+  }
+ };
+
+ const busy=workflowState==='generating'||workflowState==='approving';
+
+ return <div className="owner-admin-generated-sketch-section">
+  <h4 className="owner-admin-generated-sketch-title">Generated Wayfinder sketch</h4>
+  <p className="dashboard-helper owner-admin-generated-sketch-helper">Generate a private Wayfinder-style sketch from the uploaded source photo. The sketch is for owner review only and is not shown to parents or clients.</p>
+  {loading ? <p className="sub">Loading generated sketch preview…</p> : null}
+  {!loading && unavailable ? <p className="sub">Generated portrait storage is not ready yet. Apply PR #114 SQL.</p> : null}
+  {!loading && !unavailable && generatedRow && previewUrl ? <div className="owner-admin-generated-sketch-preview-wrap">
+   <img className="owner-admin-generated-sketch-preview" src={previewUrl} alt="" onError={()=>{setPreviewUrl('');setPreviewExpired(true);}}/>
+   <dl className="owner-admin-generated-sketch-meta">
+    <div><dt>Status</dt><dd>{generatedRow.imageStatus||'-'}</dd></div>
+    <div><dt>Generated</dt><dd>{formatOwnerAdminTimestamp(generatedRow.createdAt)}</dd></div>
+    <div><dt>MIME type</dt><dd>{generatedRow.mimeType||'-'}</dd></div>
+    <div><dt>File size</dt><dd>{formatOwnerAdminFileSize(generatedRow.fileSizeBytes)}</dd></div>
+   </dl>
+  </div> : null}
+  {!loading && !unavailable && generatedRow && !previewUrl ? <p className="sub">{previewExpired ? 'Preview link expired.' : 'Preview unavailable.'} <button type="button" className="btn btn-ghost btn-sm" onClick={loadPreview}>Refresh preview</button></p> : null}
+  {!loading && !unavailable && !generatedRow ? <p className="sub">No generated sketch yet.</p> : null}
+  {statusMessage ? <p className={'owner-admin-portrait-status'+(workflowState==='error'?' owner-admin-portrait-status--error':'')} role="status" aria-live="polite">{statusMessage}</p> : null}
+  <div className="owner-admin-generated-sketch-actions">
+   <button type="button" className="btn btn-secondary btn-sm" disabled={busy||unavailable} onClick={handleGenerate}>
+    {workflowState==='generating'?'Generating sketch…':'Generate Wayfinder sketch'}
+   </button>
+   {!loading && (generatedRow?.imageId||generatedRow?.id) ? <button type="button" className="btn btn-primary btn-sm" disabled={busy||unavailable} onClick={handleApprove}>
+    {workflowState==='approving'?'Saving…':'Save as approved portrait'}
+   </button> : null}
+   {!loading && generatedRow ? <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={loadPreview}>Refresh preview</button> : null}
+  </div>
+ </div>;
+}
+
 function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
+ const [approvedPortraitRefreshKey,setApprovedPortraitRefreshKey]=useState(0);
  const busy=actionState?.busy;
  const cardError=actionState?.error||'';
  const cardSuccess=actionState?.success||'';
@@ -852,7 +996,18 @@ function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
   </dl>
   {bioShort ? <p className="owner-admin-bio-preview"><span className="owner-admin-bio-label">Short bio</span> {bioShort}</p> : null}
   <OwnerAdminMhpSourcePhotoSection mhpUserId={row.mhpUserId} user={user} authSession={authSession}/>
-  <OwnerAdminMhpApprovedPortraitSection mhpUserId={row.mhpUserId} user={user} authSession={authSession}/>
+  <OwnerAdminMhpGeneratedSketchSection
+   mhpUserId={row.mhpUserId}
+   user={user}
+   authSession={authSession}
+   onApprovedPortraitSaved={()=>setApprovedPortraitRefreshKey(key=>key+1)}
+  />
+  <OwnerAdminMhpApprovedPortraitSection
+   mhpUserId={row.mhpUserId}
+   user={user}
+   authSession={authSession}
+   refreshKey={approvedPortraitRefreshKey}
+  />
   {cardError ? <p className="review-share-error" role="alert">{cardError}</p> : null}
   {cardSuccess ? <p className="review-share-status" role="status">{cardSuccess}</p> : null}
   <div className="owner-admin-mhp-actions">
