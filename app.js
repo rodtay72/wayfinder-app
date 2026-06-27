@@ -385,15 +385,18 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
   }
  };
  return <div className="wrap">
-  <div className="card banner"><h1>Way Finder</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{portalLabel}</p></div>
+  <div className="auth-brand">
+   <img className="auth-brand-logo" src="/assets/brand/wayfinder-logo.png?v=20260619-pr111" alt="Wayfinder"/>
+   <p className="auth-brand-subtitle">{portalLabel}</p>
+  </div>
   {inviteToken ? <div className="card mhp-invite-card">
    <h2>{mhpMeta.inviteTitle||"You've been invited as a Mental Health Professional"}</h2>
    <p className="dashboard-helper">{mhpMeta.inviteSubtitle||'Sign in or create an account using the email address your invitation was sent to.'}</p>
    <p className="sub mhp-invite-note">{mhpMeta.inviteSignInNote||'Use the invited email address. Your invite link has been received — you do not need to enter it again.'}</p>
   </div> : null}
-  <div className="card" style={{padding:0,overflow:'hidden'}}>
-   <img src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'} style={{width:'100%',height:'auto',display:'block'}}/>
-   <div style={{padding:24}}>
+  <div className="card auth-login-card" style={{padding:0,overflow:'hidden'}}>
+   {(role==='parent'||role==='counsellor') ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'}/> : null}
+   <div className="auth-login-body">
    {forgotOpen ? <>
     <h2>{mhpMeta.forgotPasswordTitle||'Reset your password'}</h2>
     <p className="sub auth-forgot-copy">{mhpMeta.forgotPasswordPrompt||'Enter the email you used for Wayfinder. If an account exists, we will send a password reset link.'}</p>

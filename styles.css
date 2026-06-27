@@ -232,6 +232,12 @@
   .auth-forgot-link{background:transparent;border:0;padding:0;font:inherit;font-size:13px;font-weight:650;color:var(--sage-deep);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
   .auth-forgot-copy{margin:0 0 16px;line-height:1.6;}
   .auth-forgot-back{margin-top:10px;}
+  .auth-brand{text-align:center;margin:0 0 16px;padding:4px 0 0;}
+  .auth-brand-logo{display:block;width:min(100%,320px);height:auto;margin:0 auto;}
+  .auth-brand-subtitle{margin:8px 0 0;font-size:14px;line-height:1.5;color:#5d6c66;}
+  .auth-login-card{margin-top:0;}
+  .auth-login-hero{width:100%;height:auto;display:block;}
+  .auth-login-body{padding:24px;}
   .mhp-invite-card{padding:22px 24px;background:#F6FAF7;border:1px solid #D8E6DC;margin-bottom:16px;}
   .mhp-invite-card h2{margin:0 0 10px;font-size:20px;color:#40514b;}
   .mhp-invite-note{margin:10px 0 0;font-size:13px;line-height:1.55;color:#5d6c66;}
