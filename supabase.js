@@ -740,6 +740,7 @@ const isOwnerAdminRpcUnavailable = (status, responseText) => {
   if (text.includes('is_wayfinder_owner_admin') && text.includes('does not exist')) return true;
   if (text.includes('owner_list_mhp_profiles') && text.includes('does not exist')) return true;
   if (text.includes('owner_set_mhp_publication') && text.includes('does not exist')) return true;
+  if (text.includes('owner_list_mhp_profile_images') && text.includes('does not exist')) return true;
   return false;
 };
 
@@ -774,6 +775,26 @@ const normalizeOwnerMhpProfileRow = (row) => {
     latestExtractionStatus: row.latest_extraction_status || row.latestExtractionStatus || '',
     latestOriginalFilename: row.latest_original_filename || row.latestOriginalFilename || '',
     latestExtractedAt: row.latest_extracted_at || row.latestExtractedAt || null
+  };
+};
+
+const normalizeOwnerMhpProfileImageRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    imageId: row.image_id || row.imageId || null,
+    mhpUserId: row.mhp_user_id || row.mhpUserId || null,
+    wayfinderId: row.wayfinder_id || row.wayfinderId || '',
+    fullName: row.full_name || row.fullName || '',
+    imageKind: row.image_kind || row.imageKind || '',
+    imageStatus: row.image_status || row.imageStatus || '',
+    storageBucket: row.storage_bucket || row.storageBucket || '',
+    storagePath: row.storage_path || row.storagePath || '',
+    mimeType: row.mime_type || row.mimeType || '',
+    fileSizeBytes: row.file_size_bytes ?? row.fileSizeBytes ?? null,
+    portraitStyle: row.portrait_style || row.portraitStyle || null,
+    createdAt: row.created_at || row.createdAt || null,
+    selectedAt: row.selected_at || row.selectedAt || null,
+    approvedAt: row.approved_at || row.approvedAt || null
   };
 };
 
@@ -3215,6 +3236,66 @@ const DB = {
       };
     }
     return { ok: true, unavailable: false, forbidden: false };
+  },
+
+  ownerListMhpProfileImages: async (userId, mhpUserId = null, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false, forbidden: false, rows: [] };
+    }
+    const body = {};
+    const targetId = String(mhpUserId || '').trim();
+    if (targetId) {
+      body.p_mhp_user_id = targetId;
+    }
+    const result = await callOwnerAdminRpcSafe({
+      rpcName: 'owner_list_mhp_profile_images',
+      userId,
+      authSession,
+      context: 'ownerListMhpProfileImages',
+      body
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, forbidden: false, rows: [] };
+    }
+    if (!result.ok) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: String(result.responseText || '').includes('Owner admin required'),
+        rows: []
+      };
+    }
+    const rows = Array.isArray(result.data) ? result.data : [];
+    return {
+      ok: true,
+      unavailable: false,
+      forbidden: false,
+      rows: rows.map(normalizeOwnerMhpProfileImageRow).filter(Boolean)
+    };
+  },
+
+  createOwnerMhpProfileImageSignedUrl: async (userId, bucket, path, authSession = null, expiresInSeconds = MHP_PROFILE_IMAGE_SIGNED_URL_SECONDS) => {
+    const storageBucket = String(bucket || '').trim();
+    const storagePath = String(path || '').trim();
+    if (!userId || !storageBucket || !storagePath) {
+      return { ok: false, unavailable: false, signedUrl: null, expired: false };
+    }
+    const result = await createMhpProfileImageSignedUrlSafe({
+      userId,
+      bucket: storageBucket,
+      storagePath,
+      authSession,
+      context: 'createOwnerMhpProfileImageSignedUrl',
+      expiresInSeconds
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, signedUrl: null, expired: false };
+    }
+    if (!result.ok || !result.signedUrl) {
+      const expired = String(result.responseText || '').toLowerCase().includes('expired');
+      return { ok: false, unavailable: false, signedUrl: null, expired };
+    }
+    return { ok: true, unavailable: false, signedUrl: result.signedUrl, expired: false };
   },
 
   uploadMhpSourcePhoto: async (userId, file, authSession = null) => {

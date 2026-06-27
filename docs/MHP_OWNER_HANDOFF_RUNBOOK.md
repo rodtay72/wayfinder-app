@@ -358,6 +358,22 @@ See [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) for the ful
 
 ---
 
+## 13. Owner source photo review (PR #110)
+
+The owner/admin review page at `/admin.html` can show a **temporary signed preview** of each MHP's private source photo during profile review.
+
+| Rule | Detail |
+|------|--------|
+| Visibility | Source photo remains **private** — not shown to parents or clients |
+| Preview | Owner admin sees a **temporary signed URL** thumbnail only |
+| Approval | Viewing the source photo does **not** approve, publish, or promote the image |
+| Photo URL field | **Legacy/transitional** — source photo is not copied into `photo_url` |
+| Parent display | **Not implemented** — portrait generation and parent/client display remain future PRs |
+
+**Owner SQL prerequisite:** Apply [supabase-mhp-owner-image-review-rpc.sql](../supabase-mhp-owner-image-review-rpc.sql) after PR #106 table contract and PR #107 upload policies. Both buckets must remain **private**.
+
+---
+
 ## Related docs
 
 - [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence

@@ -582,6 +582,14 @@ const formatOwnerAdminTimestamp=(value)=>{
  return dt.toLocaleString('en-SG',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 };
 
+const formatOwnerAdminFileSize=(bytes)=>{
+ const n=Number(bytes);
+ if(!Number.isFinite(n)||n<0) return '-';
+ if(n<1024) return `${n} B`;
+ if(n<1024*1024) return `${(n/1024).toFixed(n<10*1024?1:0)} KB`;
+ return `${(n/(1024*1024)).toFixed(n<10*1024*1024?1:0)} MB`;
+};
+
 const ownerMhpMatchesFilter=(row,filter)=>{
  const status=String(row?.profileStatus||'').toLowerCase();
  if(filter==='pending_draft') return status==='draft'||status==='pending_review';
@@ -597,7 +605,81 @@ const OWNER_MHP_FILTERS=[
  {id:'all',label:'All'}
 ];
 
-function OwnerAdminMhpCard({row,actionState,onAction}){
+function OwnerAdminMhpSourcePhotoSection({mhpUserId,user,authSession}){
+ const [loading,setLoading]=useState(true);
+ const [unavailable,setUnavailable]=useState(false);
+ const [sourceRow,setSourceRow]=useState(null);
+ const [previewUrl,setPreviewUrl]=useState('');
+ const [previewExpired,setPreviewExpired]=useState(false);
+
+ const loadPreview=async()=>{
+  if(!user?.id||!authSession?.access_token||!mhpUserId){
+   setLoading(false);
+   setSourceRow(null);
+   setPreviewUrl('');
+   return;
+  }
+  setLoading(true);
+  setPreviewExpired(false);
+  try{
+   const listResult=await DB.ownerListMhpProfileImages(user.id,mhpUserId,authSession);
+   if(listResult.unavailable||listResult.forbidden||!listResult.ok){
+    setUnavailable(true);
+    setSourceRow(null);
+    setPreviewUrl('');
+    return;
+   }
+   setUnavailable(false);
+   const sourceRows=(listResult.rows||[]).filter(row=>row.imageKind==='source_photo');
+   const latest=sourceRows[0]||null;
+   setSourceRow(latest);
+   if(!latest?.storageBucket||!latest?.storagePath){
+    setPreviewUrl('');
+    return;
+   }
+   const signResult=await DB.createOwnerMhpProfileImageSignedUrl(user.id,latest.storageBucket,latest.storagePath,authSession);
+   if(signResult.unavailable){
+    setUnavailable(true);
+    setPreviewUrl('');
+    return;
+   }
+   if(!signResult.ok||!signResult.signedUrl){
+    setPreviewUrl('');
+    setPreviewExpired(!!signResult.expired);
+    return;
+   }
+   setPreviewUrl(signResult.signedUrl);
+  }catch(err){
+   AuthDebug.log('[owner-admin] source photo preview load failed:', { message: err?.message || String(err) });
+   setPreviewUrl('');
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ useEffect(()=>{loadPreview();},[mhpUserId,user?.id,authSession?.access_token]);
+
+ return <div className="owner-admin-source-photo-section">
+  <h4 className="owner-admin-source-photo-title">Private source photo</h4>
+  <p className="dashboard-helper owner-admin-source-photo-helper">This source photo is private and for Wayfinder review only. It is not shown to parents or clients.</p>
+  {loading ? <p className="sub">Loading private source photo preview…</p> : null}
+  {!loading && unavailable ? <p className="sub">Private source photo review is not ready yet.</p> : null}
+  {!loading && !unavailable && sourceRow && previewUrl ? <div className="owner-admin-source-photo-preview-wrap">
+   <img className="owner-admin-source-photo-preview" src={previewUrl} alt="" onError={()=>{setPreviewUrl('');setPreviewExpired(true);}}/>
+   <dl className="owner-admin-source-photo-meta">
+    <div><dt>Status</dt><dd>{sourceRow.imageStatus||'-'}</dd></div>
+    <div><dt>Uploaded</dt><dd>{formatOwnerAdminTimestamp(sourceRow.createdAt)}</dd></div>
+    <div><dt>MIME type</dt><dd>{sourceRow.mimeType||'-'}</dd></div>
+    <div><dt>File size</dt><dd>{formatOwnerAdminFileSize(sourceRow.fileSizeBytes)}</dd></div>
+   </dl>
+  </div> : null}
+  {!loading && !unavailable && sourceRow && !previewUrl ? <p className="sub">{previewExpired ? 'Preview link expired.' : 'Preview unavailable.'} <button type="button" className="btn btn-ghost btn-sm" onClick={loadPreview}>Refresh preview</button></p> : null}
+  {!loading && !unavailable && !sourceRow ? <p className="sub">No private source photo uploaded yet.</p> : null}
+  {!loading && !unavailable && sourceRow && previewUrl ? <button type="button" className="btn btn-ghost btn-sm" onClick={loadPreview}>Refresh preview</button> : null}
+ </div>;
+}
+
+function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
  const busy=actionState?.busy;
  const cardError=actionState?.error||'';
  const cardSuccess=actionState?.success||'';
@@ -626,6 +708,7 @@ function OwnerAdminMhpCard({row,actionState,onAction}){
    <div><dt>Enquiry mobile</dt><dd>{row.enquiryMobile||'-'}</dd></div>
   </dl>
   {bioShort ? <p className="owner-admin-bio-preview"><span className="owner-admin-bio-label">Short bio</span> {bioShort}</p> : null}
+  <OwnerAdminMhpSourcePhotoSection mhpUserId={row.mhpUserId} user={user} authSession={authSession}/>
   {cardError ? <p className="review-share-error" role="alert">{cardError}</p> : null}
   {cardSuccess ? <p className="review-share-status" role="status">{cardSuccess}</p> : null}
   <div className="owner-admin-mhp-actions">
@@ -808,6 +891,8 @@ function OwnerAdminApp({user,authSession,onSignOut}){
     return <OwnerAdminMhpCard
      key={key}
      row={row}
+     user={user}
+     authSession={authSession}
      actionState={actionState[row.mhpUserId]||{}}
      onAction={runPublicationAction}
     />;
