@@ -90,7 +90,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #111 login branding and install icons | Wayfinder logo on all login pages; parent brown + MHP green PWA icons; App Version v0.4.4; no auth/runtime/data changes | Complete (merged) |
 | PR #112 PWA install icon separation | Separate manifest `id`/`scope` per portal; versioned manifest icon paths; fixes MHP showing parent brown icon after Add to Home Screen | Complete (merged) |
 | PR #113 owner approved portrait upload | Owner/admin upload approved private portrait to `professional-profile-portraits` + metadata; no parent App Version change | Complete (merged) |
-| PR #114 owner AI sketch portrait generation | Server-side OpenAI sketch from private source photo; generated + approve-to-approved flow; no parent App Version change | In flight |
+| PR #114 owner AI sketch portrait generation | Server-side OpenAI sketch from private source photo; generated + approve-to-approved flow; no parent App Version change | Complete (merged) — smoke fix in PR #115 |
+| PR #115 OpenAI image response_format hotfix | Remove unsupported `response_format` param from `/api/mhp-generate-portrait`; no parent App Version change | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
