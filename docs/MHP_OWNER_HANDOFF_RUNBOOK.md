@@ -413,6 +413,54 @@ limit 10;
 
 ---
 
+## 15. Owner AI sketch portrait generation (PR #114)
+
+Owner/admin can generate a **private Wayfinder-style sketched portrait** from an MHP's uploaded source photo on `/admin.html`.
+
+| Rule | Detail |
+|------|--------|
+| Who generates | **Owner/admin only** — server-side OpenAI call; no browser API keys |
+| Input | Latest private `source_photo` from owner metadata RPC |
+| Output | Private `generated_portrait` in `professional-profile-portraits` |
+| Approval | Owner clicks **Save as approved portrait** → new `approved_portrait` row (copy); does not write `photo_url` |
+| Visibility | **Private** — not shown to parents or clients |
+| Manual fallback | PR #113 manual approved portrait upload remains available |
+
+**Vercel server environment (required for generation):**
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | Server-side OpenAI Image API only — never expose to browser |
+| `OPENAI_IMAGE_MODEL` | Optional — default `gpt-image-1` (configure another GPT Image model if needed) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side storage download/upload + metadata insert (same as licence extraction) |
+| `MHP_PORTRAIT_GENERATION_TIMEOUT_MS` | Optional — default `110000` (ms) for OpenAI request timeout |
+
+**Owner SQL prerequisite:** Apply [supabase-mhp-owner-generated-portrait-policies.sql](../supabase-mhp-owner-generated-portrait-policies.sql) after PR #113.
+
+**API route:** `POST /api/mhp-generate-portrait` — actions `generate` and `approveGenerated`; requires owner admin bearer token.
+
+**Verify after generation/approval:**
+
+```sql
+select
+  image_kind,
+  image_status,
+  storage_bucket,
+  storage_path,
+  mime_type,
+  file_size_bytes,
+  portrait_style,
+  approved_by,
+  approved_at,
+  created_at
+from public.mental_health_professional_profile_images
+where image_kind in ('generated_portrait', 'approved_portrait')
+order by created_at desc
+limit 20;
+```
+
+---
+
 ## Related docs
 
 - [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence

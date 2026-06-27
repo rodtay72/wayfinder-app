@@ -304,6 +304,7 @@ const MHP_SOURCE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 const MHP_SOURCE_PHOTO_ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MHP_PROFILE_IMAGE_SIGNED_URL_SECONDS = 600;
 const MHP_EXTRACTION_REQUEST_TIMEOUT_MS = 25000;
+const MHP_PORTRAIT_GENERATION_TIMEOUT_MS = 120000;
 
 const normalizeMhpLicenseDocumentRow = (row) => {
   if (!row || typeof row !== 'object') return null;
@@ -426,6 +427,147 @@ const normalizeMhpProfileImageRow = (row) => {
     approvedBy: row.approved_by || row.approvedBy || null,
     approvedAt: row.approved_at || row.approvedAt || null
   };
+};
+
+const normalizeOwnerPortraitApiRecord = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    imageId: row.image_id || row.imageId || row.id || null,
+    imageKind: row.image_kind || row.imageKind || '',
+    imageStatus: row.image_status || row.imageStatus || '',
+    storageBucket: row.storage_bucket || row.storageBucket || '',
+    storagePath: row.storage_path || row.storagePath || '',
+    mimeType: row.mime_type || row.mimeType || '',
+    fileSizeBytes: row.file_size_bytes ?? row.fileSizeBytes ?? null,
+    portraitStyle: row.portrait_style || row.portraitStyle || null,
+    createdAt: row.created_at || row.createdAt || null,
+    approvedAt: row.approved_at || row.approvedAt || null
+  };
+};
+
+const mapMhpPortraitApiError = (errorCode) => {
+  const code = String(errorCode || '').trim();
+  if (code === 'no_source_photo') {
+    return 'Upload or ask the MHP to upload a private source photo first.';
+  }
+  if (code === 'missing_openai_key') {
+    return 'Sketch generation is not configured yet.';
+  }
+  if (code === 'storage_not_ready' || code === 'missing_service_role_key' || code === 'metadata_insert_failed') {
+    return 'Generated portrait storage is not ready yet. Apply PR #114 SQL.';
+  }
+  if (code === 'generated_not_found') {
+    return 'Generated sketch not found for this MHP.';
+  }
+  if (code === 'openai_timeout') {
+    return 'Sketch generation timed out. Please try again.';
+  }
+  if (code === 'not_owner_admin' || code === 'auth_required') {
+    return 'Owner admin access is required.';
+  }
+  return 'The sketch could not be generated. Please try another source image or generate manually.';
+};
+
+const callMhpGeneratePortraitApi = async ({ ownerUserId, authSession, context, body }) => {
+  try {
+    const session = await getAuthenticatedReadSession(ownerUserId, context, authSession);
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller
+      ? setTimeout(() => controller.abort(), MHP_PORTRAIT_GENERATION_TIMEOUT_MS)
+      : null;
+    let response;
+    try {
+      response = await fetch('/api/mhp-generate-portrait', {
+        method: 'POST',
+        signal: controller?.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        return {
+          ok: false,
+          unavailable: false,
+          forbidden: false,
+          record: null,
+          errorCode: 'openai_timeout',
+          errorMessage: mapMhpPortraitApiError('openai_timeout')
+        };
+      }
+      throw err;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+    const responseText = await response.text();
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      data = null;
+    }
+    if (response.status === 404 || response.status === 503) {
+      return {
+        ok: false,
+        unavailable: true,
+        forbidden: false,
+        record: null,
+        errorCode: String(data?.error_code || 'storage_not_ready'),
+        errorMessage: mapMhpPortraitApiError(data?.error_code || 'storage_not_ready')
+      };
+    }
+    if (response.status === 403) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: true,
+        record: null,
+        errorCode: String(data?.error_code || 'not_owner_admin'),
+        errorMessage: mapMhpPortraitApiError('not_owner_admin')
+      };
+    }
+    if (response.status === 401) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: true,
+        record: null,
+        errorCode: 'auth_required',
+        errorMessage: mapMhpPortraitApiError('auth_required')
+      };
+    }
+    if (!response.ok || !data?.ok) {
+      const errorCode = String(data?.error_code || '').trim() || 'generation_failed';
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: false,
+        record: null,
+        errorCode,
+        errorMessage: data?.error || mapMhpPortraitApiError(errorCode)
+      };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      forbidden: false,
+      record: normalizeOwnerPortraitApiRecord(data.record),
+      errorCode: null,
+      errorMessage: null
+    };
+  } catch (err) {
+    AuthDebug.log('[db] MHP portrait API exception:', { context, message: err?.message || String(err) });
+    return {
+      ok: false,
+      unavailable: false,
+      forbidden: false,
+      record: null,
+      errorCode: 'generation_failed',
+      errorMessage: mapMhpPortraitApiError('generation_failed')
+    };
+  }
 };
 
 const uploadMhpSourcePhotoSafe = async ({ userId, storagePath, file, mimeType, authSession, context }) => {
@@ -3420,6 +3562,54 @@ const DB = {
       unavailable: false,
       record: normalizeMhpProfileImageRow(result.rows[0])
     };
+  },
+
+  generateOwnerMhpSketchPortrait: async (ownerUserId, mhpUserId, authSession = null) => {
+    const targetMhpId = String(mhpUserId || '').trim();
+    if (!ownerUserId || !targetMhpId) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: false,
+        record: null,
+        errorCode: 'invalid_request',
+        errorMessage: mapMhpPortraitApiError('generation_failed')
+      };
+    }
+    return callMhpGeneratePortraitApi({
+      ownerUserId,
+      authSession,
+      context: 'generateOwnerMhpSketchPortrait',
+      body: {
+        action: 'generate',
+        mhpUserId: targetMhpId
+      }
+    });
+  },
+
+  approveOwnerGeneratedMhpPortrait: async (ownerUserId, mhpUserId, generatedImageId, authSession = null) => {
+    const targetMhpId = String(mhpUserId || '').trim();
+    const targetImageId = String(generatedImageId || '').trim();
+    if (!ownerUserId || !targetMhpId || !targetImageId) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: false,
+        record: null,
+        errorCode: 'invalid_request',
+        errorMessage: mapMhpPortraitApiError('generated_not_found')
+      };
+    }
+    return callMhpGeneratePortraitApi({
+      ownerUserId,
+      authSession,
+      context: 'approveOwnerGeneratedMhpPortrait',
+      body: {
+        action: 'approveGenerated',
+        mhpUserId: targetMhpId,
+        generatedImageId: targetImageId
+      }
+    });
   },
 
   uploadMhpSourcePhoto: async (userId, file, authSession = null) => {
