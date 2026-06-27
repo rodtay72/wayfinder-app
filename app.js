@@ -682,6 +682,146 @@ function OwnerAdminMhpSourcePhotoSection({mhpUserId,user,authSession}){
  </div>;
 }
 
+function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession}){
+ const fileInputRef=useRef(null);
+ const [loading,setLoading]=useState(true);
+ const [unavailable,setUnavailable]=useState(false);
+ const [portraitRow,setPortraitRow]=useState(null);
+ const [previewUrl,setPreviewUrl]=useState('');
+ const [previewExpired,setPreviewExpired]=useState(false);
+ const [uploadState,setUploadState]=useState('');
+ const [statusMessage,setStatusMessage]=useState('');
+
+ const loadPreview=async()=>{
+  if(!user?.id||!authSession?.access_token||!mhpUserId){
+   setLoading(false);
+   setPortraitRow(null);
+   setPreviewUrl('');
+   return;
+  }
+  setLoading(true);
+  setPreviewExpired(false);
+  try{
+   const listResult=await DB.ownerListMhpProfileImages(user.id,mhpUserId,authSession);
+   if(listResult.unavailable||listResult.forbidden||!listResult.ok){
+    setUnavailable(true);
+    setPortraitRow(null);
+    setPreviewUrl('');
+    return;
+   }
+   setUnavailable(false);
+   const portraitRows=(listResult.rows||[]).filter(row=>row.imageKind==='approved_portrait');
+   const latest=portraitRows[0]||null;
+   setPortraitRow(latest);
+   if(!latest?.storageBucket||!latest?.storagePath){
+    setPreviewUrl('');
+    return;
+   }
+   const signResult=await DB.createOwnerMhpProfileImageSignedUrl(user.id,latest.storageBucket,latest.storagePath,authSession);
+   if(signResult.unavailable){
+    setUnavailable(true);
+    setPreviewUrl('');
+    return;
+   }
+   if(!signResult.ok||!signResult.signedUrl){
+    setPreviewUrl('');
+    setPreviewExpired(!!signResult.expired);
+    return;
+   }
+   setPreviewUrl(signResult.signedUrl);
+  }catch(err){
+   AuthDebug.log('[owner-admin] approved portrait preview load failed:', { message: err?.message || String(err) });
+   setPreviewUrl('');
+  }finally{
+   setLoading(false);
+  }
+ };
+
+ useEffect(()=>{loadPreview();},[mhpUserId,user?.id,authSession?.access_token]);
+
+ const handleChooseFile=()=>{
+  if(uploadState==='uploading'||unavailable) return;
+  fileInputRef.current?.click();
+ };
+
+ const handleFileChange=async(event)=>{
+  const file=event.target.files?.[0]||null;
+  event.target.value='';
+  if(!file||!user?.id||!mhpUserId) return;
+  const mime=String(file.type||'').toLowerCase();
+  if(!['image/jpeg','image/png','image/webp'].includes(mime)){
+   setUploadState('error');
+   setStatusMessage('Please choose a JPG, PNG, or WebP image up to 2 MB.');
+   return;
+  }
+  if(file.size>2*1024*1024){
+   setUploadState('error');
+   setStatusMessage('Please choose a JPG, PNG, or WebP image up to 2 MB.');
+   return;
+  }
+  setUploadState('uploading');
+  setStatusMessage('Uploading approved portrait…');
+  setPreviewExpired(false);
+  try{
+   const uploadResult=await DB.uploadOwnerApprovedMhpPortrait(user.id,mhpUserId,file,authSession);
+   if(uploadResult.unavailable){
+    setUnavailable(true);
+    setUploadState('error');
+    setStatusMessage('Approved portrait upload is not ready yet. Apply PR #113 SQL in Supabase.');
+    return;
+   }
+   if(!uploadResult.ok){
+    setUploadState('error');
+    setStatusMessage('We could not upload this portrait. Please try again.');
+    return;
+   }
+   const insertResult=await DB.insertOwnerApprovedMhpPortraitMetadata(user.id,mhpUserId,{
+    storagePath:uploadResult.storagePath,
+    mimeType:uploadResult.mimeType,
+    fileSizeBytes:uploadResult.fileSizeBytes
+   },authSession);
+   if(insertResult.unavailable||!insertResult.ok){
+    setUploadState('error');
+    setStatusMessage('Portrait uploaded but metadata could not be saved. Please try again.');
+    return;
+   }
+   setUploadState('uploaded');
+   setStatusMessage('Approved portrait uploaded.');
+   await loadPreview();
+  }catch(err){
+   AuthDebug.log('[owner-admin] approved portrait upload failed:', { message: err?.message || String(err) });
+   setUploadState('error');
+   setStatusMessage('We could not upload this portrait. Please try again.');
+  }
+ };
+
+ return <div className="owner-admin-approved-portrait-section">
+  <h4 className="owner-admin-approved-portrait-title">Approved Wayfinder portrait</h4>
+  <p className="dashboard-helper owner-admin-approved-portrait-helper">This approved portrait is stored privately for Wayfinder review. It is not shown to parents or clients yet.</p>
+  {loading ? <p className="sub">Loading approved portrait preview…</p> : null}
+  {!loading && unavailable ? <p className="sub">Approved portrait upload is not ready yet.</p> : null}
+  {!loading && !unavailable && portraitRow && previewUrl ? <div className="owner-admin-approved-portrait-preview-wrap">
+   <img className="owner-admin-approved-portrait-preview" src={previewUrl} alt="" onError={()=>{setPreviewUrl('');setPreviewExpired(true);}}/>
+   <dl className="owner-admin-approved-portrait-meta">
+    <div><dt>Status</dt><dd>{portraitRow.imageStatus||'-'}</dd></div>
+    <div><dt>Approved</dt><dd>{formatOwnerAdminTimestamp(portraitRow.approvedAt||portraitRow.createdAt)}</dd></div>
+    <div><dt>MIME type</dt><dd>{portraitRow.mimeType||'-'}</dd></div>
+    <div><dt>File size</dt><dd>{formatOwnerAdminFileSize(portraitRow.fileSizeBytes)}</dd></div>
+   </dl>
+  </div> : null}
+  {!loading && !unavailable && portraitRow && !previewUrl ? <p className="sub">{previewExpired ? 'Preview link expired.' : 'Preview unavailable.'} <button type="button" className="btn btn-ghost btn-sm" onClick={loadPreview}>Refresh preview</button></p> : null}
+  {!loading && !unavailable && !portraitRow ? <p className="sub">No approved portrait uploaded yet.</p> : null}
+  {statusMessage ? <p className={'owner-admin-portrait-status'+(uploadState==='error'?' owner-admin-portrait-status--error':'')} role="status" aria-live="polite">{statusMessage}</p> : null}
+  <div className="owner-admin-approved-portrait-actions">
+   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="owner-admin-portrait-input" onChange={handleFileChange}/>
+   <button type="button" className="btn btn-secondary btn-sm" disabled={uploadState==='uploading'||unavailable} onClick={handleChooseFile}>
+    {uploadState==='uploading'?'Uploading…':'Upload approved portrait'}
+   </button>
+   {!loading && portraitRow ? <button type="button" className="btn btn-ghost btn-sm" onClick={loadPreview}>Refresh preview</button> : null}
+  </div>
+ </div>;
+}
+
 function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
  const busy=actionState?.busy;
  const cardError=actionState?.error||'';
@@ -712,6 +852,7 @@ function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
   </dl>
   {bioShort ? <p className="owner-admin-bio-preview"><span className="owner-admin-bio-label">Short bio</span> {bioShort}</p> : null}
   <OwnerAdminMhpSourcePhotoSection mhpUserId={row.mhpUserId} user={user} authSession={authSession}/>
+  <OwnerAdminMhpApprovedPortraitSection mhpUserId={row.mhpUserId} user={user} authSession={authSession}/>
   {cardError ? <p className="review-share-error" role="alert">{cardError}</p> : null}
   {cardSuccess ? <p className="review-share-status" role="status">{cardSuccess}</p> : null}
   <div className="owner-admin-mhp-actions">

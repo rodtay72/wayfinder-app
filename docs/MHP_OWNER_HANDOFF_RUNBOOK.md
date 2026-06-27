@@ -374,6 +374,45 @@ The owner/admin review page at `/admin.html` can show a **temporary signed previ
 
 ---
 
+## 14. Owner approved portrait upload (PR #113)
+
+The owner/admin review page at `/admin.html` can **upload** a final approved Wayfinder-style portrait for an MHP.
+
+| Rule | Detail |
+|------|--------|
+| Who uploads | **Owner/admin only** — MHP cannot self-upload approved portraits in this PR |
+| Storage | Private bucket `professional-profile-portraits` — path `mhp/{mhp_user_id}/approved/{timestamp}.{ext}` |
+| Metadata | `image_kind = approved_portrait`, `image_status = approved`, `portrait_style = wayfinder_manual` |
+| Visibility | **Private** — not shown to parents or clients |
+| Publication | Upload does **not** publish profile, change membership, or write `photo_url` |
+| Parent display | **Not implemented** — parent/client portrait display remains a future PR |
+
+**File rules:** JPG, PNG, or WebP up to 2 MB.
+
+**Owner SQL prerequisite:** Apply [supabase-mhp-owner-portrait-upload-policies.sql](../supabase-mhp-owner-portrait-upload-policies.sql) after PR #106, PR #107, and PR #110 review RPC.
+
+**Verify after upload:**
+
+```sql
+select
+  image_kind,
+  image_status,
+  storage_bucket,
+  storage_path,
+  mime_type,
+  file_size_bytes,
+  portrait_style,
+  approved_by,
+  approved_at,
+  created_at
+from public.mental_health_professional_profile_images
+where image_kind = 'approved_portrait'
+order by created_at desc
+limit 10;
+```
+
+---
+
 ## Related docs
 
 - [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence

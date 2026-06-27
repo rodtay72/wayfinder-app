@@ -88,7 +88,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #109 published MHP source photo upload | Allow private source photo upload when profile is published (not tied to profile draft edit) | Complete (merged) — owner smoke passed |
 | PR #110 owner admin source photo preview | Owner/admin temporary signed preview of private MHP source photo on `/admin.html` — [supabase-mhp-owner-image-review-rpc.sql](../supabase-mhp-owner-image-review-rpc.sql); no parent App Version change | Complete (merged) |
 | PR #111 login branding and install icons | Wayfinder logo on all login pages; parent brown + MHP green PWA icons; App Version v0.4.4; no auth/runtime/data changes | Complete (merged) |
-| PR #112 PWA install icon separation | Separate manifest `id`/`scope` per portal; versioned manifest icon paths; fixes MHP showing parent brown icon after Add to Home Screen | In flight |
+| PR #112 PWA install icon separation | Separate manifest `id`/`scope` per portal; versioned manifest icon paths; fixes MHP showing parent brown icon after Add to Home Screen | Complete (merged) |
+| PR #113 owner approved portrait upload | Owner/admin upload approved private portrait to `professional-profile-portraits` + metadata; no parent App Version change | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
