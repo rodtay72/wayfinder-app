@@ -401,7 +401,6 @@ async function handleApproveGenerated({ res, ownerUserId, mhpUserId, generatedIm
     file_size_bytes: pngBuffer.length,
     portrait_style: generatedRow.portrait_style || PORTRAIT_STYLE,
     image_status: 'approved',
-    selected_at: now,
     approved_by: ownerUserId,
     approved_at: now
   });

@@ -92,7 +92,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #113 owner approved portrait upload | Owner/admin upload approved private portrait to `professional-profile-portraits` + metadata; no parent App Version change | Complete (merged) |
 | PR #114 owner AI sketch portrait generation | Server-side OpenAI sketch from private source photo; generated + approve-to-approved flow; no parent App Version change | Complete (merged) — smoke fix in PR #115 |
 | PR #115 OpenAI image response_format hotfix | Remove unsupported `response_format` param from `/api/mhp-generate-portrait`; no parent App Version change | Complete (merged) |
-| PR #116 monochrome graphite portrait prompt | Tune server-side OpenAI prompt for black-and-white photorealistic pencil sketch; no parent App Version change | In flight |
+| PR #116 monochrome graphite portrait prompt | Tune server-side OpenAI prompt for black-and-white photorealistic pencil sketch; no parent App Version change | Complete (merged) |
+| PR #117 current approved portrait selection | Explicit `selected_at` current approved portrait via owner RPC; no parent/client display | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -100,7 +101,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **Consent SQL apply (PR #102)** — **owner must apply** [supabase-consent-records.sql](../supabase-consent-records.sql) in Supabase SQL Editor before PR #103 runtime works in production
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
-- **MHP portrait generation (PR #114–PR #116)** — owner/admin AI sketch generation active; PR #116 tunes prompt to monochrome graphite sketch; **parent/client portrait display** — not implemented
+- **MHP portrait generation (PR #114–PR #117)** — owner/admin AI sketch + explicit current approved portrait selection (`selected_at`); **parent/client portrait display** — not implemented
 - **MHP public profile directory UI** — not implemented; **public profile image display not implemented**
 - **Research consent** — not implemented
 - **Questionnaire/check-in consent and response storage** — not implemented

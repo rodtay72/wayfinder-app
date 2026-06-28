@@ -927,6 +927,7 @@ const isOwnerAdminRpcUnavailable = (status, responseText) => {
   if (text.includes('owner_list_mhp_profiles') && text.includes('does not exist')) return true;
   if (text.includes('owner_set_mhp_publication') && text.includes('does not exist')) return true;
   if (text.includes('owner_list_mhp_profile_images') && text.includes('does not exist')) return true;
+  if (text.includes('owner_select_mhp_approved_portrait') && text.includes('does not exist')) return true;
   return false;
 };
 
@@ -3546,7 +3547,6 @@ const DB = {
         file_size_bytes: metadata?.fileSizeBytes ?? null,
         portrait_style: 'wayfinder_manual',
         image_status: 'approved',
-        selected_at: now,
         approved_by: ownerUserId,
         approved_at: now
       }
@@ -3561,6 +3561,46 @@ const DB = {
       ok: true,
       unavailable: false,
       record: normalizeMhpProfileImageRow(result.rows[0])
+    };
+  },
+
+  selectOwnerMhpApprovedPortrait: async (ownerUserId, imageId, authSession = null) => {
+    const targetImageId = String(imageId || '').trim();
+    if (!ownerUserId || !targetImageId) {
+      return { ok: false, unavailable: false, forbidden: false, record: null };
+    }
+    const result = await callOwnerAdminRpcSafe({
+      rpcName: 'owner_select_mhp_approved_portrait',
+      userId: ownerUserId,
+      authSession,
+      context: 'selectOwnerMhpApprovedPortrait',
+      body: { p_image_id: targetImageId }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, forbidden: false, record: null };
+    }
+    if (!result.ok) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: String(result.responseText || '').includes('Owner admin required'),
+        record: null
+      };
+    }
+    const row = Array.isArray(result.data) ? result.data[0] : result.data;
+    if (!row) {
+      return { ok: false, unavailable: false, forbidden: false, record: null };
+    }
+    const normalized = normalizeOwnerMhpProfileImageRow(row);
+    return {
+      ok: true,
+      unavailable: false,
+      forbidden: false,
+      record: normalized ? {
+        ...normalized,
+        id: normalized.imageId,
+        userId: normalized.mhpUserId
+      } : null
     };
   },
 

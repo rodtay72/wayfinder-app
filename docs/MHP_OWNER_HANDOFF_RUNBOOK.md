@@ -461,6 +461,24 @@ limit 20;
 
 ---
 
+## 16. Current approved portrait selection (PR #117)
+
+An MHP may have **multiple** `approved_portrait` history rows. Only one should be treated as the **current** selected approved portrait before any future parent/client display.
+
+| Rule | Detail |
+|------|--------|
+| Current portrait | `image_kind = approved_portrait`, `image_status = approved`, `selected_at is not null` — newest `selected_at` wins |
+| Legacy fallback | If no row has `selected_at`, UI/API may use newest approved portrait by `created_at desc` until owner selects explicitly |
+| Owner action | `owner_select_mhp_approved_portrait(image_id)` clears `selected_at` on other approved rows for that MHP and sets `selected_at = now()` on the chosen row |
+| History | Older approved portraits are **not deleted** |
+| Display | Still private owner/admin only — not shown to parents/clients; does not write `photo_url` |
+
+**Owner SQL prerequisite:** Apply [supabase-mhp-owner-current-portrait-selection.sql](../supabase-mhp-owner-current-portrait-selection.sql) after PR #110 review RPC.
+
+Manual upload and **Save as approved portrait** from generated sketch both mark the new approved portrait as current after insert.
+
+---
+
 ## Related docs
 
 - [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence
