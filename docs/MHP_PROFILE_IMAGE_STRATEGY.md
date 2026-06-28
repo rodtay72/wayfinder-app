@@ -203,7 +203,7 @@ From [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-stor
 | **#107+ (planned)** | MHP private source upload UI + metadata insert | Upload to source bucket; no generation yet |
 | **#108+ (planned)** | Portrait generation service + candidate rows | API/service-role generation; MHP preview/select |
 | **#109+ (planned)** | Owner admin image review in `/admin.html` | Approve/reject portrait; link to publication |
-| **#110+ (planned)** | Parent/client approved portrait display | Published directory or selector avatar; signed URL or public serve path |
+| **#118 (merged/planned)** | Parent approved portrait display | Review-sharing selector avatar via `/api/list-available-mhps`; signed URL server-side |
 
 Do not bundle upload, generation, admin review, and parent display in one PR.
 

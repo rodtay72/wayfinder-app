@@ -2089,6 +2089,81 @@ const DB = {
     }
   },
 
+  normalizeAvailableMhpRow: (row) => ({
+    wayfinder_id: row?.wayfinder_id || row?.wayfinderId || '',
+    wayfinderId: row?.wayfinder_id || row?.wayfinderId || '',
+    display_label: row?.display_label || row?.displayLabel || '',
+    displayLabel: row?.display_label || row?.displayLabel || '',
+    full_name: row?.full_name || row?.fullName || '',
+    fullName: row?.full_name || row?.fullName || '',
+    professional_title: row?.professional_title || row?.professionalTitle || '',
+    professionalTitle: row?.professional_title || row?.professionalTitle || '',
+    institution_name: row?.institution_name || row?.institutionName || '',
+    institutionName: row?.institution_name || row?.institutionName || '',
+    approved_portrait_url: row?.approved_portrait_url || row?.approvedPortraitUrl || row?.portrait_url || null,
+    approvedPortraitUrl: row?.approved_portrait_url || row?.approvedPortraitUrl || row?.portrait_url || null,
+    portrait_expires_at: row?.portrait_expires_at || row?.portraitExpiresAt || null,
+    portraitExpiresAt: row?.portrait_expires_at || row?.portraitExpiresAt || null
+  }),
+
+  listAvailableMhpsForParent: async (authSession = null) => {
+    const normalizeAvailableMhpRow = (row) => DB.normalizeAvailableMhpRow(row);
+    try {
+      const session = await getAuthenticatedReadSession(null, 'listAvailableMhpsForParent', authSession);
+      const response = await fetch('/api/list-available-mhps', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({})
+      });
+      const responseText = await response.text();
+      let data = null;
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        data = null;
+      }
+      if (response.status === 404 || response.status === 503) {
+        const fallback = await DB.listAvailableCounsellors(authSession);
+        return {
+          rows: (fallback.rows || []).map(normalizeAvailableMhpRow),
+          unavailable: !!fallback.unavailable,
+          portraitsSupported: false
+        };
+      }
+      if (!response.ok || !data?.ok) {
+        const fallback = await DB.listAvailableCounsellors(authSession);
+        return {
+          rows: (fallback.rows || []).map(normalizeAvailableMhpRow),
+          unavailable: !!fallback.unavailable,
+          portraitsSupported: false
+        };
+      }
+      return {
+        rows: (Array.isArray(data.rows) ? data.rows : []).map(normalizeAvailableMhpRow),
+        unavailable: false,
+        portraitsSupported: true
+      };
+    } catch (err) {
+      const message = String(err?.message || err);
+      if (isReviewGrantsUnavailable(0, message)) {
+        return { rows: [], unavailable: true, portraitsSupported: false };
+      }
+      try {
+        const fallback = await DB.listAvailableCounsellors(authSession);
+        return {
+          rows: (fallback.rows || []).map(normalizeAvailableMhpRow),
+          unavailable: !!fallback.unavailable,
+          portraitsSupported: false
+        };
+      } catch {
+        return { rows: [], unavailable: false, portraitsSupported: false };
+      }
+    }
+  },
+
   getParentReviewGrants: async (userId, authSession = null) => fetchReviewGrantsSafe({
     table: 'counsellor_review_grants',
     query: {
