@@ -166,7 +166,7 @@ Separate table recommended (not only `photo_url`):
 | `portrait_style` | e.g. `wayfinder_pencil_v1` (future generation) |
 | `image_status` | `uploaded` / `generated` / `selected` / `approved` / `rejected` / `archived` |
 | `created_at` | Insert time |
-| `selected_at` | When MHP marked candidate as preferred (future) |
+| `selected_at` | When owner marked an **approved_portrait** as the current selected portrait (PR #117). UI fallback: newest approved by `created_at` if none selected. |
 | `approved_by` | Owner admin user id (future RPC) |
 | `approved_at` | Owner approval timestamp |
 

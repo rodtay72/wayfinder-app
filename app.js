@@ -593,6 +593,17 @@ const formatOwnerAdminFileSize=(bytes)=>{
  return `${(n/(1024*1024)).toFixed(n<10*1024*1024?1:0)} MB`;
 };
 
+const pickCurrentApprovedPortrait=(rows)=>{
+ const approved=(rows||[]).filter(row=>row.imageKind==='approved_portrait'&&String(row.imageStatus||'').toLowerCase()==='approved');
+ const selected=approved.filter(row=>row.selectedAt);
+ if(selected.length){
+  return selected.slice().sort((a,b)=>new Date(b.selectedAt)-new Date(a.selectedAt))[0];
+ }
+ return approved.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))[0]||null;
+};
+
+const ownerApprovedPortraitImageId=(row)=>row?.imageId||row?.id||null;
+
 const ownerMhpMatchesFilter=(row,filter)=>{
  const status=String(row?.profileStatus||'').toLowerCase();
  if(filter==='pending_draft') return status==='draft'||status==='pending_review';
@@ -691,6 +702,7 @@ function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession,refres
  const [previewExpired,setPreviewExpired]=useState(false);
  const [uploadState,setUploadState]=useState('');
  const [statusMessage,setStatusMessage]=useState('');
+ const [portraitHistoryCount,setPortraitHistoryCount]=useState(0);
 
  const loadPreview=async()=>{
   if(!user?.id||!authSession?.access_token||!mhpUserId){
@@ -710,14 +722,15 @@ function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession,refres
     return;
    }
    setUnavailable(false);
-   const portraitRows=(listResult.rows||[]).filter(row=>row.imageKind==='approved_portrait');
-   const latest=portraitRows[0]||null;
-   setPortraitRow(latest);
-   if(!latest?.storageBucket||!latest?.storagePath){
+   const portraitRows=(listResult.rows||[]).filter(row=>row.imageKind==='approved_portrait'&&String(row.imageStatus||'').toLowerCase()==='approved');
+   setPortraitHistoryCount(portraitRows.length);
+   const current=pickCurrentApprovedPortrait(portraitRows);
+   setPortraitRow(current);
+   if(!current?.storageBucket||!current?.storagePath){
     setPreviewUrl('');
     return;
    }
-   const signResult=await DB.createOwnerMhpProfileImageSignedUrl(user.id,latest.storageBucket,latest.storagePath,authSession);
+   const signResult=await DB.createOwnerMhpProfileImageSignedUrl(user.id,current.storageBucket,current.storagePath,authSession);
    if(signResult.unavailable){
     setUnavailable(true);
     setPreviewUrl('');
@@ -785,8 +798,23 @@ function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession,refres
     setStatusMessage('Portrait uploaded but metadata could not be saved. Please try again.');
     return;
    }
+   const approvedImageId=ownerApprovedPortraitImageId(insertResult.record);
+   if(approvedImageId){
+    const selectResult=await DB.selectOwnerMhpApprovedPortrait(user.id,approvedImageId,authSession);
+    if(selectResult.unavailable){
+     setUnavailable(true);
+     setUploadState('error');
+     setStatusMessage('Portrait saved but current selection is not ready yet. Apply PR #117 SQL in Supabase.');
+     return;
+    }
+    if(!selectResult.ok){
+     setUploadState('error');
+     setStatusMessage('Portrait saved but could not be marked as current. Please try again.');
+     return;
+    }
+   }
    setUploadState('uploaded');
-   setStatusMessage('Approved portrait uploaded.');
+   setStatusMessage('Approved portrait uploaded and marked as current.');
    await loadPreview();
   }catch(err){
    AuthDebug.log('[owner-admin] approved portrait upload failed:', { message: err?.message || String(err) });
@@ -796,15 +824,17 @@ function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession,refres
  };
 
  return <div className="owner-admin-approved-portrait-section">
-  <h4 className="owner-admin-approved-portrait-title">Approved Wayfinder portrait</h4>
+  <h4 className="owner-admin-approved-portrait-title">Current approved portrait</h4>
   <p className="dashboard-helper owner-admin-approved-portrait-helper">This approved portrait is stored privately for Wayfinder review. It is not shown to parents or clients yet.</p>
+  {portraitHistoryCount>1 ? <p className="sub owner-admin-portrait-history-note">Older approved portraits are kept for review history.</p> : null}
   {loading ? <p className="sub">Loading approved portrait preview…</p> : null}
   {!loading && unavailable ? <p className="sub">Approved portrait upload is not ready yet.</p> : null}
   {!loading && !unavailable && portraitRow && previewUrl ? <div className="owner-admin-approved-portrait-preview-wrap">
    <img className="owner-admin-approved-portrait-preview" src={previewUrl} alt="" onError={()=>{setPreviewUrl('');setPreviewExpired(true);}}/>
    <dl className="owner-admin-approved-portrait-meta">
-    <div><dt>Status</dt><dd>{portraitRow.imageStatus||'-'}</dd></div>
+    <div><dt>Status</dt><dd>{portraitRow.imageStatus||'-'}{portraitRow.selectedAt ? ' · Current' : ''}</dd></div>
     <div><dt>Approved</dt><dd>{formatOwnerAdminTimestamp(portraitRow.approvedAt||portraitRow.createdAt)}</dd></div>
+    {portraitRow.selectedAt ? <div><dt>Selected</dt><dd>{formatOwnerAdminTimestamp(portraitRow.selectedAt)}</dd></div> : null}
     <div><dt>MIME type</dt><dd>{portraitRow.mimeType||'-'}</dd></div>
     <div><dt>File size</dt><dd>{formatOwnerAdminFileSize(portraitRow.fileSizeBytes)}</dd></div>
    </dl>
@@ -924,8 +954,23 @@ function OwnerAdminMhpGeneratedSketchSection({mhpUserId,user,authSession,onAppro
     setStatusMessage(result.errorMessage||'The sketch could not be saved as approved. Please try again.');
     return;
    }
+   const approvedImageId=ownerApprovedPortraitImageId(result.record);
+   if(approvedImageId){
+    const selectResult=await DB.selectOwnerMhpApprovedPortrait(user.id,approvedImageId,authSession);
+    if(selectResult.unavailable){
+     setUnavailable(true);
+     setWorkflowState('error');
+     setStatusMessage('Approved portrait saved but current selection is not ready yet. Apply PR #117 SQL in Supabase.');
+     return;
+    }
+    if(!selectResult.ok){
+     setWorkflowState('error');
+     setStatusMessage('Approved portrait saved but could not be marked as current. Please try again.');
+     return;
+    }
+   }
    setWorkflowState('');
-   setStatusMessage('Saved as approved portrait.');
+   setStatusMessage('Saved as current approved portrait.');
    onApprovedPortraitSaved?.();
   }catch(err){
    AuthDebug.log('[owner-admin] sketch approval failed:', { message: err?.message || String(err) });
