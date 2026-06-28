@@ -6,9 +6,11 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-26
+**Last updated:** 2026-06-28
 
-**Last verified merge:** PR #118 — parent MHP portrait display in review-sharing selector (MHP portrait pipeline production checkpoint documented in PR #119)
+**Last verified merge:** PR #119 — MHP portrait pipeline production checkpoint (docs-only)
+
+**Next proposed PR:** PR #120A — revised payment/pricing strategy spec (docs-only)
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -99,6 +101,28 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Strategy + do-not-regress:** [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — § Production checkpoint principles; § Do not regress.
 
+## Payment & entitlement strategy (PR #120A)
+
+**Status:** Docs-only spec in flight — **no payment runtime yet**.
+
+**Primary doc:** [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
+
+**Key product rule (PR #120A revision):** Privacy is **baseline across every plan** — not a paid or limited feature. Monetisation focuses on reflection depth, Journal Trail, Relationship Garden, practice progression, ALIGN/CAB pattern visibility, and optional parent-controlled MHP review support (Connected).
+
+**Plans (spec only):**
+
+| Plan | Role | Suggested price |
+|------|------|-----------------|
+| Wayfinder | 30-day no-card trial; 3 saved Decode moments | Free |
+| Wayfinder Plus | Main parent development subscription | S$9.90/mo or S$89/yr |
+| Wayfinder Connected | Parent-controlled MHP review layer | S$19.90/mo or S$199/yr |
+
+**Stripe direction (future runtime only):** Checkout + Billing + Customer Portal; internal no-card trial until parent chooses Plus/Connected.
+
+**Also documented in PR #120A roadmap (spec only, no runtime):** Simplified Chinese UI toggle (`en` / `zh-Hans`); personal profiling revamp; research consent; corporate/workshop support; facilitator module; self-read relationship learning bytes.
+
+**Explicit non-goals for PR #120A:** Stripe code, webhooks, entitlement gates, SQL, App Version entry, auth/journal/MHP portrait changes.
+
 ## In flight
 
 | Branch / phase | Summary | Status |
@@ -123,7 +147,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #116 monochrome graphite portrait prompt | Tune server-side OpenAI prompt for black-and-white photorealistic pencil sketch; no parent App Version change | Complete (merged) |
 | PR #117 current approved portrait selection | Explicit `selected_at` current approved portrait via owner RPC; no parent/client display | Complete (merged) |
 | PR #118 parent MHP portrait display | Parent review-sharing selector shows selected approved portrait via server-signed URL API | Complete (merged) |
-| PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | In flight |
+| PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | Complete (merged) |
+| PR #120A payment/pricing strategy revision | Privacy-baseline plan table + Stripe/entitlement spec + future roadmap; docs only | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -132,6 +157,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
+- **Payment / entitlement runtime** — **not started** — strategy spec in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A docs only)
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
 - **Questionnaire/check-in consent and response storage** — not implemented
