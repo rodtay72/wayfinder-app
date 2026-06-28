@@ -3082,6 +3082,26 @@ const practitionerSelectOptionLabel=(row)=>{
  return wid?('Mental Health Professional '+wid):'Mental Health Professional';
 };
 
+const practitionerPortraitInitials=(row)=>{
+ const fullName=pickSafePractitionerDisplayValue(row?.full_name,row?.fullName);
+ const labelName=practitionerNameFromDisplayLabel(row?.display_label||row?.displayLabel,row?.wayfinder_id||row?.wayfinderId);
+ const source=fullName||labelName||'';
+ const parts=String(source).trim().split(/\s+/).filter(Boolean);
+ if(parts.length>=2) return (parts[0].charAt(0)+parts[parts.length-1].charAt(0)).toUpperCase();
+ if(parts.length===1) return parts[0].slice(0,2).toUpperCase();
+ return 'MHP';
+};
+
+function PractitionerPortraitAvatar({row,className=''}){
+ const portraitUrl=String(row?.approved_portrait_url||row?.approvedPortraitUrl||'').trim();
+ const [imageFailed,setImageFailed]=useState(false);
+ const initials=practitionerPortraitInitials(row);
+ const showImage=!!portraitUrl&&!imageFailed;
+ return <span className={'practitioner-portrait-avatar'+(className?` ${className}`:'')} aria-hidden="true">
+  {showImage ? <img className="practitioner-portrait-avatar-image" src={portraitUrl} alt="" onError={()=>setImageFailed(true)}/> : <span className="practitioner-portrait-avatar-initials">{initials}</span>}
+ </span>;
+}
+
 const formatCounsellorFeedbackDate=(value)=>{
  const dt=parseStoredDate(value);
  if(!dt||isNaN(dt)) return '-';
@@ -4132,7 +4152,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
   let cancelled=false;
   (async()=>{
    setLoadingCounsellors(true);
-   const r=await DB.listAvailableCounsellors(authSession);
+   const r=await DB.listAvailableMhpsForParent(authSession);
    if(cancelled)return;
    setCounsellorsUnavailable(!!r.unavailable);
    setCounsellors(r.unavailable?[]:(r.rows||[]));
@@ -4238,10 +4258,21 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
    <div className="field review-share-counsellor-field">
     <label>{meta.counsellorSelectLabel||'Choose your Mental Health Professional'}</label>
     {loadingCounsellors ? <p className="sub">{meta.counsellorSelectLoading||'Loading practitioners…'}</p> : counsellorsUnavailable ? <p className="sub review-share-error">{meta.setupUnavailable}</p> : counsellors.length===0 ? <p className="sub review-share-error">{meta.noCounsellorsAvailable}</p> : <>
-     <select value={counsellorId} onChange={ev=>setCounsellorId(ev.target.value)}>
-      <option value="">{meta.counsellorSelectPlaceholder||'Select a practitioner…'}</option>
-      {counsellors.map(c=><option key={c.wayfinder_id} value={c.wayfinder_id}>{practitionerSelectOptionLabel(c)}</option>)}
-     </select>
+     <div className="review-share-practitioner-list" role="radiogroup" aria-label={meta.counsellorSelectLabel||'Choose your Mental Health Professional'}>
+      {counsellors.map(c=>{
+       const wid=String(c.wayfinder_id||c.wayfinderId||'').trim();
+       const selected=counsellorId===wid;
+       const label=practitionerSelectOptionLabel(c);
+       return <label key={wid} className={'review-share-practitioner-option'+(selected?' is-selected':'')}>
+        <input type="radio" name="review-share-practitioner" value={wid} checked={selected} onChange={()=>setCounsellorId(wid)}/>
+        <PractitionerPortraitAvatar row={c}/>
+        <span className="review-share-practitioner-copy">
+         <span className="review-share-practitioner-name">{label}</span>
+         {c.professional_title||c.professionalTitle ? <span className="review-share-practitioner-meta">{pickSafePractitionerDisplayValue(c.professional_title,c.professionalTitle)}</span> : null}
+        </span>
+       </label>;
+      })}
+     </div>
      <p className="hint">{meta.counsellorSelectHint}</p>
     </>}
    </div>

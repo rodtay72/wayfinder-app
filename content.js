@@ -497,6 +497,16 @@ const APP_VERSION_PAGE = {
 
 const WAYFINDER_APP_VERSIONS = [
   {
+    id: "v0-4-5-parent-mhp-portrait-display",
+    version: "v0.4.5",
+    date: "June 2026",
+    status: "released",
+    tag: "Profiles",
+    title: "MHP portraits in parent selection",
+    body: "Published Mental Health Professional profiles can now display an owner-approved portrait in parent selection areas. This may help you recognise your practitioner when sharing reflections for review. Only the current approved portrait is shown.",
+    parentAction: "When sharing reflections for review, look for your Mental Health Professional's name and portrait in the selection list."
+  },
+  {
     id: "v0-4-4-login-branding-install-icon",
     version: "v0.4.4",
     date: "June 2026",

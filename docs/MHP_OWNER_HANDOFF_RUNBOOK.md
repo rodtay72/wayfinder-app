@@ -479,6 +479,22 @@ Manual upload and **Save as approved portrait** from generated sketch both mark 
 
 ---
 
+## 17. Parent portrait display (PR #118)
+
+Parents may see the **current selected approved portrait** only in existing review-sharing selection areas — not a public directory browse.
+
+| Rule | Detail |
+|------|--------|
+| API | `POST /api/list-available-mhps` — authenticated parent session; server enforces same visibility as `list_available_counsellors()` |
+| Portrait source | `approved_portrait` + `approved` + `selected_at is not null` + bucket `professional-profile-portraits` |
+| URL delivery | Short-lived signed URL generated **server-side** with service role; bucket stays private |
+| Parent UI | Small rounded avatar beside MHP name; initials placeholder if portrait unavailable |
+| Never shown | Source photo, generated candidate, unselected approved history, storage paths, Supabase UUIDs, `photo_url` |
+
+No new parent/client storage SELECT policies. Fallback: if API unavailable, selector still loads MHP names via `list_available_counsellors()` without portraits.
+
+---
+
 ## Related docs
 
 - [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence
