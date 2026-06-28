@@ -415,7 +415,7 @@ limit 10;
 
 ## 15. Owner AI sketch portrait generation (PR #114)
 
-Owner/admin can generate a **private Wayfinder-style sketched portrait** from an MHP's uploaded source photo on `/admin.html`.
+Owner/admin can generate a **private Wayfinder-style sketched portrait** from an MHP's uploaded source photo on `/admin.html`. As of PR #116, the server-side prompt targets a **black-and-white photorealistic graphite pencil sketch** with strong likeness (no colour wash or soft editorial illustration).
 
 | Rule | Detail |
 |------|--------|
