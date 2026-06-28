@@ -28,7 +28,40 @@ This document defines the preferred **private upload → illustrated portrait �
 - **User-facing label:** Mental Health Professional / MHP
 - **Internal role:** `counsellor` (unchanged)
 
-**No App Version entry** — MHP/admin infrastructure only.
+**No App Version entry** — MHP/admin infrastructure only (parent-facing portrait note is App Version v0.4.5 via PR #118 only).
+
+---
+
+## Production checkpoint principles (PR #106–PR #118)
+
+The portrait pipeline is **live on main**. These principles are the production privacy model — not future planning.
+
+| Principle | Rule |
+|-----------|------|
+| Private source photos | **Review inputs only** — stored in `professional-profile-image-sources`; never parent/client-visible |
+| AI generation | **Candidate-only, not authoritative** — `generated_portrait` in owner/admin review; poor likeness → discard and use manual upload |
+| Owner-approved portrait | **Only publishable portrait** — `approved_portrait` + `approved`; owner sets current via `selected_at` (PR #117) |
+| Manual upload | **Trusted production fallback** — owner uploads final pencil sketch when AI candidate is not suitable (PR #113) |
+| Current portrait | **`selected_at` defines current** — one selected approved portrait per MHP; older approved rows kept as history, not parent-visible |
+| Parent display | **Selected approved portrait only** — for **published + visible + active** MHPs via server-signed URL (PR #118); no public bucket |
+| Never to parents | No public bucket, no raw source photo, no generated candidate, no unselected approved history, no storage paths, no Supabase UUIDs |
+| Legacy `photo_url` | **Not used** for this portrait pipeline; do not wire parent display to `photo_url` |
+
+---
+
+## Do not regress
+
+Future work on MHP images, directories, or parent UI **must not**:
+
+- make `professional-profile-image-sources` **public** or grant parent/client storage SELECT on source objects
+- expose **`generated_portrait`** to parents or clients
+- rely on **`photo_url`** for this portrait pipeline (reads or writes for display)
+- show **unselected approved portraits** or portrait **history** to parents
+- expose **storage paths** or **Supabase UUIDs** in parent/client UI
+- weaken **owner/admin publication checks** (`profile_status`, `profile_visible`, `membership_status`, expiry)
+- weaken **auth**, **RLS**, **journal save/read**, **Parent ID / Child ID**, or **ensure_profile** protections
+
+When in doubt, read [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — **MHP Portrait Pipeline — Production Checkpoint** — and [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) — § Owner-approved MHP portrait workflow.
 
 ---
 
@@ -62,6 +95,8 @@ This PR is **strategy + SQL/storage contract planning** for owner review before 
 
 ## 4. Preferred future workflow
 
+**Status:** Implemented on main (PR #107–PR #118). Diagram reflects the **production** flow.
+
 ```mermaid
 flowchart LR
   upload[MHPUploadsSourcePhotoPrivate]
@@ -75,10 +110,11 @@ flowchart LR
 ```
 
 1. **MHP uploads source photo privately** — stored in a private bucket; never parent/client-visible.
-2. **Wayfinder generates or allows a Wayfinder-style illustrated portrait** — warm, editorial, consistent palette; not raw photo as default public identity.
-3. **MHP previews and selects preferred portrait** — selection is not publication.
-4. **Owner/admin reviews image** as part of MHP publication review (alongside licence/profile fields).
-5. **Parent/client UI** shows **only the owner-approved portrait** for **published + active** MHP profiles.
+2. **Owner may generate AI sketch candidate** — warm Wayfinder-style pencil sketch; **candidate-only**, not authoritative.
+3. **Owner uploads and/or saves approved portrait** — manual upload is the trusted fallback; **Save as approved portrait** copies candidate when acceptable.
+4. **Owner selects current approved portrait** — `selected_at` marks the one current row (PR #117).
+5. **Owner/admin reviews and publishes profile** — publication unchanged from PR #104 / PR #105.
+6. **Parent/client UI** shows **only the current selected approved portrait** for **published + visible + active** MHPs (PR #118).
 
 Uploading or generating an image **does not publish** the profile. MHP self-publish remains disallowed. Owner/admin publication RPC remains the authority ([supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql)).
 
@@ -110,13 +146,13 @@ Portraits support **trust and recognition**, not marketing glamour or clinical c
 
 | Rule | Detail |
 |------|--------|
-| Source photo | **Private always** — MHP + owner/admin service paths only |
-| Generated / uploaded portrait candidates | **Private** until owner/admin approval |
-| Approved portrait | May be served to parent/client contexts **only** when profile is **published + visible + active membership** |
+| Source photo | **Private always** — MHP + owner/admin only; review input, not public identity |
+| Generated portrait candidates | **Private, candidate-only** — owner/admin; never parent/client-visible until saved as approved |
+| Approved portrait | **Owner-approved only** — current row via `selected_at`; parent may see **only** that portrait when profile is **published + visible + active** |
 | Image upload / generation | Does **not** change `profile_status` or publish profile |
 | MHP self-publish | **Disallowed** — unchanged from PR #104 |
-| Owner approval | Required before any portrait becomes the public-facing asset |
-| Parent selector / directory | No image display until future runtime + owner-approved asset path is wired |
+| Owner approval + selection | Required before any portrait becomes parent-visible; manual upload remains trusted fallback |
+| Parent selector | Shows **selected approved portrait only** (PR #118) — signed URL server-side; not `photo_url`; no directory browse yet |
 
 Parent/client visibility still requires:
 
@@ -141,7 +177,7 @@ Owner-applied Supabase Storage buckets — **private by default**:
 - Sources: `professional-profile-image-sources/{auth.uid()}/{image_id}.jpg`
 - Portraits: `professional-profile-portraits/{auth.uid()}/{image_id}.png`
 
-**Future approved/public serving path** — to be decided in a later PR (signed URL, CDN path, or copy to a public bucket). Do **not** make source or draft portrait buckets public in PR #106.
+**Future approved/public serving path** — **implemented (PR #118):** short-lived **signed URLs** from private `professional-profile-portraits` via server API; bucket stays private. Do **not** make source or draft portrait buckets public.
 
 Storage **policies** are documented in [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-storage.sql) as manual owner setup notes; full upload policies ship with the upload UI/API PR.
 
@@ -195,27 +231,29 @@ From [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-stor
 
 ---
 
-## 10. Future PR sequence (recommended)
+## 10. PR sequence (delivered)
 
 | Phase | PR theme | Delivers |
 |-------|----------|----------|
-| **#106 (this)** | Strategy + storage SQL contract | This doc + table/bucket contract; owner-applied SQL only |
-| **#107+ (planned)** | MHP private source upload UI + metadata insert | Upload to source bucket; no generation yet |
-| **#108+ (planned)** | Portrait generation service + candidate rows | API/service-role generation; MHP preview/select |
-| **#109+ (planned)** | Owner admin image review in `/admin.html` | Approve/reject portrait; link to publication |
-| **#118 (merged/planned)** | Parent approved portrait display | Review-sharing selector avatar via `/api/list-available-mhps`; signed URL server-side |
+| **#106** | Strategy + storage SQL contract | This doc + table/bucket contract |
+| **#107** | MHP private source upload | Upload to source bucket |
+| **#110** | Owner admin source review | `/admin.html` signed preview |
+| **#113** | Owner approved portrait upload | Manual approved portrait to portraits bucket |
+| **#114–#116** | AI sketch candidate + prompt tuning | Server-side generation; candidate-only |
+| **#117** | Current approved selection | `selected_at` + owner RPC |
+| **#118** | Parent approved portrait display | Review-sharing selector via `/api/list-available-mhps` |
 
-Do not bundle upload, generation, admin review, and parent display in one PR.
+Do not bundle regression-prone changes (public buckets, `photo_url` display, parent access to sources/generated/history) into unrelated PRs.
 
 ---
 
 ## 11. Owner decisions (open)
 
-1. **Approved portrait serve mechanism** — signed URL vs dedicated public bucket vs CDN.
-2. **Generation provider** — internal pipeline vs approved vendor; must not send parent/child data.
-3. **Whether MHP may upload their own illustrated portrait** (`uploaded_portrait`) without generation, still owner-approved.
-4. **Rejection UX** — notify MHP to re-upload vs silent archive.
-5. **Deprecation timeline for free-text `photo_url`** in MHP profile edit UI.
+1. **Approved portrait serve mechanism** — **decided:** private bucket + server-signed URL (PR #118); CDN/public bucket still out of scope unless explicitly approved.
+2. **Generation provider** — OpenAI Image API server-side (PR #114); must not send parent/child data.
+3. **Whether MHP may upload their own illustrated portrait** (`uploaded_portrait`) without generation, still owner-approved — open.
+4. **Rejection UX** — notify MHP to re-upload vs silent archive — open.
+5. **Deprecation timeline for free-text `photo_url`** in MHP profile edit UI — open; **do not** use for parent portrait display.
 
 ---
 
@@ -227,9 +265,9 @@ Owner applies [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-i
 select to_regclass('public.mental_health_professional_profile_images');
 ```
 
-**Expected:** table exists; zero rows until runtime PR.
+**Expected:** table exists; portrait rows for onboarded MHPs when pipeline used.
 
-**Must not exist yet:** public bucket read on sources; parent-visible image URLs; automatic profile publish on upload.
+**Must not regress:** public bucket read on sources; parent-visible source/generated/history images; automatic profile publish on upload; parent display via `photo_url` or raw storage paths.
 
 ---
 
