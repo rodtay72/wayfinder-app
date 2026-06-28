@@ -14,7 +14,7 @@ const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
 const MAX_GENERATED_BYTES = 5 * 1024 * 1024;
 const OPENAI_TIMEOUT_MS = Number(process.env.MHP_PORTRAIT_GENERATION_TIMEOUT_MS || 110000);
 
-const SKETCH_PROMPT = 'Create a warm Wayfinder-style professional portrait illustration from this source photo. Use a soft pencil-sketch and gentle editorial illustration style with subtle natural colour, clean neutral background, and kind professional presence. Keep the person recognisable from the source image, but make the result clearly illustrated rather than photographic. Do not include text, logos, clinical symbols, diagnosis imagery, children, documents, badges, or decorative frames.';
+const SKETCH_PROMPT = 'Create a professional black-and-white photorealistic graphite pencil portrait from this source photo. Preserve the person\'s facial likeness closely: same face shape, hairstyle, smile, eye expression, head angle, and professional posture. Render the result as a polished hand-drawn pencil sketch on white paper, with realistic graphite shading, fine pencil linework, crosshatching, and subtle paper texture. Keep the portrait monochrome only: black, white, and grey graphite tones. Do not add colour, sepia, beige wash, painterly colour, or cartoon styling. Keep the source photo\'s professional half-body / three-quarter portrait framing and simple vertical background impression where appropriate. Do not include text, logos, clinical symbols, diagnosis imagery, children, documents, badges, decorative frames, or app UI elements.';
 
 const ERROR_CODES = {
   AUTH_REQUIRED: 'auth_required',
