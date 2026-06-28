@@ -55,31 +55,101 @@ Recommended division of responsibility:
 
 Explorer should not be a Stripe subscription. Explorer is a no-card, app-level 30-day trial.
 
-## Plan comparison
+## Client-facing plan comparison
 
-| Capability | Wayfinder Explorer | Wayfinder Plus | Wayfinder Connected |
-|------------|--------------------|----------------|---------------------|
-| Intended role | Low-friction trust-building trial | Main parent development subscription | Parent-controlled professional support layer |
-| Price | Free for 30 days | Suggested S$9.90/month or S$89/year | Suggested S$19.90/month or S$199/year |
-| Credit card | Not required | Required at upgrade | Required at upgrade |
-| Saved Decode moments | 3 saved Decode moments within 30 days | Unlimited saved Decode moments | Unlimited saved Decode moments |
-| Existing saved entries | Remain readable after trial ends | Readable | Readable |
-| Journal Trail | Read own existing entries; limited new saves after trial/limit | Full Journal Trail | Full Journal Trail |
-| Relationship Garden | Limited / preview positioning until runtime decision | Full Relationship Garden | Full Relationship Garden |
-| 52 Parent Growth Practices / 52 ALIGN Practices | Access to the practice interface during trial | Full practice access with save/history/progression | Full practice access with save/history/progression |
-| Parent reflection history | Privacy-safe readable history | Privacy-safe full history | Privacy-safe full history |
-| MHP selector | Not included | Not included by default | Published + visible + active MHP selector |
-| MHP portrait display | Not included | Not included by default | Selected current approved MHP portrait only |
-| MHP sharing/review support | Not included | Not included by default | Parent-controlled sharing/review support |
-| Automatic sharing | Never | Never | Never |
+Use a feature-benefit comparison table instead of an abstract capability table.
+
+Legend:
+
+- **Unlocked** = available in that plan.
+- **Limited** = available with the stated trial/read-only limit.
+- **Locked** = not available in that plan.
+- **Protected locked** = intentionally unavailable because privacy/control requires it to stay off.
+
+| Features | Wayfinder | Wayfinder Plus | Wayfinder Connected |
+|----------|-----------|----------------|---------------------|
+| **Try Wayfinder without payment pressure** — parent can experience the ALIGN/CAB pathway before deciding | **Unlocked** — free 30-day Explorer access, no credit card | Included after upgrade | Included after upgrade |
+| **Decode a Moment** — turn a confusing child behaviour into a possible need, parent CAB reflection, alignment check, and one next action | **Limited** — 3 saved Decode moments within 30 days | **Unlocked** — unlimited saved Decode moments | **Unlocked** — unlimited saved Decode moments |
+| **Read existing saved reflections** — parent keeps access to their own history instead of losing it after trial | **Unlocked** — existing saved entries remain readable after trial/limit | **Unlocked** | **Unlocked** |
+| **Unlimited saved Decode moments** — build a continuous record of alignment growth over time | **Locked** after 3 trial saves | **Unlocked** | **Unlocked** |
+| **Full Journal Trail** — review past moments, possible needs, CAB patterns, growth capacities, next actions, and repair intentions | **Limited** — read own existing/trial entries; new saves limited | **Unlocked** | **Unlocked** |
+| **Relationship Garden** — see relationship development cues and parent-child growth over time | **Locked** or preview-only until runtime decision | **Unlocked** | **Unlocked** |
+| **52 Parent Growth Practices / 52 ALIGN Practices** — practise specific parent capacities such as pausing, staying curious, connecting before correcting, and repairing | **Unlocked** — access to practice interface during trial | **Unlocked** | **Unlocked** |
+| **Practice save/history/progression** — track what the parent tried, repeated, and developed | **Locked** | **Unlocked** | **Unlocked** |
+| **Privacy-safe parent reflection history** — keep a parent-owned developmental record without exposing private identifiers in normal UI | **Limited** — readable existing history | **Unlocked** | **Unlocked** |
+| **Billing self-management** — manage subscription, payment method, invoices, or cancellation through Stripe Customer Portal | **Locked** — no billing account needed for free trial | **Unlocked** | **Unlocked** |
+| **Published + visible + active MHP selector** — choose an approved professional support option when parent wants review support | **Locked** | **Locked** | **Unlocked** |
+| **Selected approved MHP portrait display** — identify the selected professional using only the current approved portrait | **Locked** | **Locked** | **Unlocked** |
+| **Parent-controlled MHP sharing/review support** — parent chooses what to share; nothing is sent automatically | **Locked** | **Locked** | **Unlocked** |
+| **Automatic sharing to MHPs** — prevents unintended exposure of parent reflections | **Protected locked** — never automatic | **Protected locked** — never automatic | **Protected locked** — parent must choose what to share |
+| **Source photo, generated portrait candidates, storage paths, Supabase UUIDs, `photo_url` exposure** — protects portrait/privacy boundaries | **Protected locked** | **Protected locked** | **Protected locked** |
+| **Suggested price** | Free for 30 days | S$9.90/month or S$89/year | S$19.90/month or S$199/year |
+
+## Client-facing value proposition
+
+Client-safe positioning:
+
+> Wayfinder is the missing layer between journaling, parenting tips, family organisation, and therapy. It helps a parent decode a real moment without blaming the child, notice the child's possible emerging need, locate their own CAB response, and choose one growth-oriented next action or repair step.
+
+Do **not** claim that Wayfinder is universally better than every parenting, therapy, sleep, or wellness app. Claim that Wayfinder is better for this specific job:
+
+> Helping a parent build alignment capacity in the moments where their child's behaviour may reveal a gap between the child's emerging need and the parent's Cognition, Affect, and Behaviour.
+
+## Comparison with top adjacent apps
+
+This comparison is for client positioning and investor/product narrative. It is not a clinical efficacy claim and does not position Wayfinder as a replacement for therapy, medical advice, crisis care, sleep consultation, or community support.
+
+Representative adjacent apps reviewed for positioning:
+
+| App | Category it represents | What it is good at | Where it stops | Why Wayfinder is better for the Wayfinder job |
+|-----|------------------------|--------------------|----------------|-----------------------------------------------|
+| **Huckleberry** | Baby/toddler sleep and routine support | Sleep tracking, nap timing, sleep support, and routine prediction | Focuses mainly on child sleep/routine optimisation | Wayfinder helps when the parent asks, "What was happening underneath this behaviour, what happened in me, and what repair/next action should I try?" |
+| **BabyCenter** | Pregnancy/baby tracking and parenting information | Stage-based pregnancy/baby content, expert information, and parenting resources | Gives information and tracking, but not a structured parent CAB alignment record | Wayfinder converts a real parent-child moment into possible need, parent CAB, growth capacity, and next action. |
+| **Peanut** | Parent community and peer support | Helps mothers/parents ask questions, find support, and connect with others | Support is social/community-led; private reflection may require public or peer disclosure | Wayfinder gives a private, structured, parent-owned reflection path before the parent decides whether to share anything. |
+| **Cozi** | Family organisation | Shared calendar, lists, reminders, and household coordination | Solves logistics, not emotional alignment or repair after difficult moments | Wayfinder helps with the relational/emotional layer: how the parent interprets, feels, responds, repairs, and grows. |
+| **BetterHelp** | Therapy marketplace / online therapy | Access to licensed therapists and scheduled or message-based therapy support | Therapy is higher-cost, appointment/professional-led, and not intended as a daily parent alignment journal | Wayfinder sits below therapy: daily, lower-friction, parent-led reflection that can prepare clearer topics for professional support when the parent chooses. |
+
+### Bottom-line differentiation
+
+Most adjacent apps help with one of five jobs:
+
+1. **Track the child** — sleep, feeds, development, milestones.
+2. **Inform the parent** — tips, articles, stage-based guidance.
+3. **Connect the parent** — community, peer support, shared experiences.
+4. **Organise the family** — calendars, reminders, logistics.
+5. **Access therapy** — professional sessions and clinical support.
+
+Wayfinder's job is different:
+
+> Help the parent reflect on a real moment, identify the possible child need, notice their own CAB response, locate the alignment gap, grow one capacity, and navigate one next action or repair.
+
+That makes Wayfinder stronger as a **parent emotional development subscription** than a simple journal, a tips library, a community feed, a calendar, or a therapy marketplace.
+
+### Client-safe competitor claim examples
+
+Use:
+
+- "Huckleberry helps parents manage sleep timing; Wayfinder helps parents understand and repair difficult relational moments."
+- "BabyCenter helps parents know what may be happening developmentally; Wayfinder helps parents notice what may be happening in the parent-child interaction."
+- "Peanut gives community support; Wayfinder gives private structured reflection before anything is shared."
+- "Cozi organises family life; Wayfinder develops parent alignment capacity."
+- "BetterHelp connects people with therapists; Wayfinder helps parents build daily reflection language and can support more focused conversations if they later choose professional help."
+
+Avoid:
+
+- "Wayfinder replaces therapy."
+- "Wayfinder diagnoses child behaviour."
+- "Wayfinder fixes children faster than other apps."
+- "Wayfinder is better than therapy."
+- "Wayfinder automatically shares reflections with professionals."
 
 ## Pricing rationale
 
 The suggested pricing positions Wayfinder above simple journaling apps and below therapy platforms.
 
-- **Explorer** removes the credit-card barrier so a parent can experience Decode a Moment, the ALIGN/CAB frame, and the 52 Parent Growth Practices before deciding whether Wayfinder is useful.
-- **Plus** is the core business plan. It should carry the main parent development value: unlimited Decode saves, Journal Trail, Relationship Garden, practice history, and privacy-safe reflection continuity.
-- **Connected** should price as an added support layer, not as therapy. The additional value is parent-controlled MHP sharing/review support, not automatic professional monitoring or direct clinical care.
+- **Wayfinder / Explorer** removes the credit-card barrier so a parent can experience Decode a Moment, the ALIGN/CAB frame, and the 52 Parent Growth Practices before deciding whether Wayfinder is useful.
+- **Wayfinder Plus** is the core business plan. It should carry the main parent development value: unlimited Decode saves, Journal Trail, Relationship Garden, practice history, and privacy-safe reflection continuity.
+- **Wayfinder Connected** should price as an added support layer, not as therapy. The additional value is parent-controlled MHP sharing/review support, not automatic professional monitoring or direct clinical care.
 - The annual Plus suggestion, S$89/year, is meaningfully lower than 12 monthly payments at S$9.90.
 - The annual Connected suggestion, S$199/year, is lower than 12 monthly payments at S$19.90 while still preserving a premium tier for parent-controlled support.
 
@@ -143,9 +213,9 @@ Plan positioning:
 
 | Plan | Practice positioning |
 |------|----------------------|
-| Explorer | Access to the 52-practice interface during the 30-day trial so parents can understand the growth pathway |
-| Plus | Full practice access with save/history/progression so practices become part of the parent's development record |
-| Connected | Plus practice features, with future parent-controlled option to share selected practice reflections with an MHP |
+| Wayfinder | Access to the 52-practice interface during the 30-day trial so parents can understand the growth pathway |
+| Wayfinder Plus | Full practice access with save/history/progression so practices become part of the parent's development record |
+| Wayfinder Connected | Plus practice features, with future parent-controlled option to share selected practice reflections with an MHP |
 
 Practice copy should avoid certainty and diagnosis. It should use phrases such as "try", "notice", "may", "might", "possible", and "what happens when..." rather than "fix", "stop", or "make your child...".
 
@@ -157,15 +227,15 @@ Recommended future entitlement concepts:
 
 | Concept | Purpose |
 |---------|---------|
-| `plan_code` | `explorer`, `plus`, `connected` |
+| `plan_code` | `wayfinder`, `plus`, `connected` |
 | `billing_status` | `trial_active`, `trial_expired`, `active`, `past_due`, `canceled`, `comped`, `owner_granted` |
-| `trial_started_at` | ISO timestamp for Explorer trial start |
-| `trial_ends_at` | ISO timestamp for Explorer trial end |
-| `decode_save_limit` | 3 for Explorer, unlimited for Plus/Connected |
+| `trial_started_at` | ISO timestamp for Wayfinder trial start |
+| `trial_ends_at` | ISO timestamp for Wayfinder trial end |
+| `decode_save_limit` | 3 for Wayfinder trial, unlimited for Plus/Connected |
 | `decode_saves_used` | Count of successful saved Decode moments in the trial window |
 | `can_read_own_journal` | Should remain true for the parent's own existing entries |
-| `can_save_decode` | True while Explorer has remaining saves or while Plus/Connected is active |
-| `can_access_practice_interface` | True for Explorer/Plus/Connected according to launch policy |
+| `can_save_decode` | True while Wayfinder trial has remaining saves or while Plus/Connected is active |
+| `can_access_practice_interface` | True for Wayfinder/Plus/Connected according to launch policy |
 | `can_save_practice_progress` | Plus/Connected by default |
 | `can_use_relationship_garden` | Plus/Connected by default |
 | `can_share_with_mhp` | Connected only, parent-controlled |
@@ -190,7 +260,7 @@ Recommended Stripe catalog:
 | Wayfinder Plus | Monthly S$9.90, annual S$89 |
 | Wayfinder Connected | Monthly S$19.90, annual S$199 |
 
-Explorer should be tracked in Wayfinder entitlement state, not as a Stripe product.
+Wayfinder free trial should be tracked in Wayfinder entitlement state, not as a Stripe product.
 
 Recommended future server/API shape:
 
@@ -262,7 +332,7 @@ Connected means:
 
 Use calm, non-punitive upgrade language.
 
-### Explorer trial active
+### Wayfinder trial active
 
 > You are exploring Wayfinder with 3 saved Decode moments. Your reflections help you notice possible child needs, your CAB response, and one next action.
 
@@ -276,7 +346,7 @@ Use calm, non-punitive upgrade language.
 
 ### Trial ended
 
-> Your 30-day Explorer trial has ended. Your saved entries remain readable. Upgrade to Plus to continue saving Decode moments, practices, and Relationship Garden progress.
+> Your 30-day Wayfinder trial has ended. Your saved entries remain readable. Upgrade to Plus to continue saving Decode moments, practices, and Relationship Garden progress.
 
 ### Plus upgrade
 
@@ -324,8 +394,8 @@ Recommended sequence after PR #120:
    - Dashboard reads and journal reads must continue to work if Stripe is unavailable.
    - Do not block existing saved-entry reads.
 
-7. **Explorer trial + Decode save limit PR**
-   - Enforce 30-day / 3-save Explorer rule.
+7. **Wayfinder trial + Decode save limit PR**
+   - Enforce 30-day / 3-save Wayfinder trial rule.
    - Preserve existing saved entries as readable.
    - Add calm upgrade copy.
 
@@ -352,9 +422,9 @@ When runtime payment is eventually implemented, verify:
 2. Unverified email remains blocked.
 3. Parent ID / Wayfinder ID is reused.
 4. Existing children and Journal Trail entries still load.
-5. Explorer user can save up to 3 Decode moments in trial.
-6. Fourth Explorer Decode save is blocked with calm upgrade copy.
-7. Trial-ended Explorer user can still read existing saved entries.
+5. Wayfinder trial user can save up to 3 Decode moments in trial.
+6. Fourth Wayfinder trial Decode save is blocked with calm upgrade copy.
+7. Trial-ended Wayfinder user can still read existing saved entries.
 8. Plus subscription unlocks unlimited Decode saves.
 9. Connected subscription unlocks parent-controlled MHP sharing only.
 10. Cancelled/past-due subscriptions degrade safely without hiding existing entries.
@@ -381,6 +451,8 @@ When runtime payment is eventually implemented, verify:
 
 - `docs/PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md` exists.
 - `docs/CURRENT_LAUNCH_STATUS.md` records payment strategy as docs-only / in flight.
+- Client-facing plan comparison uses feature-benefit rows with Wayfinder / Wayfinder Plus / Wayfinder Connected columns.
+- Competitor comparison explains Wayfinder's differentiation without claiming to replace therapy, medical advice, sleep support, community support, or family logistics apps.
 - No runtime files changed.
 - No SQL files changed.
 - No API files changed.
