@@ -8,7 +8,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-26
 
-**Last verified merge:** PR #97 — Issue #71 C6e complete-profile-only MHP practitioner selector SQL (owner smoke pass recorded in C6f)
+**Last verified merge:** PR #118 — parent MHP portrait display in review-sharing selector (MHP portrait pipeline production checkpoint documented in PR #119)
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -69,7 +69,35 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **v0.4.2** Relationship Garden release note added (PR #99 garden evidence fix).
 - **v0.4.3** Privacy acknowledgement record (PR #103 — merged).
 - **v0.4.4** Login branding and parent install icon refresh (PR #111 — merged).
+- **v0.4.5** MHP approved portrait in parent review-sharing selector (PR #118 — merged).
 - MHP onboarding (former v0.4.1), security-readiness, and future-research planning notes remain in ops/docs only, not on the parent App Version page.
+
+## MHP Portrait Pipeline — Production Checkpoint
+
+**Status:** End-to-end pipeline **complete on main** (PR #106–PR #118). Treat this as a **privacy/production boundary** — future agents must not weaken it without explicit owner approval.
+
+| PR | Delivers |
+|----|----------|
+| **#106** | Private image storage contract — table + bucket planning ([MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md), [supabase-mhp-profile-image-storage.sql](../supabase-mhp-profile-image-storage.sql)) |
+| **#107** | MHP private source photo upload to `professional-profile-image-sources` |
+| **#110** | Owner/admin private source photo review on `/admin.html` |
+| **#113** | Owner manual approved portrait upload to `professional-profile-portraits` |
+| **#114 / #115 / #116** | Owner AI sketch **candidate** generation + OpenAI hotfix + monochrome graphite prompt tuning |
+| **#117** | Explicit **current** approved portrait via `selected_at` (`owner_select_mhp_approved_portrait`) |
+| **#118** | Parent display of **selected approved portrait only** via `POST /api/list-available-mhps` (server-signed URL) |
+
+**Production rules (non-negotiable):**
+
+- **Source photo** remains **private** — MHP + owner/admin review only; never parent/client-visible.
+- **Generated sketch** remains **candidate-only** — not authoritative; not shown to parents until saved as approved by owner.
+- **Manual approved upload** is the **trusted production fallback** when AI likeness is poor.
+- **Parent display** uses the **current selected approved portrait** only (`approved_portrait` + `approved` + `selected_at is not null`) for **published + visible + active** MHPs.
+- **`photo_url` is not used** for the new portrait display path.
+- Parent/client UI must **not** expose storage paths, Supabase UUIDs, source photos, generated candidates, or unselected approved portrait history.
+
+**Owner ops reference:** [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) — § Owner-approved MHP portrait workflow.
+
+**Strategy + do-not-regress:** [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — § Production checkpoint principles; § Do not regress.
 
 ## In flight
 
@@ -94,7 +122,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #115 OpenAI image response_format hotfix | Remove unsupported `response_format` param from `/api/mhp-generate-portrait`; no parent App Version change | Complete (merged) |
 | PR #116 monochrome graphite portrait prompt | Tune server-side OpenAI prompt for black-and-white photorealistic pencil sketch; no parent App Version change | Complete (merged) |
 | PR #117 current approved portrait selection | Explicit `selected_at` current approved portrait via owner RPC; no parent/client display | Complete (merged) |
-| PR #118 parent MHP portrait display | Parent review-sharing selector shows selected approved portrait via server-signed URL API | In flight |
+| PR #118 parent MHP portrait display | Parent review-sharing selector shows selected approved portrait via server-signed URL API | Complete (merged) |
+| PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -102,8 +131,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **Consent SQL apply (PR #102)** — **owner must apply** [supabase-consent-records.sql](../supabase-consent-records.sql) in Supabase SQL Editor before PR #103 runtime works in production
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
-- **MHP portrait generation (PR #114–PR #117)** — owner/admin AI sketch + explicit current approved portrait selection (`selected_at`); **parent portrait display (PR #118)** — in flight via `/api/list-available-mhps`
-- **MHP public profile directory UI** — not implemented; **public profile image display not implemented**
+- **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
+- **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
 - **Questionnaire/check-in consent and response storage** — not implemented
 - **Consent revocation UX** — not implemented
@@ -127,6 +156,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 9. Parent counsellor feedback: published feedback opens, mark-as-read succeeds, read receipt records, dashboard unread notice clears, and feedback remains readable.
 10. Counsellor workspace: parent-approved entries show response status badges (Pending response, Draft saved, Published, Revoked, or Status unavailable) without exposing private identifiers or hidden response content.
 11. Parent Feedback Library: read/published counsellor feedback remains visible and reopenable from the parent dashboard after unread notice clears.
+12. MHP portrait pipeline (after PR #118): owner `/admin.html` shows **Current approved portrait**; parent review-sharing selector shows selected approved portrait only; source/generated/history portraits and storage paths not visible to parents; journal/dashboard and MHP portal unchanged.
 
 ## Agent ops notes
 

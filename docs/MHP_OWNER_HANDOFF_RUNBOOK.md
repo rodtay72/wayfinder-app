@@ -495,6 +495,34 @@ No new parent/client storage SELECT policies. Fallback: if API unavailable, sele
 
 ---
 
+## 18. Owner-approved MHP portrait workflow (production)
+
+Use this end-to-end workflow when onboarding or updating an MHP portrait. Detailed PR sections above (§12–§17) remain reference; this section is the **operational checkpoint**.
+
+### Step-by-step
+
+1. **MHP uploads private source photo** — MHP portal → private source photo to `professional-profile-image-sources` (PR #107 / #109).
+2. **Owner reviews source photo in admin** — `/admin.html` → private source photo preview (PR #110).
+3. **Owner may generate AI sketch candidate** — **Generate Wayfinder sketch** (PR #114–#116); output is `generated_portrait` only.
+4. **Owner may ignore AI candidate if likeness is poor** — generated sketch is **not** parent-visible and **not** authoritative.
+5. **Owner uploads approved pencil sketch manually if preferred** — **Upload approved portrait** (PR #113) remains the trusted production fallback.
+6. **Owner confirms “Current approved portrait” is selected** — status shows **approved · Current** with `selected_at` populated (PR #117).
+7. **Owner confirms MHP profile is published, visible, and active** — publication RPC / admin queue (PR #104 / #105).
+8. **Parent side shows only the selected approved portrait** — review-sharing selector via `/api/list-available-mhps` (PR #118).
+
+### Smoke checklist
+
+- [ ] `/admin.html` (owner) shows **Current approved portrait** for the MHP.
+- [ ] Parent portal → Journal Trail review sharing → selector shows **selected approved portrait** beside MHP name.
+- [ ] **Source photo** is **not** shown to parent.
+- [ ] **Generated candidate** is **not** shown to parent.
+- [ ] **Older approved portraits** (history) are **not** shown to parent.
+- [ ] **`photo_url`** unchanged / not used for new portrait display.
+- [ ] **Journal and dashboard** still load.
+- [ ] **MHP portal** unchanged (source upload still private; no parent-facing portrait leak).
+
+---
+
 ## Related docs
 
 - [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — profile image strategy and future PR sequence
