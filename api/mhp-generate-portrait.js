@@ -226,7 +226,6 @@ async function generateSketchFromSource(sourceBuffer, mimeType) {
   form.append('model', model);
   form.append('prompt', SKETCH_PROMPT);
   form.append('size', '1024x1024');
-  form.append('response_format', 'b64_json');
   form.append('image', new Blob([sourceBuffer], { type: mimeType || 'image/jpeg' }), sourceFilenameForMime(mimeType));
 
   const controller = new AbortController();
@@ -255,8 +254,17 @@ async function generateSketchFromSource(sourceBuffer, mimeType) {
 
   const data = await readJson(response);
   if (!response.ok) {
-    const message = String(data?.error?.message || data?.message || response.statusText || '').toLowerCase();
-    const error = new Error(data?.error?.message || data?.message || 'OpenAI image generation failed.');
+    const sanitizedMessage = String(data?.error?.message || data?.message || response.statusText || 'OpenAI image generation failed.')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 240);
+    console.error('[mhp-generate-portrait] openai_error', {
+      status: response.status,
+      message: sanitizedMessage,
+      model
+    });
+    const message = sanitizedMessage.toLowerCase();
+    const error = new Error(sanitizedMessage || 'OpenAI image generation failed.');
     if (message.includes('moderation') || message.includes('safety') || message.includes('policy')) {
       error.error_code = ERROR_CODES.OPENAI_MODERATION;
     } else {
@@ -267,14 +275,27 @@ async function generateSketchFromSource(sourceBuffer, mimeType) {
   }
 
   const b64 = data?.data?.[0]?.b64_json;
-  if (!b64) {
+  const imageUrl = data?.data?.[0]?.url;
+  let pngBuffer = null;
+  if (b64) {
+    pngBuffer = Buffer.from(b64, 'base64');
+  } else if (imageUrl) {
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      const error = new Error('OpenAI returned no image data.');
+      error.error_code = ERROR_CODES.GENERATION_FAILED;
+      error.status = 502;
+      throw error;
+    }
+    pngBuffer = Buffer.from(await imageResponse.arrayBuffer());
+  }
+  if (!pngBuffer) {
     const error = new Error('OpenAI returned no image data.');
     error.error_code = ERROR_CODES.GENERATION_FAILED;
     error.status = 502;
     throw error;
   }
 
-  const pngBuffer = Buffer.from(b64, 'base64');
   if (!pngBuffer.length || pngBuffer.length > MAX_GENERATED_BYTES) {
     const error = new Error('Generated portrait exceeds size limit.');
     error.error_code = ERROR_CODES.GENERATION_FAILED;
