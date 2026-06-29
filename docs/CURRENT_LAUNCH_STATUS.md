@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-29
 
-**Last verified merge:** PR #120A — payment/pricing strategy spec (docs-only, merge `43d0d6c`)
+**Last verified merge:** PR #121 / GitHub #122 — PWA install compatibility hardening (merge `c40b361`)
 
-**Next proposed PR:** PR #121 — mobile PWA install compatibility hardening
+**Next proposed PR:** PR #123 — Simplified Chinese language toggle strategy (docs-only)
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -63,7 +63,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Practitioner selector (PR #95) | Merged — MHP/practitioner wording and display fallback |
 | Practitioner selector names (C6d) | Owner SQL applied and verified — safe MHP name fields in `list_available_counsellors()` |
 | Practitioner selector complete only (C6e) | Owner SQL applied and verified — incomplete MHP rows hidden; completed profiles only |
-| Android icon cache on some devices | **Non-blocking follow-up** — PR #121 hardens manifest install metadata; owner Android re-test pending — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md) |
+| Android icon cache / install warnings | PR #121 manifest hardening merged; **Android Play Protect / outdated-install warning deferred** — no further Android install work until owner re-prioritises; see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md) |
 
 ## Parent App Version page (PR #100)
 
@@ -123,6 +123,18 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Explicit non-goals for PR #120A:** Stripe code, webhooks, entitlement gates, SQL, App Version entry, auth/journal/MHP portrait changes.
 
+## Simplified Chinese language toggle (PR #123)
+
+**Status:** Docs-only strategy **in flight** — no runtime toggle yet.
+
+**Primary doc:** [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
+
+**Languages (spec):** English (`en`) · 简体中文 (`zh-Hans`)
+
+**Key rules:** Static UI/product copy only in first runtime PR; **no automatic translation** of private journal/Decode/reflections; **no external translation APIs** for parent data; ALIGN/CAB non-diagnostic tone in both languages; MHP parent-facing label remains Mental Health Professional; internal role stays `counsellor`.
+
+**Priority:** Same strategic tier as payment gateway (per PR #120A roadmap) — strategy first, runtime in a later PR.
+
 ## In flight
 
 | Branch / phase | Summary | Status |
@@ -149,7 +161,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #118 parent MHP portrait display | Parent review-sharing selector shows selected approved portrait via server-signed URL API | Complete (merged) |
 | PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | Complete (merged) |
 | PR #120A payment/pricing strategy revision | Privacy-baseline plan table + Stripe/entitlement spec + future roadmap; docs only | Complete (merged) |
-| PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | In flight |
+| PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
+| PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -159,6 +172,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A)
+- **Simplified Chinese language toggle runtime** — **not started** — strategy spec [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md) (PR #123 docs only)
+- **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
 - **Questionnaire/check-in consent and response storage** — not implemented
