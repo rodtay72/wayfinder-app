@@ -36,6 +36,7 @@ Use the Supabase Dashboard manually. Do not paste secrets into repo files, scree
    - `https://wayfinder-modular.vercel.app/`
    - `https://wayfinder-modular.vercel.app/index.html`
    - `https://wayfinder-modular.vercel.app/counsellor.html`
+   - `https://wayfinder-modular.vercel.app/counsellor.html**` — **required for MHP invite signup/resend** (`emailRedirectTo` includes `?mhp_invite=<token>&setup=profile`)
    - Localhost URLs only when intentionally testing locally.
 9. Go to `Authentication > Email Templates`.
 10. Update the `Confirm signup` subject and body.
@@ -167,20 +168,54 @@ Body:
 <p>Wayfinder by PsyTec</p>
 ```
 
-## Custom SMTP Checklist
+## Custom SMTP Setup Checklist
 
-Custom SMTP is configured in Supabase, not in this repo.
+Custom SMTP is configured in the **Supabase Dashboard**, not in this repo. Wayfinder frontend code does **not** send signup confirmation emails — Supabase Auth does.
 
-Collect these values from the approved email provider or Google Workspace administrator. Do not store the secret values in the repository.
+### Prerequisites
+
+- [ ] `psytec.com.sg` domain verification complete with the email provider (see [Domain verification checklist](#domain-verification-checklist) below).
+- [ ] SPF, DKIM, and DMARC records published and verified before expecting reliable inbox delivery.
+- [ ] SMTP credentials collected from the approved provider — **do not commit passwords or API keys to GitHub**.
+
+### Supabase Dashboard steps
+
+1. Open the Wayfinder Supabase project.
+2. Go to `Authentication > Providers > Email`.
+3. Confirm **Confirm email** remains **ON**.
+4. Do **not** enable auto-confirm for email signup.
+5. Go to `Authentication > SMTP Settings`.
+6. Enable **Custom SMTP**.
+7. Enter provider SMTP host, port, and security mode (TLS/SSL per provider docs).
+8. Enter SMTP username and password (store only in Supabase Dashboard — never in repo).
+9. Set **Sender name:** `Wayfinder by PsyTec`
+10. Set **Sender email:** `ask.anything@psytec.com.sg`
+11. Set **Reply-to:** `ask.anything@psytec.com.sg`
+12. Save and send a test message from Supabase if the dashboard offers one.
+13. Go to `Authentication > Email Templates` → **Confirm signup** — confirm `{{ .ConfirmationURL }}` is present (see [Confirm signup template](#confirm-signup-template) below).
+14. Go to `Authentication > URL Configuration` — confirm redirect allow list includes counsellor invite wildcard (see [Counsellor invite redirect allow list](#counsellor-invite-redirect-allow-list) below).
+
+### Sender / From / Reply-to guidance
+
+| Field | Value |
+|-------|-------|
+| Sender name | `Wayfinder by PsyTec` |
+| Sender email (From) | `ask.anything@psytec.com.sg` |
+| Reply-to | `ask.anything@psytec.com.sg` |
+
+- Use the public admin address only — do not use private test user emails in docs or GitHub.
+- The sending account must have permission to send as `ask.anything@psytec.com.sg`.
+- Branded sender requires domain verification and SPF/DKIM/DMARC alignment — default Supabase mail is not sufficient for production MHP invite onboarding.
+
+### Provider credential placeholders
+
+Collect from the approved email provider or Google Workspace administrator. Do not store secret values in the repository.
 
 - SMTP host
 - SMTP port
-- SMTP security mode, such as TLS or SSL, based on provider instructions
+- SMTP security mode (TLS or SSL, per provider instructions)
 - SMTP username
 - SMTP password or app password
-- Sender email: `ask.anything@psytec.com.sg`
-- Sender name: `Wayfinder by PsyTec`
-- Reply-to/support email: `ask.anything@psytec.com.sg`
 
 If Google Workspace or Gmail SMTP is used:
 
@@ -188,31 +223,29 @@ If Google Workspace or Gmail SMTP is used:
 - The Google Workspace administrator must confirm SMTP access is allowed.
 - An app password or other supported SMTP credential may be needed.
 - Gmail and Google Workspace sending limits may apply.
-- Google Workspace SMTP can be suitable for an initial low-volume rollout, but production may later need a transactional email provider for stronger deliverability, monitoring, and volume controls.
+- Google Workspace SMTP can suit an initial low-volume rollout; production may later need a transactional email provider for stronger deliverability, monitoring, and volume controls.
 
 Google references:
 
 - Gmail sending limits: https://support.google.com/a/answer/166852
 - Apps Script quotas, for future custom sender work: https://developers.google.com/apps-script/guides/services/quotas
 
-## DNS And Email Authentication Checklist
+## Domain Verification Checklist
 
-Do not invent DNS records. Obtain the exact DNS values from Google Workspace, Supabase, or the chosen email provider.
+Complete **before** enabling Custom SMTP for production MHP invite signup.
 
-Confirm these for `psytec.com.sg` before production sending:
+- [ ] Confirm ownership of `psytec.com.sg` with the email provider or Google Workspace admin.
+- [ ] Add or update **SPF** record to include the approved sending provider (obtain exact value from provider — do not guess).
+- [ ] Enable and verify **DKIM** for the sending domain (record selector and CNAME values from provider).
+- [ ] Confirm **DMARC** policy exists and aligns with rollout risk posture.
+- [ ] Verify From-domain alignment passes for test messages.
+- [ ] Understand return-path / envelope sender behavior for the chosen provider.
+- [ ] Send test messages to Gmail and Outlook/Microsoft 365 inboxes.
+- [ ] Check inbox, spam, and junk folders for test messages.
+- [ ] Review message headers for SPF, DKIM, and DMARC pass/alignment.
+- [ ] Disable email tracking or link rewriting if it breaks Supabase Auth `{{ .ConfirmationURL }}` links.
 
-- SPF record includes the approved sending provider.
-- DKIM is enabled and verified for the provider.
-- DMARC exists and is aligned with the rollout risk posture.
-- From domain alignment passes for test messages.
-- Return-path or envelope sender behavior is understood for the chosen provider.
-- Test messages are sent to Gmail.
-- Test messages are sent to Outlook or Microsoft 365.
-- Test messages are checked in inbox, spam, and junk folders.
-- Message headers are reviewed for SPF, DKIM, and DMARC pass/alignment.
-- Email tracking or link rewriting is disabled if it breaks Supabase Auth links.
-
-Provider/admin placeholders to collect:
+Provider placeholders (collect from admin — do not paste secrets into GitHub):
 
 ```text
 SPF include/value from provider: <obtain from provider>
@@ -221,6 +254,46 @@ DKIM public key/CNAME value(s): <obtain from provider>
 DMARC policy/value: <confirm with domain admin>
 SMTP host and port: <obtain from provider>
 ```
+
+## Counsellor Invite Redirect Allow List
+
+MHP invite-bound signup and resend verification set `emailRedirectTo` to:
+
+```text
+https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>&setup=profile
+```
+
+Supabase Auth confirmation links will only redirect to allowed URLs. In `Authentication > URL Configuration`:
+
+- **Site URL:** `https://wayfinder-modular.vercel.app`
+- **Redirect URLs must include:**
+  - `https://wayfinder-modular.vercel.app/counsellor.html`
+  - `https://wayfinder-modular.vercel.app/counsellor.html**` — **wildcard required** so query parameters (`?mhp_invite=<token>&setup=profile`) are permitted
+
+Without the wildcard entry, confirmation email may arrive but the redirect after click may be rejected.
+
+Also keep parent portal redirect URLs as already listed in [Supabase Configuration Checklist](#supabase-configuration-checklist).
+
+## MHP Invite Smoke Test
+
+Run after Custom SMTP, domain verification, and redirect allow list are configured. Requires a valid owner-generated MHP invite link (do not paste real tokens into GitHub).
+
+1. **Owner generates invite link** from `/admin.html`.
+2. **Invitee opens invite link** → lands on `/counsellor.html?mhp_invite=<token>&setup=profile`.
+3. **Invitee creates account** with the invited email → app shows **Check your email to continue** (not an error on the create form).
+4. **Confirmation email arrives** from `Wayfinder by PsyTec <ask.anything@psytec.com.sg>`.
+5. **Invitee clicks confirmation link** in the email.
+6. **Browser returns** to `/counsellor.html?mhp_invite=<token>&setup=profile`.
+7. **Token consumes** after verified sign-in with the invited email.
+8. **Existing MHP profile/licence editor opens** (`MentalHealthProfessionalProfileEditor`).
+
+Additional checks:
+
+- Resend confirmation from the pending screen preserves the invite redirect URL.
+- Diagnose missing email via Supabase Authentication → Users, Authentication → Logs, and SMTP provider delivery logs.
+- Do **not** disable email verification or auto-confirm production users as a workaround.
+
+See also: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § MHP invite signup — Supabase Auth email delivery.
 
 ## Vercel Configuration
 
@@ -280,6 +353,7 @@ Run this with Supabase Confirm Email still enabled. The branded email verificati
 - Unverified counsellor is blocked.
 - Verified parent user is denied from `counsellor.html`.
 - Verified counsellor with `profiles.role = counsellor` can access `counsellor.html`.
+- **MHP invite signup:** see [MHP Invite Smoke Test](#mhp-invite-smoke-test) — full 8-step owner checklist after Custom SMTP and redirect URLs are configured.
 - Counsellor reset-password flow lets the counsellor update their password, then continue to `counsellor.html`.
 - Counsellor UI remains PDPA-safe.
 - Counsellor UI does not show JWTs, refresh tokens, anon keys, service-role keys, or secrets.
