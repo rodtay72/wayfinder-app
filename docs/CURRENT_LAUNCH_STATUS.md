@@ -10,7 +10,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last verified merge:** PR #131 — Owner-admin MHP invite approval token contract
 
-**Next proposed PR:** PR #133B — MHP invite signup-default UX hotfix
+**Next proposed PR:** PR #133C — MHP invite signup verification-pending screen
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 

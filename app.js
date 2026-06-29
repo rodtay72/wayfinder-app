@@ -454,7 +454,7 @@ function isAuthAccountExistsError(message){
  return m.includes('already registered')||m.includes('already exists')||m.includes('user already')||m.includes('email address is already');
 }
 
-function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteStatus}){
+function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteStatus, onRefreshSession}){
  const [mode,setMode]=useState(inviteToken?'signup':'signin');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -463,12 +463,15 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
  const [loading,setLoading]=useState(false);
  const [resendStatus,setResendStatus]=useState('');
  const [resendLoading,setResendLoading]=useState(false);
+ const [continueLoading,setContinueLoading]=useState(false);
+ const [continueStatus,setContinueStatus]=useState('');
  const [pdpaAcknowledged,setPdpaAcknowledged]=useState(false);
  const [pdpaNoticePrompt,setPdpaNoticePrompt]=useState('');
  const [forgotOpen,setForgotOpen]=useState(false);
  const [resetLoading,setResetLoading]=useState(false);
  const [resetStatus,setResetStatus]=useState('');
  const [accountExistsOffer,setAccountExistsOffer]=useState(false);
+ const [inviteSignupPendingVerification,setInviteSignupPendingVerification]=useState(false);
  const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
  const inviteSetupUrl=inviteToken?buildMhpInviteSetupUrl(inviteToken):'';
  const allowSignup=(role!=='counsellor'&&role!=='admin')||!!inviteToken;
@@ -508,6 +511,9 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
   setPdpaNoticePrompt('');
   setAccountExistsOffer(false);
   setConfirmPassword('');
+  setInviteSignupPendingVerification(false);
+  setContinueStatus('');
+  setResendStatus('');
   if(nextMode==='signin')setPdpaAcknowledged(false);
  };
  const submit=async()=>{
@@ -530,7 +536,13 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
     : await Auth.signUp(email,password,signUpOptions);
    if(err)throw err;
    if(activeMode==='signup'&&!data.session){
-    setError(inviteToken?'Check your email for the confirmation link, then return here to continue profile setup.':'Check your email for the current confirmation link, then sign in. Wayfinder verification will run after login.');
+    if(inviteToken){
+     setInviteSignupPendingVerification(true);
+     setError('');
+     setLoading(false);
+     return;
+    }
+    setError('Check your email for the current confirmation link, then sign in. Wayfinder verification will run after login.');
     setLoading(false);
     return;
    }
@@ -547,19 +559,41 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
   setLoading(false);
  };
  const resendVerification=async()=>{
-  const target=(messageEmail||email||'').trim();
+  const target=(messageEmail||email||inviteStatus?.invitedEmail||'').trim();
   setError('');
   setResendStatus('');
+  setContinueStatus('');
   if(!target){setError('Enter your email address, then try again.');return;}
   setResendLoading(true);
   try{
    const resendOptions=inviteSetupUrl?{emailRedirectTo:inviteSetupUrl}:{};
    const {error:err}=await Auth.resendVerification(target,resendOptions);
    if(err)throw err;
-   setResendStatus('If this email exists, a verification link has been sent.');
+   setResendStatus(mhpMeta.inviteSignupPendingResendSuccess||'If this email exists, a confirmation link has been sent. Please check your inbox.');
   }catch(e){setError(e.message||'Could not send verification email. Please try again.');}
   setResendLoading(false);
  };
+ const continueAfterVerification=async()=>{
+  setContinueLoading(true);
+  setError('');
+  setContinueStatus('');
+  setResendStatus('');
+  try{
+   if(typeof onRefreshSession==='function'){
+    const verified=await onRefreshSession();
+    if(verified) return;
+   }
+   const fresh=await Auth.getFreshSession();
+   if(fresh.error) throw fresh.error;
+   if(fresh.data?.session?.user&&Auth.isEmailConfirmed(fresh.data.session.user)) return;
+   setContinueStatus(mhpMeta.inviteSignupPendingContinueWaiting||'We still cannot see a confirmed email for this account. If you just clicked the link, wait a moment and try again.');
+  }catch(e){
+   setError(e.message||'We could not refresh your confirmation status. Please try again.');
+  }finally{
+   setContinueLoading(false);
+  }
+ };
+ const pendingInviteEmail=String(inviteStatus?.invitedEmail||email||'').trim();
  const requestPasswordReset=async()=>{
   setError('');
   setResetStatus('');
@@ -590,7 +624,19 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
   <div className="card auth-login-card" style={{padding:0,overflow:'hidden'}}>
    {(role==='parent'||(role==='counsellor'&&!inviteToken)) ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'}/> : null}
    <div className="auth-login-body">
-   {forgotOpen ? <>
+   {inviteSignupPendingVerification ? <div className="auth-invite-pending-panel">
+    <h2>{mhpMeta.inviteSignupPendingTitle||'Check your email to continue'}</h2>
+    <p className="sub auth-invite-subtitle">{mhpMeta.inviteSignupPendingBody||"We've sent a confirmation link to the invited email address. Open that link to verify your email, then Wayfinder will continue to your Mental Health Professional profile setup."}</p>
+    {pendingInviteEmail ? <p className="sub mhp-invite-email-hint"><span className="mhp-invite-email-label">{mhpMeta.inviteUseEmailLabel||'Invited email'}: </span>{pendingInviteEmail}</p> : null}
+    {resendStatus ? <p className="auth-invite-pending-status" role="status">{resendStatus}</p> : null}
+    {continueStatus ? <p className="auth-invite-pending-status" role="status">{continueStatus}</p> : null}
+    {error ? <p className="auth-invite-pending-notice" role="alert">{error}</p> : null}
+    <div className="auth-invite-pending-actions">
+     <button type="button" className="btn btn-secondary btn-block" onClick={resendVerification} disabled={resendLoading||continueLoading}>{resendLoading?'Sending…':(mhpMeta.inviteSignupPendingResendButton||'Resend confirmation email')}</button>
+     <button type="button" className="btn btn-primary btn-block" onClick={continueAfterVerification} disabled={resendLoading||continueLoading}>{continueLoading?'Checking…':(mhpMeta.inviteSignupPendingContinueButton||"I've verified my email — continue")}</button>
+     <button type="button" className="btn btn-ghost btn-block" onClick={()=>switchMode('signin')} disabled={resendLoading||continueLoading}>{mhpMeta.inviteSignupPendingSignInInstead||'Sign in instead'}</button>
+    </div>
+   </div> : forgotOpen ? <>
     <h2>{mhpMeta.forgotPasswordTitle||'Reset your password'}</h2>
     <p className="sub auth-forgot-copy">{mhpMeta.forgotPasswordPrompt||'Enter the email you used for Wayfinder. If an account exists, we will send a password reset link.'}</p>
     <div className="field"><label>Email</label><input type="email" value={email} readOnly={inviteEmailLocked} className={inviteEmailLocked?'field-input-locked':''} onChange={e=>!inviteEmailLocked&&setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&requestPasswordReset()}/></div>
@@ -2092,7 +2138,7 @@ function App(){
   }
   AuthDebug.log('[render] branch: auth screen');
   const inviteAuthActive=APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.valid;
-  return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={inviteAuthActive?pendingInviteToken:null} inviteStatus={inviteAuthActive?inviteStatus:null}/>;
+  return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={inviteAuthActive?pendingInviteToken:null} inviteStatus={inviteAuthActive?inviteStatus:null} onRefreshSession={inviteAuthActive?refreshAuthSession:undefined}/>;
  }
  if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} inviteToken={APP_ROLE==='counsellor'&&pendingInviteToken?pendingInviteToken:null} inviteSetupRedirectUrl={APP_ROLE==='counsellor'&&pendingInviteToken?buildMhpInviteSetupUrl(pendingInviteToken):null} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
  if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
