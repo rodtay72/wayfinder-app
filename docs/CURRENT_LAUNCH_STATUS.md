@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-29
 
-**Last verified merge:** PR #121 / GitHub #122 — PWA install compatibility hardening (merge `c40b361`)
+**Last verified merge:** PR #123 — Simplified Chinese language toggle strategy (docs-only)
 
-**Next proposed PR:** PR #123 — Simplified Chinese language toggle strategy (docs-only)
+**Next proposed PR:** PR #124 — Static language dictionary foundation and parent toggle shell
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -123,17 +123,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Explicit non-goals for PR #120A:** Stripe code, webhooks, entitlement gates, SQL, App Version entry, auth/journal/MHP portrait changes.
 
-## Simplified Chinese language toggle (PR #123)
+## Simplified Chinese language toggle
 
-**Status:** Docs-only strategy **in flight** — no runtime toggle yet.
+**Strategy (PR #123):** Complete — [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 
-**Primary doc:** [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
+**Runtime foundation (PR #124):** In flight — static UI dictionary (`WAYFINDER_I18N`), `localStorage` preference (`wayfinder_preferred_language`), parent dashboard language toggle; **no auto-translate** of private reflections; **no external translation APIs**.
 
-**Languages (spec):** English (`en`) · 简体中文 (`zh-Hans`)
+**Languages:** English (`en`) · 简体中文 (`zh-Hans`)
 
-**Key rules:** Static UI/product copy only in first runtime PR; **no automatic translation** of private journal/Decode/reflections; **no external translation APIs** for parent data; ALIGN/CAB non-diagnostic tone in both languages; MHP parent-facing label remains Mental Health Professional; internal role stays `counsellor`.
-
-**Priority:** Same strategic tier as payment gateway (per PR #120A roadmap) — strategy first, runtime in a later PR.
+**Key rules:** Static UI/product copy only in first runtime PRs; saved journal/Decode/reflection text stays in the language entered; ALIGN/CAB non-diagnostic tone in both languages; MHP parent-facing label remains Mental Health Professional; internal role stays `counsellor`.
 
 ## In flight
 
@@ -162,7 +160,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | Complete (merged) |
 | PR #120A payment/pricing strategy revision | Privacy-baseline plan table + Stripe/entitlement spec + future roadmap; docs only | Complete (merged) |
 | PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
-| PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | In flight |
+| PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
+| PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -172,7 +171,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A)
-- **Simplified Chinese language toggle runtime** — **not started** — strategy spec [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md) (PR #123 docs only)
+- **Simplified Chinese language toggle runtime** — **PR #124 in flight** — foundation: static UI dictionary + parent toggle; full app translation not started — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
