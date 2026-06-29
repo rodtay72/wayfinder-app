@@ -753,7 +753,8 @@ const SIGNUP_PRIVACY_ACKNOWLEDGEMENT = {
   retryButton: "Try again"
 };
 
-// Parent-facing static UI copy — PR #124 language toggle foundation (no private user content)
+// Parent-facing static UI copy — PR #124 foundation, PR #125 expansion, PR #126 QA parity.
+// Rules: en and zh-Hans keys must stay in parity; never store or translate private user content here.
 const WAYFINDER_I18N = {
   en: {
     "language.label": "Language",
@@ -924,6 +925,19 @@ const WAYFINDER_I18N = {
     "trail.emotionalPatternsHelper": "在您的反思中较常出现的词语。"
   }
 };
+
+// PR #126: lightweight runtime parity check (static UI keys only).
+if(typeof window!=='undefined'&&window.localStorage&&window.localStorage.getItem('wayfinder_debug_auth')==='1'){
+ try{
+  const enKeys=Object.keys(WAYFINDER_I18N.en||{});
+  const zhKeys=Object.keys(WAYFINDER_I18N['zh-Hans']||{});
+  const missingZh=enKeys.filter(k=>!zhKeys.includes(k));
+  const missingEn=zhKeys.filter(k=>!enKeys.includes(k));
+  if(missingZh.length||missingEn.length){
+   console.warn('[Wayfinder i18n] dictionary parity mismatch', {missingZh,missingEn});
+  }
+ }catch(_err){}
+}
 
 // Export everything
 if (typeof module !== 'undefined' && module.exports) {

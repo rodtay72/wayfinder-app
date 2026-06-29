@@ -257,9 +257,10 @@ Recommended pattern:
 1. **Static string dictionary** — keyed by `en` and `zh-Hans` (extend existing `content.js` pattern or add `content.zh-Hans.js` / locale module in a dedicated PR).
 2. **Lookup helper** — `t(key)` or existing content object switch by `preferred_language`.
 3. **No runtime machine translation** of user content in v1.
-4. **HTML `lang` attribute** — update `<html lang="en">` / `lang="zh-Hans">` on toggle.
-5. **No SQL in first toggle PR** unless owner approves a minimal `preferred_language` column on profiles — defer until schema review PR.
-6. **No changes** to journal save/read payloads for language in v1.
+4. **HTML `lang` attribute** — update `<html lang="en">` / `lang="zh-Hans">` on toggle and on first load from `localStorage` (PR #126).
+5. **`t(key, fallback)` safety** — resolve active locale → English dictionary → caller fallback; repair invalid `localStorage` values to `en` (PR #126).
+6. **No SQL in first toggle PR** unless owner approves a minimal `preferred_language` column on profiles — defer until schema review PR.
+7. **No changes** to journal save/read payloads for language in v1.
 
 Explicitly **out of scope** for language work:
 
@@ -278,10 +279,11 @@ Explicitly **out of scope** for language work:
 | 1 | **PR #123 (this)** | Strategy spec only |
 | 2 | **PR #124 (runtime foundation)** | Static UI dictionary + parent dashboard toggle (`localStorage` only) |
 | 3 | **PR #125 (runtime expansion)** | Broader parent portal static copy translation |
-| 4 | Later | MHP portal static copy translation |
-| 5 | Later | Payment upgrade copy localisation (with payment runtime) |
-| 6 | Later | Self-read relationship bytes zh-Hans content |
-| 7 | Future | Consent-gated reflection translation (only if approved) |
+| 4 | **PR #126 (QA hardening)** | Key parity audit, `t()` fallback chain, `localStorage` repair, `<html lang>`, zh-Hans overflow CSS |
+| 5 | Later | MHP portal static copy translation |
+| 6 | Later | Payment upgrade copy localisation (with payment runtime) |
+| 7 | Later | Self-read relationship bytes zh-Hans content |
+| 8 | Future | Consent-gated reflection translation (only if approved) |
 
 Do not bundle language toggle with payment gates, research storage, or journal schema changes.
 
