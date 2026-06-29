@@ -2286,37 +2286,37 @@ const buildAlignJourneySummary=(entries)=>{
 function AlignJourneySection({entries,onStartDecode}){
  usePreferredLanguage();
  const summary=buildAlignJourneySummary(entries);
- return <div className="card dashboard-section align-journey-section" role="region" aria-label="Your ALIGN Journey">
+ return <div className="card dashboard-section align-journey-section" role="region" aria-label={t('alignJourney.regionLabel','Your ALIGN Journey')}>
   <div className="dashboard-section-head">
    <div>
-    <h2>Your ALIGN Journey</h2>
-    <p className="dashboard-helper">A gentle read on where you may be practising emotional regulation through ALIGN.</p>
+    <h2>{t('alignJourney.title','Your ALIGN Journey')}</h2>
+    <p className="dashboard-helper">{t('alignJourney.helper','A gentle read on where you may be practising emotional regulation through ALIGN.')}</p>
    </div>
   </div>
   {summary.showEmpty ? <div className="dashboard-empty align-journey-empty">
-   <p className="align-journey-empty-title">Your ALIGN Journey is beginning</p>
-   <p className="align-journey-empty-body">After you decode a few moments, Wayfinder will reflect back possible patterns in needs, CAB responses, growth practices, and next actions.</p>
+   <p className="align-journey-empty-title">{t('alignJourney.emptyTitle','Your ALIGN Journey is beginning')}</p>
+   <p className="align-journey-empty-body">{t('alignJourney.emptyBody','After you decode a few moments, Wayfinder will reflect back possible patterns in needs, CAB responses, growth practices, and next actions.')}</p>
    {onStartDecode ? <button type="button" className="btn btn-primary align-journey-empty-cta" onClick={onStartDecode}>{t('decode.start','Start Decode')}</button> : null}
   </div> : <>
    <div className="align-journey-grid">
     <div className="align-journey-card align-journey-item">
-     <span className="align-journey-label">Current Focus</span>
+     <span className="align-journey-label">{t('alignJourney.currentFocus','Current Focus')}</span>
      <p className="align-journey-text">{summary.currentFocus}</p>
     </div>
     <div className="align-journey-card align-journey-item">
-     <span className="align-journey-label">Recent Pattern</span>
+     <span className="align-journey-label">{t('alignJourney.recentPattern','Recent Pattern')}</span>
      <p className="align-journey-text">{summary.recentPattern}</p>
     </div>
     <div className="align-journey-card align-journey-item">
-     <span className="align-journey-label">Growth Practice</span>
+     <span className="align-journey-label">{t('alignJourney.growthPractice','Growth Practice')}</span>
      <p className="align-journey-text">{summary.growthPractice}</p>
     </div>
     <div className="align-journey-card align-journey-item">
-     <span className="align-journey-label">Next Step</span>
+     <span className="align-journey-label">{t('alignJourney.nextStep','Next Step')}</span>
      <p className="align-journey-text">{summary.nextStep}</p>
     </div>
    </div>
-   <p className="align-journey-note">{ALIGN_JOURNEY_REASSURANCE}</p>
+   <p className="align-journey-note">{t('alignJourney.reassurance',ALIGN_JOURNEY_REASSURANCE)}</p>
   </>}
  </div>;
 }
@@ -2787,14 +2787,14 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
  const screen=()=>{
   if(step===0)return <div className="card decode-step-card">
    <h1>{t('decode.title','Decode a Moment')}</h1>
-   <p className="decode-lead">Sometimes a child’s behaviour is the visible part of something they cannot yet explain. This is not about finding what is wrong with your child. It is about slowing the moment down, noticing what may have been happening for them, and noticing what happened in your thinking, feelings, and behaviour.</p>
+   <p className="decode-lead">{t('decode.introLead','Sometimes a child\'s behaviour is the visible part of something they cannot yet explain. This is not about finding what is wrong with your child. It is about slowing the moment down, noticing what may have been happening for them, and noticing what happened in your thinking, feelings, and behaviour.')}</p>
    <div className="decode-teach">
-    <h2>Why realignment matters</h2>
-    <p>Stress can spill into relationships. The way we handle pressure, conflict, or urgency elsewhere can sometimes follow us home. Your child may not yet think through big emotions like an adult. Their emotional stability can strongly shape how they react in the moment. Wayfinder helps you notice where your thinking, feelings, and behaviour may need to realign with what your child was experiencing.</p>
+    <h2>{t('decode.realignmentTitle','Why realignment matters')}</h2>
+    <p>{t('decode.realignmentBody','Stress can spill into relationships. The way we handle pressure, conflict, or urgency elsewhere can sometimes follow us home. Your child may not yet think through big emotions like an adult. Their emotional stability can strongly shape how they react in the moment. Wayfinder helps you notice where your thinking, feelings, and behaviour may need to realign with what your child was experiencing.')}</p>
    </div>
    <div className="decode-actions">
-    <button type="button" className="btn btn-primary" onClick={goNext}>Begin</button>
-    <button type="button" className="btn btn-secondary" onClick={back}>Back to Dashboard</button>
+    <button type="button" className="btn btn-primary" onClick={goNext}>{t('decode.begin','Begin')}</button>
+    <button type="button" className="btn btn-secondary" onClick={back}>{t('decode.backToDashboard','Back to Dashboard')}</button>
    </div>
   </div>;
 
@@ -3070,7 +3070,7 @@ function RelationshipGarden({dyads,entries}){
  return <div className="card garden-card" role="region" aria-label={t('relationshipGarden.title','Your Relationship Garden')}>
   <div className="garden-header">
    <h2>{t('relationshipGarden.title','Your Relationship Garden')}</h2>
-   <p className="dashboard-helper">Each relationship can be tended through pause, reflection, repair, and ALIGN.</p>
+   <p className="dashboard-helper">{t('relationshipGarden.helper','Each relationship can be tended through pause, reflection, repair, and ALIGN.')}</p>
   </div>
   <div className="garden-pots" role="list">
    {dyads.map((dyad,i)=>{
@@ -3088,11 +3088,11 @@ function RelationshipGarden({dyads,entries}){
     </div>;
    })}
   </div>
-  <div className="garden-guide" aria-label="How the garden grows">
-   <span className="garden-guide-title">How the garden grows</span>
-   <span className="garden-guide-steps">Seed → Sprout → Leaves → Bud → Bloom</span>
+  <div className="garden-guide" aria-label={t('relationshipGarden.guideTitle','How the garden grows')}>
+   <span className="garden-guide-title">{t('relationshipGarden.guideTitle','How the garden grows')}</span>
+   <span className="garden-guide-steps">{t('relationshipGarden.guideSteps','Seed → Sprout → Leaves → Bud → Bloom')}</span>
   </div>
-  <p className="garden-foot">Growth here does not mean perfection. It means the relationship is being tended with more steadiness and repair.</p>
+  <p className="garden-foot">{t('relationshipGarden.foot','Growth here does not mean perfection. It means the relationship is being tended with more steadiness and repair.')}</p>
  </div>;
 }
 
@@ -3914,7 +3914,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   refreshSignupPrivacyAcknowledgement();
  },[user.id,parentId,authSession?.access_token,stage]);
 
- if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your space...</div></div>;
+ if(stage==='loading') return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>{t('dashboard.loading','Loading your space...')}</div></div>;
 
  if(stage==='dashboard'){
   const discDyad=dyads.find(d=>d.disc)||dyads[0]||{};
@@ -3925,20 +3925,20 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   return <><div className="wrap dashboard-wrap">
    <div className="card banner dashboard-hero">
     <div className="dashboard-hero-copy">
-     <p className="dashboard-kicker">Welcome back</p>
+     <p className="dashboard-kicker">{t('dashboard.welcomeBack','Welcome back')}</p>
      <h1>Parent {parentId}</h1>
      <ProfileSettings user={user} profile={profile} dyads={dyads} entries={entries} compact/>
     </div>
     <div className="dashboard-actions">
      <LanguageToggle className="language-toggle-dashboard"/>
-     <button className="switch" onClick={startNewChild}>+ New child</button>
-     <button className="switch" onClick={startNewEntry}>Start new activity</button>
+     <button className="switch" onClick={startNewChild}>{t('nav.newChild','+ New child')}</button>
+     <button className="switch" onClick={startNewEntry}>{t('nav.startActivity','Start new activity')}</button>
      <button className="switch switch-trail" onClick={()=>setStage('trail')}>{t('nav.journalTrail','Journal trail')}</button>
      <button className="switch switch-trail" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardActionLabel||'Share for counsellor review'}</button>
-     <button type="button" className="switch switch-trail" title={inviteShareMeta.parentButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={()=>setInviteShareOpen(true)}>{inviteShareMeta.parentButtonLabel||'Invite another parent'}</button>
-     <button className="switch switch-trail" onClick={()=>setStage('events')}>Events</button>
-     <button className="switch switch-muted" onClick={()=>setStage('appVersion')}>App Version</button>
-     <button className="switch switch-muted" onClick={onSignOut}>Sign out</button>
+     <button type="button" className="switch switch-trail" title={inviteShareMeta.parentButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={()=>setInviteShareOpen(true)}>{inviteShareMeta.parentButtonLabel||t('nav.inviteParent','Invite another parent')}</button>
+     <button className="switch switch-trail" onClick={()=>setStage('events')}>{t('nav.events','Events')}</button>
+     <button className="switch switch-muted" onClick={()=>setStage('appVersion')}>{t('nav.appVersion','App Version')}</button>
+     <button className="switch switch-muted" onClick={onSignOut}>{t('nav.signOut','Sign out')}</button>
    </div>
   </div>
 
@@ -3992,7 +3992,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
    <div className="card review-share-dashboard-card">
     <div>
-     <p className="pill">Optional support</p>
+     <p className="pill">{t('dashboard.optionalSupport','Optional support')}</p>
      <h2>{reviewShareMeta.dashboardCardTitle||'Share for counsellor review'}</h2>
      <p className="dashboard-helper">{reviewShareMeta.dashboardCardSubtitle||'Choose saved journal or Decode entries to share with your counsellor for time-limited ALIGN/CAB review.'}</p>
     </div>
@@ -4002,18 +4002,18 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
    <div className="card dashboard-section">
     <div className="dashboard-section-head">
      <div>
-      <h2>Past activities</h2>
-      <p className="dashboard-helper">Recent moments you have reflected on.</p>
+      <h2>{t('dashboard.pastActivities','Past activities')}</h2>
+      <p className="dashboard-helper">{t('dashboard.pastActivitiesHelper','Recent moments you have reflected on.')}</p>
      </div>
-     {recentEntries.length>0 && <span className="pill">{recentEntries.length} recent</span>}
+     {recentEntries.length>0 && <span className="pill">{recentEntries.length} {t('dashboard.recent','recent')}</span>}
     </div>
     {recentEntries.length>0 ? <div className="dashboard-list">
      {recentEntries.map(e=><div key={e.id||`${entryChildId(e)}-${entryDateValue(e)}-${entryTitle(e)}`} className="dashboard-list-item">
       <div className="dashboard-item-title">{entryTitle(e)}</div>
-      <div className="sub dashboard-item-meta">{formatEntryDate(entryDateValue(e))}{entryPhaseLabel(e)?' · '+entryPhaseLabel(e):''} · Child ID: {entryChildId(e)||'Not saved'}</div>
+      <div className="sub dashboard-item-meta">{formatEntryDate(entryDateValue(e))}{entryPhaseLabel(e)?' · '+entryPhaseLabel(e):''} · Child ID: {entryChildId(e)||t('dashboard.notSaved','Not saved')}</div>
      </div>)}
     </div> : <div className="dashboard-empty">
-     <p className="sub">No activities yet. Start when you are ready.</p>
+     <p className="sub">{t('dashboard.noActivities','No activities yet. Start when you are ready.')}</p>
     </div>}
    </div>
 
@@ -4021,9 +4021,9 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
     <div className="dashboard-insight">
      {discDyad.disc ? <>
       <h2>{discDyad.disc.toUpperCase()} · {discDescriptor(discDyad.disc)?.name||discDyad.disc.toUpperCase()}</h2>
-      <p className="dashboard-helper">Responses under pressure — what your child may observe.</p>
+      <p className="dashboard-helper">{t('dashboard.discHelper','Responses under pressure — what your child may observe.')}</p>
       {insightLoading
-       ? <p className="sub">Personalising your insight...</p>
+       ? <p className="sub">{t('dashboard.personalisingInsight','Personalising your insight...')}</p>
        : aiInsight
         ? <p className="dashboard-insight-text">{aiInsight}</p>
         : <p className="sub">{discDescriptor(discDyad.disc)?.desc||'More reflections will help personalise this insight.'}</p>
@@ -4031,8 +4031,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
       <DISCIntensityChart bars={discBars}/>
       <DISCImageUpload userId={user.id} existingBars={discBars} onBarsUpdated={(bars)=>setDiscBars(bars)}/>
      </> : <>
-      <h2>Responses under pressure</h2>
-      <p className="dashboard-helper">Add your DISC blend to unlock personalised insight.</p>
+      <h2>{t('dashboard.responsesUnderPressure','Responses under pressure')}</h2>
+      <p className="dashboard-helper">{t('dashboard.addDiscHelper','Add your DISC blend to unlock personalised insight.')}</p>
       <DISCIntensityChart bars={discBars}/>
       <DISCImageUpload userId={user.id} existingBars={discBars} onBarsUpdated={(bars)=>setDiscBars(bars)}/>
      </>}
@@ -4040,13 +4040,13 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
     <div className="dashboard-section-head dashboard-section-head-spaced">
      <div>
-      <h2>Your children</h2>
-      <p className="dashboard-helper">Each child has a generated Child ID — codes only, no names.</p>
+      <h2>{t('dashboard.yourChildren','Your children')}</h2>
+      <p className="dashboard-helper">{t('dashboard.childrenHelper','Each child has a generated Child ID — codes only, no names.')}</p>
      </div>
-     {dyads.length>0 && <span className="pill">{dyads.length} {dyads.length===1?'child':'children'}</span>}
+     {dyads.length>0 && <span className="pill">{dyads.length} {dyads.length===1?t('dashboard.childSingular','child'):t('dashboard.childrenPlural','children')}</span>}
     </div>
     {dyads.length===0 ? <div className="dashboard-empty">
-     <p className="sub">No children added yet. Use + New child when you are ready.</p>
+     <p className="sub">{t('dashboard.noChildren','No children added yet. Use + New child when you are ready.')}</p>
     </div> : <div className="dashboard-list">
      {dyads.map(child=>{
       const childEntries=[...entries].filter(e=>childMatchesEntry(child,e)).sort((a,b)=>entryTime(b)-entryTime(a)).slice(0,3);
@@ -4054,16 +4054,16 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
        <div className="child-summary-top">
         <div>
          <div className="child-summary-id">Child ID: {child.childId}</div>
-         <div className="sub child-summary-meta">{child.childGender||'Gender not added'} · {ageFrom(child.childDob,null)||'Age not added'}</div>
+         <div className="sub child-summary-meta">{child.childGender||t('dashboard.genderNotAdded','Gender not added')} · {ageFrom(child.childDob,null)||t('dashboard.ageNotAdded','Age not added')}</div>
         </div>
-        <button className="btn btn-secondary" onClick={()=>{setDyad(child);setStage('journal');}}>Journal</button>
+        <button className="btn btn-secondary" onClick={()=>{setDyad(child);setStage('journal');}}>{t('dashboard.journal','Journal')}</button>
        </div>
        {childEntries.length>0 ? <div className="child-reflections">
-        <div className="child-reflections-title">Recent reflections</div>
+        <div className="child-reflections-title">{t('dashboard.recentReflections','Recent reflections')}</div>
         <div className="child-reflections-list">
          {childEntries.map(e=><div key={e.id||`${entryChildId(e)}-${entryDateValue(e)}-${entryTitle(e)}`} className="child-reflection-row">{formatEntryDate(entryDateValue(e))} · {entryTitle(e)}</div>)}
         </div>
-       </div> : <p className="sub child-reflections-empty">No reflections yet for this Child ID.</p>}
+       </div> : <p className="sub child-reflections-empty">{t('dashboard.noReflectionsChild','No reflections yet for this Child ID.')}</p>}
       </div>;
      })}
     </div>}
@@ -4071,9 +4071,9 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
    </div>
 
    <div className="card dashboard-lean-card">
-    <h2>This week, lean into</h2>
+    <h2>{t('dashboard.leanInto','This week, lean into')}</h2>
     <p className="dashboard-lean-words">{shiftWords.join(' · ')}</p>
-    <p className="dashboard-helper">Possible needs to stay curious about: {CHILD_NEEDS_WORDS.join(' · ')}</p>
+    <p className="dashboard-helper">{t('dashboard.leanIntoNeeds','Possible needs to stay curious about:')} {CHILD_NEEDS_WORDS.join(' · ')}</p>
    </div>
   </div>
   <ParentSignupInviteModal open={inviteShareOpen} context="parent" onClose={()=>setInviteShareOpen(false)}/>
@@ -4517,8 +4517,8 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
   </div>
 
   {topWords.length>0 && <div className="card" style={{background:'#f0f4f2'}}>
-   <h2 style={{marginBottom:4}}>Your emotional patterns</h2>
-   <p className="sub" style={{marginBottom:14}}>Words that show up most in your reflections.</p>
+   <h2 style={{marginBottom:4}}>{t('trail.emotionalPatterns','Your emotional patterns')}</h2>
+   <p className="sub" style={{marginBottom:14}}>{t('trail.emotionalPatternsHelper','Words that show up most in your reflections.')}</p>
    <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
     {topWords.map(([w,count])=>{
      const q=WORD_Q[w]||'D';
@@ -4581,44 +4581,44 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
   </div>}
 
   {totalEntries>0 && <div className="card trail-filterbar">
-   <p className="trail-filter-intro">Gently review reflection moments — filter without changing your records.</p>
+   <p className="trail-filter-intro">{t('trail.filterIntro','Gently review reflection moments — filter without changing your records.')}</p>
    <div className="trail-filter-row">
-    <span className="trail-filter-label" id="trail-type-label">{UI_TEXT.trail.showLabel}</span>
+    <span className="trail-filter-label" id="trail-type-label">{t('trail.showLabel',UI_TEXT.trail.showLabel)}</span>
     <div className="trail-filter-chips" role="group" aria-labelledby="trail-type-label">
-     <button type="button" className={'chip trail-chip'+(typeFilter==='all'?' selected':'')} onClick={()=>setTypeFilter('all')}>{UI_TEXT.trail.filterAll}</button>
-     <button type="button" className={'chip trail-chip'+(typeFilter==='activity'?' selected':'')} onClick={()=>setTypeFilter('activity')}>{UI_TEXT.trail.filterActivity}</button>
-     <button type="button" className={'chip trail-chip'+(typeFilter==='decode'?' selected':'')} onClick={()=>setTypeFilter('decode')}>{UI_TEXT.trail.filterDecode}</button>
+     <button type="button" className={'chip trail-chip'+(typeFilter==='all'?' selected':'')} onClick={()=>setTypeFilter('all')}>{t('trail.filterAll',UI_TEXT.trail.filterAll)}</button>
+     <button type="button" className={'chip trail-chip'+(typeFilter==='activity'?' selected':'')} onClick={()=>setTypeFilter('activity')}>{t('trail.filterActivity',UI_TEXT.trail.filterActivity)}</button>
+     <button type="button" className={'chip trail-chip'+(typeFilter==='decode'?' selected':'')} onClick={()=>setTypeFilter('decode')}>{t('trail.filterDecode',UI_TEXT.trail.filterDecode)}</button>
     </div>
    </div>
    {(childOptions.length>0||hasUnassigned) && <div className="trail-filter-row">
-    <span className="trail-filter-label" id="trail-child-label">{UI_TEXT.trail.childLabel}</span>
+    <span className="trail-filter-label" id="trail-child-label">{t('trail.childLabel',UI_TEXT.trail.childLabel)}</span>
     <div className="trail-filter-chips" role="group" aria-labelledby="trail-child-label">
-     <button type="button" className={'chip trail-chip'+(childFilter==='all'?' selected':'')} onClick={()=>setChildFilter('all')}>{UI_TEXT.trail.childAll}</button>
+     <button type="button" className={'chip trail-chip'+(childFilter==='all'?' selected':'')} onClick={()=>setChildFilter('all')}>{t('trail.childAll',UI_TEXT.trail.childAll)}</button>
      {childOptions.map(o=><button type="button" key={o.id} className={'chip trail-chip'+(childFilter===o.id?' selected':'')} onClick={()=>setChildFilter(o.id)}>{o.label}</button>)}
-     {hasUnassigned && <button type="button" className={'chip trail-chip'+(childFilter==='__unassigned__'?' selected':'')} onClick={()=>setChildFilter('__unassigned__')}>{UI_TEXT.trail.childUnassigned}</button>}
+     {hasUnassigned && <button type="button" className={'chip trail-chip'+(childFilter==='__unassigned__'?' selected':'')} onClick={()=>setChildFilter('__unassigned__')}>{t('trail.childUnassigned',UI_TEXT.trail.childUnassigned)}</button>}
     </div>
    </div>}
    {needOptions.length>0 && <div className="trail-filter-row">
-    <span className="trail-filter-label" id="trail-need-label">{UI_TEXT.trail.needLabel}</span>
+    <span className="trail-filter-label" id="trail-need-label">{t('trail.needLabel',UI_TEXT.trail.needLabel)}</span>
     <div className="trail-filter-chips" role="group" aria-labelledby="trail-need-label">
      {needOptions.map(n=><button type="button" key={n} className={'chip trail-chip'+(needFilter.includes(n)?' selected':'')} onClick={()=>toggleArr(needFilter,setNeedFilter,n)}>{n}</button>)}
     </div>
    </div>}
    {growthOptions.length>0 && <div className="trail-filter-row">
-    <span className="trail-filter-label" id="trail-growth-label">{UI_TEXT.trail.growthLabel}</span>
+    <span className="trail-filter-label" id="trail-growth-label">{t('trail.growthLabel',UI_TEXT.trail.growthLabel)}</span>
     <div className="trail-filter-chips" role="group" aria-labelledby="trail-growth-label">
      {growthOptions.map(g=><button type="button" key={g} className={'chip trail-chip'+(growthFilter.includes(g)?' selected':'')} onClick={()=>toggleArr(growthFilter,setGrowthFilter,g)}>{g}</button>)}
     </div>
    </div>}
    <div className="trail-filter-meta">
-    <span className="trail-filter-count">{'Showing '+filteredEntries.length+' of '+totalEntries+' '+(totalEntries===1?'entry':'entries')}</span>
-    {anyFilterActive && <button type="button" className="trail-clear" onClick={clearFilters}>{UI_TEXT.trail.clearFilters}</button>}
+    <span className="trail-filter-count">{t('trail.showing','Showing')+' '+filteredEntries.length+' '+t('trail.of','of')+' '+totalEntries+' '+(totalEntries===1?t('trail.entrySingular','entry'):t('trail.entryPlural','entries'))}</span>
+    {anyFilterActive && <button type="button" className="trail-clear" onClick={clearFilters}>{t('trail.clearFilters',UI_TEXT.trail.clearFilters)}</button>}
    </div>
   </div>}
 
   <div className="card trail-entries-card">
-   <h2 className="trail-entries-title">Past entries <span className="trail-entries-count">({filteredEntries.length}{filteredEntries.length!==totalEntries?' of '+totalEntries:''})</span></h2>
-   {totalEntries===0 ? <p className="sub">No entries yet. Your journal trail will build here as you reflect.</p> : filteredEntries.length===0 ? <p className="sub">{UI_TEXT.trail.emptyFiltered}</p> : <div className="trail-entry-list">{filteredEntries.map(e=>{
+   <h2 className="trail-entries-title">{t('trail.pastEntries','Past entries')} <span className="trail-entries-count">({filteredEntries.length}{filteredEntries.length!==totalEntries?' of '+totalEntries:''})</span></h2>
+   {totalEntries===0 ? <p className="sub">{t('trail.emptyNoEntries','No entries yet. Your journal trail will build here as you reflect.')}</p> : filteredEntries.length===0 ? <p className="sub">{t('trail.emptyFiltered',UI_TEXT.trail.emptyFiltered)}</p> : <div className="trail-entry-list">{filteredEntries.map(e=>{
     const isOpen=openId===e.id;
     const childAge=entryChildAge(e);
     const childId=entryChildId(e);

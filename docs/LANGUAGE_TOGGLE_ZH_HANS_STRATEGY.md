@@ -277,7 +277,7 @@ Explicitly **out of scope** for language work:
 |------|----------------------|----------|
 | 1 | **PR #123 (this)** | Strategy spec only |
 | 2 | **PR #124 (runtime foundation)** | Static UI dictionary + parent dashboard toggle (`localStorage` only) |
-| 3 | PR #125+ | Broader parent portal static copy translation |
+| 3 | **PR #125 (runtime expansion)** | Broader parent portal static copy translation |
 | 4 | Later | MHP portal static copy translation |
 | 5 | Later | Payment upgrade copy localisation (with payment runtime) |
 | 6 | Later | Self-read relationship bytes zh-Hans content |
