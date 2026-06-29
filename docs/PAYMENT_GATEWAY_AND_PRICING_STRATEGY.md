@@ -1,7 +1,7 @@
 # Payment Gateway and Pricing Strategy
 
-**Status:** Revised draft spec for PR #120A  
-**Scope:** Docs only  
+**Status:** Revised draft spec for PR #120A
+**Scope:** Docs only
 **Last updated:** 2026-06-28
 
 Read first:
@@ -612,7 +612,8 @@ You have used your 3 Wayfinder saves.
 Your saved reflections remain readable. To keep saving Decode moments and build your Journal Trail, upgrade to Wayfinder Plus.
 ```
 
-Primary CTA: `Upgrade to Plus`  
+Primary CTA: `Upgrade to Plus`
+
 Secondary CTA: `Review my saved reflections`
 
 ### Trial expired
@@ -622,7 +623,8 @@ Your Wayfinder trial has ended.
 Your saved reflections are still here. Upgrade when you are ready to continue saving Decode moments, tracking patterns, and growing your ALIGN practice.
 ```
 
-Primary CTA: `Continue with Plus`  
+Primary CTA: `Continue with Plus`
+
 Secondary CTA: `View saved reflections`
 
 ### Plus upgrade prompt
