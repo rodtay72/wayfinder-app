@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-29
 
-**Last verified merge:** PR #125 — Broaden parent portal static copy translation (incl. zh-Hans polish)
+**Last verified merge:** PR #127 — Guard i18n parity debug storage access
 
-**Next proposed PR:** PR #126 — Parent language QA hardening
+**Next proposed PR:** PR #128 — MHP invite request email recipient clarity
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -131,7 +131,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Broader static copy (PR #125):** Complete — dashboard, nav, Relationship Garden, ALIGN Journey shell, Journal Trail filters/empty states, Decode intro static text; zh-Hans polish merged.
 
-**QA hardening (PR #126):** In flight — key parity audit, `t()` fallback chain, `localStorage` repair, `<html lang>` init, zh-Hans overflow CSS; **no auto-translate** of private reflections; **no external translation APIs**.
+**QA hardening (PR #126–#127):** Complete — fallback chain, `localStorage` repair, `<html lang>`, zh-Hans overflow CSS, debug storage guard.
 
 **Languages:** English (`en`) · 简体中文 (`zh-Hans`)
 
@@ -167,7 +167,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
 | PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | Complete (merged) |
 | PR #125 parent static copy zh-Hans | Broaden parent portal static UI translation; no private content translation | Complete (merged) |
-| PR #126 parent language QA hardening | Fallback/localStorage/html lang/overflow hardening; key parity audit | In flight |
+| PR #126 parent language QA hardening | Fallback/localStorage/html lang/overflow hardening; key parity audit | Complete (merged) |
+| PR #127 i18n debug storage guard | Follow-up: wrap debug parity localStorage in try/catch | Complete (merged) |
+| PR #128 MHP invite request email recipient | Pre-fill Wayfinder admin To on mailto draft; clearer admin-mediated copy | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -177,7 +179,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A)
-- **Simplified Chinese language toggle runtime** — **PR #126 in flight** — PR #124–#125 merged; QA hardening for fallback, storage, and layout — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
+- **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
+- **MHP invite request pipeline (PR #128)** — **in flight** — admin mailto recipient clarity; prioritised ahead of payment gateway runtime
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented

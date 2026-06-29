@@ -3636,7 +3636,9 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose}){
  const emailAdmin=()=>{
   const subject=meta.requestDraftIntro||'Wayfinder Mental Health Professional invitation request';
   const body=buildRequestDraft();
-  window.location.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const adminEmail=String(meta.adminEmail||'').trim();
+  const mailtoBase=adminEmail?`mailto:${encodeURIComponent(adminEmail)}`:'mailto:';
+  window.location.href=`${mailtoBase}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
  };
 
  const setField=(key,value)=>setForm((prev)=>({...prev,[key]:value}));
@@ -3656,8 +3658,9 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose}){
    </div>
    <div className="invite-share-actions">
     <button type="button" className="btn btn-primary" onClick={copyRequest}>{copyState==='copied'?(meta.copiedRequestButton||'Request message copied'):(meta.copyRequestButton||'Copy request message')}</button>
-    <button type="button" className="btn btn-secondary" onClick={emailAdmin}>{meta.emailAdminButton||'Email Wayfinder admin'}</button>
+    <button type="button" className="btn btn-secondary" onClick={emailAdmin}>{meta.emailAdminButton||'Open email draft to Wayfinder admin'}</button>
    </div>
+   {meta.emailDraftNote ? <p className="invite-request-note invite-request-email-note">{meta.emailDraftNote}</p> : null}
   </div>
  </div>;
 }
