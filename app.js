@@ -373,6 +373,14 @@ function Landing({onEnter,user,profile,onSignOut,authReady,role}){
 }
 
 const MHP_INVITE_STORAGE_KEY='wayfinder_mhp_invite_token';
+const MHP_INVITE_SETUP_VALUE='profile';
+
+const buildMhpInviteSetupUrl=(token,origin)=>{
+ const raw=String(token||'').trim();
+ if(!raw) return '';
+ const base=origin||(typeof window!=='undefined'?window.location.origin:'');
+ return `${base}/counsellor.html?mhp_invite=${encodeURIComponent(raw)}&setup=${MHP_INVITE_SETUP_VALUE}`;
+};
 
 const readStoredMhpInviteToken=()=>{
  if(typeof window==='undefined') return '';
@@ -423,6 +431,7 @@ const clearInviteFromUrl=()=>{
   const url=new URL(window.location.href);
   let changed=false;
   if(url.searchParams.has('mhp_invite')){url.searchParams.delete('mhp_invite');changed=true;}
+  if(url.searchParams.has('setup')){url.searchParams.delete('setup');changed=true;}
   if(url.searchParams.has('invite')){url.searchParams.delete('invite');changed=true;}
   if(!changed) return;
   window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
@@ -454,12 +463,13 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
  const [resetLoading,setResetLoading]=useState(false);
  const [resetStatus,setResetStatus]=useState('');
  const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
+ const inviteSetupUrl=inviteToken?buildMhpInviteSetupUrl(inviteToken):'';
  const allowSignup=(role!=='counsellor'&&role!=='admin')||!!inviteToken;
  const activeMode=allowSignup?mode:'signin';
  const portalLabel=role==='admin'
   ? 'Wayfinder Owner Admin'
   : role==='counsellor'
-  ? (inviteToken?(mhpMeta.onboardingPortalLabel||'Mental Health Professional Portal'):'Counsellor Portal')
+  ? (mhpMeta.onboardingPortalLabel||'Mental Health Professional Portal')
   : 'A space to find your way back to each other';
  const pdpaNotice=typeof PDPA_SIGNUP_NOTICE!=='undefined'?PDPA_SIGNUP_NOTICE:{};
  const pdpaTitle=String(pdpaNotice.title||'Before you create your account').trim();
@@ -485,15 +495,16 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
   }
   setLoading(true);
   try{
-   const {data,error:err}=activeMode==='signin'?await Auth.signIn(email,password):await Auth.signUp(email,password);
+   const signUpOptions=inviteSetupUrl?{emailRedirectTo:inviteSetupUrl}:{};
+   const {data,error:err}=activeMode==='signin'
+    ? await Auth.signIn(email,password)
+    : await Auth.signUp(email,password,signUpOptions);
    if(err)throw err;
    if(activeMode==='signup'&&!data.session){
-    setError('Check your email for the current confirmation link, then sign in. Wayfinder verification will run after login.');
+    setError(inviteToken?'Check your email for the confirmation link, then return here to continue profile setup.':'Check your email for the current confirmation link, then sign in. Wayfinder verification will run after login.');
     setLoading(false);
     return;
    }
-   // onAuthStateChange is the single source of truth for authenticated user
-   // and profile setup. Updating user here can race ahead of getOrCreateProfile.
   }catch(e){setError(e.message||'Something went wrong.');}
   setLoading(false);
  };
@@ -504,7 +515,8 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
   if(!target){setError('Enter your email address, then try again.');return;}
   setResendLoading(true);
   try{
-   const {error:err}=await Auth.resendVerification(target);
+   const resendOptions=inviteSetupUrl?{emailRedirectTo:inviteSetupUrl}:{};
+   const {error:err}=await Auth.resendVerification(target,resendOptions);
    if(err)throw err;
    setResendStatus('If this email exists, a verification link has been sent.');
   }catch(e){setError(e.message||'Could not send verification email. Please try again.');}
@@ -535,14 +547,14 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
    <p className="auth-brand-subtitle">{portalLabel}</p>
   </div>
   {inviteToken ? <div className="card mhp-invite-card">
-   <h2>{mhpMeta.inviteTitle||"You've been invited as a Mental Health Professional"}</h2>
-   <p className="dashboard-helper">{mhpMeta.inviteSubtitle||'You have been invited to begin Mental Health Professional onboarding for Wayfinder.'}</p>
-   <p className="sub mhp-invite-note">{mhpMeta.inviteOnboardingSafetyNote||'This invitation does not publish your profile or activate public access automatically.'}</p>
+   <h2>{mhpMeta.inviteProfileSetupTitle||mhpMeta.inviteTitle||'Set up your Wayfinder Mental Health Professional profile'}</h2>
+   <p className="dashboard-helper">{mhpMeta.inviteProfileSetupIntro||mhpMeta.inviteSubtitle||"You've been invited to begin Mental Health Professional onboarding with Wayfinder."}</p>
+   <p className="sub mhp-invite-note">{mhpMeta.inviteProfileSetupDetail||mhpMeta.inviteOnboardingSafetyNote||'This invitation lets you create your profile draft and upload licence details for review. It does not publish your profile or activate public access automatically.'}</p>
    {inviteStatus?.invitedEmail ? <p className="sub mhp-invite-email-hint"><span className="mhp-invite-email-label">{mhpMeta.inviteUseEmailLabel||'Invited email'}: </span>{inviteStatus.invitedEmail}</p> : null}
    <p className="sub mhp-invite-note">{mhpMeta.inviteSignInNote||'Sign in or create an account using the invited email address below.'}</p>
   </div> : null}
   <div className="card auth-login-card" style={{padding:0,overflow:'hidden'}}>
-   {(role==='parent'||role==='counsellor') ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'}/> : null}
+   {(role==='parent'||(role==='counsellor'&&!inviteToken)) ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'}/> : null}
    <div className="auth-login-body">
    {forgotOpen ? <>
     <h2>{mhpMeta.forgotPasswordTitle||'Reset your password'}</h2>
@@ -578,19 +590,22 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
    </div> : null}
    <button className="btn btn-primary btn-block" onClick={submit} disabled={loading||(activeMode==='signup'&&!pdpaAcknowledged)}>{loading?'Please wait…':activeMode==='signin'?'Sign in':'Create account'}</button>
    {allowSignup ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
-    {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
-   </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{inviteToken?'Create an account with your invited email, or sign in if you already have one.':'Counsellor accounts are provisioned by the Wayfinder administrator.'}</p>}
+    {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>{inviteToken?'Create account with invited email':'Sign up'}</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
+   </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : role==='counsellor' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{mhpMeta.counsellorSignInOnlyNote||'New Mental Health Professional onboarding requires an invitation from Wayfinder admin.'}</p> : null}
    </>}
    </div>
   </div>
  </div>;
 }
 
-function VerificationRequiredScreen({authSession, role, onRefreshSession, onSignOut}){
+function VerificationRequiredScreen({authSession, role, onRefreshSession, onSignOut, inviteToken, inviteSetupRedirectUrl}){
  const [status,setStatus]=useState('Check your inbox for your Wayfinder verification link.');
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(false);
  const [refreshing,setRefreshing]=useState(false);
+ const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
+ const inviteSetupActive=!!inviteToken;
+ const verificationRedirect=inviteSetupRedirectUrl||buildMhpInviteSetupUrl(inviteToken);
 
  const send=async()=>{
   if(!authSession?.user?.email){
@@ -601,7 +616,8 @@ function VerificationRequiredScreen({authSession, role, onRefreshSession, onSign
   setError('');
   setStatus('');
   try{
-   const {error:err}=await Auth.resendVerification(authSession);
+   const resendOptions=inviteSetupActive&&verificationRedirect?{emailRedirectTo:verificationRedirect}:{};
+   const {error:err}=await Auth.resendVerification(authSession,resendOptions);
    if(err)throw err;
    setStatus('If this account exists, a verification link has been sent. Please check your inbox.');
   }catch(e){
@@ -627,11 +643,11 @@ function VerificationRequiredScreen({authSession, role, onRefreshSession, onSign
   }
  };
 
- return <div className="wrap">
-  <div className="card banner"><h1>Verify your Wayfinder account</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other'}</p></div>
+ return <div className="wrap mhp-invite-setup-wrap">
+  <div className="card banner"><h1>{inviteSetupActive?(mhpMeta.inviteVerificationTitle||'Verify your email to continue profile setup'):'Verify your Wayfinder account'}</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{inviteSetupActive?(mhpMeta.onboardingPortalLabel||'Mental Health Professional Portal'):(role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other')}</p></div>
   <div className="card" style={{textAlign:'center',padding:32}}>
    <h2 style={{marginBottom:10}}>Email verification required</h2>
-   <p className="sub" style={{lineHeight:1.6}}>Please use the verification link sent to your inbox before opening your Wayfinder workspace. This keeps parent and counsellor records protected.</p>
+   <p className="sub" style={{lineHeight:1.6}}>{inviteSetupActive?(mhpMeta.inviteVerificationBody||'Please confirm your email address before continuing Mental Health Professional profile setup. After verification you will return to this invitation flow.'):'Please use the verification link sent to your inbox before opening your Wayfinder workspace. This keeps parent and counsellor records protected.'}</p>
    {status&&<div style={{color:'#4f7a5e',fontSize:13,marginTop:16,padding:'10px 12px',background:'#edf7ef',borderRadius:6}}>{status}</div>}
    {error&&<div style={{color:'#8a5a00',fontSize:13,marginTop:16,padding:'10px 12px',background:'#fff4d6',borderRadius:6}}>{error}</div>}
    <div style={{marginTop:22,display:'flex',flexDirection:'column',gap:10}}>
@@ -1212,9 +1228,7 @@ function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
 }
 
 function buildMhpInviteLink(token){
- const raw=String(token||'').trim();
- if(!raw||typeof window==='undefined') return '';
- return `${window.location.origin}/counsellor.html?mhp_invite=${encodeURIComponent(raw)}`;
+ return buildMhpInviteSetupUrl(token);
 }
 
 function OwnerAdminInviteRequestCard({row,meta,user,authSession,actionState,approvalUnavailable,onApprove}){
@@ -1641,6 +1655,10 @@ function App(){
  },[]);
 
  useEffect(()=>{
+  if(APP_ROLE==='parent'&&pendingInviteToken){
+   window.location.replace(buildMhpInviteSetupUrl(pendingInviteToken));
+   return undefined;
+  }
   if(APP_ROLE!=='counsellor'||!pendingInviteToken) return undefined;
   let cancelled=false;
   const checkInvite=async()=>{
@@ -1819,10 +1837,16 @@ function App(){
    localStorage.removeItem('sj_v2_reviews');
    try{
     let profilePromise=profileLoadRef.current.promise;
-    const inviteTokenActive=APP_ROLE==='counsellor'&&!!pendingInviteTokenRef.current;
+    const inviteTokenActive=!!pendingInviteTokenRef.current;
+
+    if(inviteTokenActive&&APP_ROLE==='parent'){
+     window.location.replace(buildMhpInviteSetupUrl(pendingInviteTokenRef.current));
+     setAuthReady(true);
+     return false;
+    }
 
     if(profileLoadRef.current.userId!==session.user.id||!profilePromise){
-     if(inviteTokenActive){
+     if(inviteTokenActive&&APP_ROLE==='counsellor'){
       setInviteConsumeError('');
       const consumeResult=await DB.consumeMhpInviteTokenForCurrentUser(session.user.id,pendingInviteTokenRef.current,session);
       if(consumeResult.unavailable){
@@ -1832,7 +1856,9 @@ function App(){
        return false;
       }
       if(!consumeResult.ok||!consumeResult.accepted||!consumeResult.record){
-       const consumeMessage=consumeResult.record?.message||mhpMeta.inviteConsumeFailure||'We could not accept this invitation right now.';
+       const rawMessage=consumeResult.record?.message||mhpMeta.inviteConsumeFailure||'We could not accept this invitation right now.';
+       const emailMismatch=rawMessage.toLowerCase().includes('email');
+       const consumeMessage=emailMismatch?(mhpMeta.inviteEmailMismatch||rawMessage):rawMessage;
        setProfile(null);
        setAccessDenied(consumeMessage);
        setInviteConsumeError(consumeMessage);
@@ -2015,14 +2041,15 @@ function App(){
    AuthDebug.log('[render] branch: mhp invite checking');
    return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>{mhpMeta.inviteCheckingMessage||'Checking your invitation…'}</div></div>;
   }
-  if(APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.checked&&!inviteStatus.valid&&!inviteStatus.unavailable){
+  if(APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.checked&&(!inviteStatus.valid||inviteStatus.unavailable)){
    AuthDebug.log('[render] branch: mhp invite invalid');
-   return <MhpInviteInvalidScreen meta={mhpMeta} message={inviteStatus.message} onClear={clearPendingInviteToken}/>;
+   return <MhpInviteInvalidScreen meta={mhpMeta} message={inviteStatus.unavailable?(mhpMeta.inviteAcceptanceUnavailable||inviteStatus.message):inviteStatus.message} onClear={clearPendingInviteToken}/>;
   }
   AuthDebug.log('[render] branch: auth screen');
-  return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={pendingInviteToken||null} inviteStatus={inviteStatus.valid?inviteStatus:null}/>;
+  const inviteAuthActive=APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.valid;
+  return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={inviteAuthActive?pendingInviteToken:null} inviteStatus={inviteAuthActive?inviteStatus:null}/>;
  }
- if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
+ if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} inviteToken={APP_ROLE==='counsellor'&&pendingInviteToken?pendingInviteToken:null} inviteSetupRedirectUrl={APP_ROLE==='counsellor'&&pendingInviteToken?buildMhpInviteSetupUrl(pendingInviteToken):null} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
  if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
   <h2 style={{marginBottom:12}}>{accessDenied}</h2>
   <p className="sub">{inviteConsumeError? (mhpMeta.inviteAdminContactFallback||'If this keeps happening, contact Wayfinder admin for support.') : 'This portal is limited to verified counsellor accounts.'}</p>
@@ -3914,13 +3941,11 @@ const mhpProfessionalInviteMeta=()=>typeof MENTAL_HEALTH_PROFESSIONAL_INVITE_REQ
 function MentalHealthProfessionalInviteRequestModal({open,onClose,user,authSession,parentId}){
  const meta=mhpProfessionalInviteMeta();
  const [form,setForm]=useState({colleagueName:'',colleagueEmail:'',note:''});
- const [copyState,setCopyState]=useState('');
  const [submitState,setSubmitState]=useState({busy:false,status:'',message:''});
 
  useEffect(()=>{
   if(!open){
    setForm({colleagueName:'',colleagueEmail:'',note:''});
-   setCopyState('');
    setSubmitState({busy:false,status:'',message:''});
   }
  },[open]);
@@ -3945,31 +3970,6 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose,user,authSessi
    meta.requestDraftFooter||'Please review and send a Wayfinder admin invitation to this colleague if appropriate.'
   ];
   return lines.join('\n');
- };
-
- const copyRequest=async()=>{
-  const draft=buildRequestDraft();
-  try{
-   if(navigator.clipboard&&navigator.clipboard.writeText){
-    await navigator.clipboard.writeText(draft);
-    setCopyState('copied');
-    return;
-   }
-  }catch(_){}
-  try{
-   const input=document.createElement('textarea');
-   input.value=draft;
-   input.setAttribute('readonly','');
-   input.style.position='absolute';
-   input.style.left='-9999px';
-   document.body.appendChild(input);
-   input.select();
-   document.execCommand('copy');
-   document.body.removeChild(input);
-   setCopyState('copied');
-  }catch(_){
-   setCopyState('failed');
-  }
  };
 
  const emailAdmin=()=>{
@@ -4017,21 +4017,19 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose,user,authSessi
     <h2 id="mhp-invite-request-title">{meta.modalTitle||'Invite counsellors to Wayfinder'}</h2>
     <button type="button" className="btn btn-ghost btn-sm invite-share-close" onClick={onClose}>{meta.closeButton||'Close'}</button>
    </div>
-   <p className="dashboard-helper invite-share-intro">{meta.modalIntro||'Mental Health Professional accounts are created by Wayfinder administrator invitation only.'}</p>
-   <p className="invite-request-note">{meta.modalAdminNote||'There is no public counsellor or Mental Health Professional signup link.'}</p>
+   <p className="dashboard-helper invite-share-intro">{meta.modalIntro||'Mental Health Professional accounts are invitation-only. Submit this request for Wayfinder admin review. No account, invite link, or MHP access is created until admin approval.'}</p>
    <div className="invite-request-fields">
     <label className="field"><span>{meta.fieldColleagueName||'Colleague name'}</span><input type="text" value={form.colleagueName} onChange={(event)=>setField('colleagueName',event.target.value)}/></label>
     <label className="field"><span>{meta.fieldColleagueEmail||'Colleague email'}</span><input type="email" value={form.colleagueEmail} onChange={(event)=>setField('colleagueEmail',event.target.value)}/></label>
     <label className="field"><span>{meta.fieldNote||'Optional note for Wayfinder admin'}</span><textarea rows={3} value={form.note} onChange={(event)=>setField('note',event.target.value)}/></label>
    </div>
    <div className="invite-share-actions invite-request-actions">
-    <button type="button" className="btn btn-primary" disabled={submitState.busy||submitState.status==='success'} onClick={submitRequest}>{submitState.busy?(meta.submittingRequestButton||'Submitting request…'):(meta.submitRequestButton||'Submit request for admin review')}</button>
-    <button type="button" className="btn btn-secondary" onClick={copyRequest}>{copyState==='copied'?(meta.copiedRequestButton||'Request message copied'):(meta.copyRequestButton||'Copy request message')}</button>
-    <button type="button" className="btn btn-ghost" onClick={emailAdmin}>{meta.emailAdminButton||'Open email draft to Wayfinder admin'}</button>
+    <button type="button" className="btn btn-primary btn-block" disabled={submitState.busy||submitState.status==='success'} onClick={submitRequest}>{submitState.busy?(meta.submittingRequestButton||'Submitting request…'):(meta.submitRequestButton||'Submit request for admin review')}</button>
+    <button type="button" className="btn btn-secondary btn-block" onClick={emailAdmin}>{meta.emailAdminButton||'Open email draft to Wayfinder admin'}</button>
    </div>
    {submitState.message ? <p className={`invite-request-note invite-request-submit-note${submitState.status==='success'?' invite-request-submit-note--success':''}${submitState.status==='error'||submitState.status==='unavailable'?' invite-request-submit-note--error':''}`} role={submitState.status==='success'?'status':'alert'}>{submitState.message}</p> : null}
    {(submitState.status==='unavailable'||submitState.status==='error') && meta.submitFallbackNote ? <p className="invite-request-note invite-request-email-note">{meta.submitFallbackNote}</p> : null}
-   {meta.emailDraftNote ? <p className="invite-request-note invite-request-email-note">{meta.emailDraftNote}</p> : null}
+   {meta.emailDraftNote ? <p className="invite-request-note invite-request-email-note invite-request-email-note--secondary">{meta.emailDraftNote}</p> : null}
   </div>
  </div>;
 }

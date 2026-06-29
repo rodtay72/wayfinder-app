@@ -28,6 +28,19 @@
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+ <script>
+ (function(){
+  try{
+   var params=new URLSearchParams(window.location.search);
+   var hash=window.location.hash&&window.location.hash.charAt(0)==='#'?window.location.hash.slice(1):'';
+   var hashParams=hash?new URLSearchParams(hash):null;
+   var token=params.get('mhp_invite')||params.get('invite')||(hashParams&&(hashParams.get('mhp_invite')||hashParams.get('invite')));
+   if(token&&String(token).trim()){
+    window.location.replace('/counsellor.html?mhp_invite='+encodeURIComponent(String(token).trim())+'&setup=profile');
+   }
+  }catch(e){}
+ })();
+ </script>
  <div id="root"></div>
 
  <!-- Load content configuration (edit this file for text changes!) -->

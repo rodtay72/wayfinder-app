@@ -32,7 +32,7 @@ The following MHP-related work is substantially complete on the Issue #71 track:
 | MHP licence extraction / details review | Completed — **viewer-first** read-only review by default; optional “Adjust extracted details” when needed |
 | MHP profile draft behaviour | Completed — profile remains draft until explicitly saved/reviewed by the professional |
 | Parent invite / share flow | Completed — parent dashboard can share a **parent signup link only** |
-| MHP colleague invite request | Completed — **admin-mediated only**; in-app pending request submit (PR #129 when SQL applied), copy request message, or open email draft to Wayfinder admin (`ask.anything@psytec.com.sg`); counsellor must send email if using draft; no signup link; **no automatic access** |
+| MHP colleague invite request | Completed — **admin-mediated only**; in-app pending request submit (PR #129 when SQL applied) or open email draft to Wayfinder admin (`ask.anything@psytec.com.sg`); counsellor must send email if using draft; no signup link; **no automatic access** |
 | Public MHP signup | **Not enabled** |
 | Counsellor self-creating counsellors | **Not enabled** |
 | Mobile install identities | Completed — separate home-screen names and icons for **Wayfinder Parent** and **Wayfinder MHP** |
@@ -102,21 +102,86 @@ If any item is unclear, pause enablement and resolve before granting access or s
 - Request status becomes **`approved`**; the row leaves the pending queue on refresh.
 - Admin UI shows a one-time link, **Copy invite link**, and **Open email draft to colleague** — no automatic email send.
 - Copy must state: *This link is for invitation only. It does not activate or publish MHP access automatically.*
-- Planned invite route for **PR #132**: `/counsellor.html?mhp_invite=<token>`
+- Planned invite route: `/counsellor.html?mhp_invite=<token>&setup=profile` (**PR #133A** — route isolation + signup redirect; post-consumption opens existing `MentalHealthProfessionalProfileEditor`)
 - **Does not** create Supabase auth users, profiles, counsellor roles, membership, or publication at approval time.
 - Payment gateway runtime remains paused until the MHP invitation pipeline is stable.
 
-### Invitee token acceptance and onboarding entry (PR #132)
+### Invitee token acceptance and onboarding entry (PR #132 + PR #133A)
 
-- Invitee opens `/counsellor.html?mhp_invite=<token>` (requires [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql)).
+- Invitee opens `/counsellor.html?mhp_invite=<token>&setup=profile` (requires [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql)).
+- **PR #133A:** parent portal URLs with `mhp_invite` redirect to counsellor route immediately without creating a parent profile. Invite-bound sign-in/sign-up only; after token consumption, invitee lands in the existing MHP profile/licence editor (`CounsellorApp` → `editProfile`).
+- `/counsellor.html` without an invite token is **sign-in only** for existing MHP accounts; no public self-registration.
 - `get_mhp_invite_token_status` validates token possession before sign-in (anon-safe, minimal fields only).
-- Invitee signs up or signs in with the **invited email address** only.
+- Invitee signs up or signs in with the **invited email address** only (invite-bound signup within the setup flow).
+- Email verification redirects back to `/counsellor.html?mhp_invite=<token>&setup=profile`.
 - `consume_mhp_invite_token_for_current_user` marks token **consumed** (one-time), creates counsellor profile (`C-` Wayfinder ID), draft MHP profile, and `pending_review` membership — **not publication**.
-- Token consumption is **email-bound**; wrong signed-in email cannot consume.
+- Token consumption is **email-bound**; wrong signed-in email cannot consume and shows: *This invitation was issued for a different email address…*
 - Expired, revoked, or already-used tokens show safe errors without exposing private data.
 - Raw token is never stored in SQL; browser must not log the token.
-- After acceptance, invitee enters existing MHP profile/licence draft onboarding — publication and licence admin review still required separately.
+- After acceptance, invitee lands directly in the existing MHP profile/licence editor — publication and licence admin review still required separately.
 - **Journal read safety (PR #132 patch):** broad `journal_entries` counsellor read now requires `can_read_parent_journals_as_mhp()` — active membership only. Invited MHPs in `pending_review` can onboard but cannot read parent journals until owner/admin activates membership. Grant-scoped review reads remain separate.
+
+### Repair mistaken parent profile created during MHP invite testing
+
+**Context:** Before PR #133A, an invited MHP could accidentally fall into the parent signup route and create a parent profile. If the account has no parent data, owner may remove only the mistaken `public.profiles` row and then rerun the corrected MHP invite flow.
+
+**Important:** Do **not** add automatic cleanup in app runtime. Do **not** delete auth users from code. Do **not** auto-convert parent profiles to counsellor in the browser. This is **owner/manual SQL only** after PR #133A is deployed.
+
+**Owner diagnostic SQL** — replace `<MHP_EMAIL>` with the invited test email (do not commit real emails into Git):
+
+```sql
+select
+  u.id as user_uuid,
+  u.email,
+  p.parent_id,
+  p.role,
+  p.email_verified
+from auth.users u
+left join public.profiles p on p.user_id = u.id
+where lower(u.email) = lower('<MHP_EMAIL>');
+```
+
+**Check whether any parent or MHP data exists** — replace `<MHP_EMAIL>`:
+
+```sql
+with target_user as (
+  select id
+  from auth.users
+  where lower(email) = lower('<MHP_EMAIL>')
+  limit 1
+)
+select
+  (select count(*) from public.journal_entries j where j.user_id = (select id from target_user)) as journal_entries,
+  (select count(*) from public.dyads d where d.user_id = (select id from target_user)) as dyads,
+  (select count(*) from public.mental_health_professional_profiles m where m.user_id = (select id from target_user)) as mhp_profiles,
+  (select count(*) from public.mental_health_professional_memberships mm where mm.user_id = (select id from target_user)) as mhp_memberships;
+```
+
+**Only if all four counts are zero**, owner may remove the mistaken parent profile row — replace `<MHP_EMAIL>`:
+
+```sql
+with target_user as (
+  select id
+  from auth.users
+  where lower(email) = lower('<MHP_EMAIL>')
+  limit 1
+)
+delete from public.profiles p
+using target_user t
+where p.user_id = t.id
+  and p.role = 'parent'
+returning p.user_id, p.parent_id, p.role;
+```
+
+**After repair:**
+
+1. Open the corrected MHP invite link.
+2. Ensure it stays on `/counsellor.html?mhp_invite=<token>&setup=profile`.
+3. Sign in/sign up using the invited email.
+4. Confirm token consumption creates counsellor profile only.
+5. Confirm profile opens in existing `MentalHealthProfessionalProfileEditor`.
+
+PR #133A route isolation prevents the same mistaken parent profile from being recreated when the invite link is used correctly.
 
 ---
 
@@ -333,7 +398,7 @@ Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not 
 - Displays colleague name/email, optional requester note, requester Wayfinder ID, and submitted date.
 - **No automatic email send** — admin copies link or opens mailto draft to colleague.
 - If approval SQL is not applied, approve shows unavailable message; pending queue still loads.
-- Invitee token consumption: **PR #132** — route `/counsellor.html?mhp_invite=<token>`.
+- Invitee token consumption: **PR #132 + #133A** — route `/counsellor.html?mhp_invite=<token>&setup=profile`; consume → existing profile/licence editor.
 
 ### Review queue filters
 
