@@ -92,9 +92,20 @@ If any item is unclear, pause enablement and resolve before granting access or s
 ### Owner admin invite request intake (PR #129)
 
 - Owner/admin can view **pending** colleague invite requests on `/admin.html` when signed in as owner admin and after SQL apply.
-- This queue is **read-only intake** in PR #129 — approval, invite-token creation, and provisioning are deferred to **PR #130**.
+- Counsellor **Submit request** creates only a `pending` row — no auth user, profile, token, membership, or publication.
 - Parents have **no access** to invite request rows via RLS.
-- Request rows may include colleague name/email, optional requester note, requester Wayfinder ID, and timestamps — **not** parent journal/reflection/child data.
+
+### Owner admin invite approval token (PR #131)
+
+- Owner/admin can click **Approve and generate invite link** on a pending (or reviewing) request after applying [supabase-mhp-invite-approval-token-contract.sql](../supabase-mhp-invite-approval-token-contract.sql).
+- RPC `create_mhp_invite_token_from_request` returns the **raw token once** — only a **hash** is stored in `mental_health_professional_invite_tokens`.
+- Request status becomes **`approved`**; the row leaves the pending queue on refresh.
+- Admin UI shows a one-time link, **Copy invite link**, and **Open email draft to colleague** — no automatic email send.
+- Copy must state: *This link is for invitation only. It does not activate or publish MHP access automatically.*
+- Planned invite route for **PR #132** (not implemented in PR #131): `/counsellor.html?mhp_invite=<token>`
+- **Does not** create Supabase auth users, profiles, counsellor roles, membership, or publication.
+- Invitee acceptance / sign-up is deferred to **PR #132**.
+- Payment gateway runtime remains paused until the MHP invitation pipeline is stable.
 
 ---
 
@@ -291,7 +302,8 @@ Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not 
 1. Apply [supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql) (PR #104)
 2. Apply [supabase-mhp-owner-admin-review-rpc.sql](../supabase-mhp-owner-admin-review-rpc.sql) (PR #105)
 3. Apply [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql) (PR #129) — for in-app pending invite request submit and owner admin intake queue
-4. Insert the owner auth `user_id` into `public.owner_admin_users` (see §9)
+4. Apply [supabase-mhp-invite-approval-token-contract.sql](../supabase-mhp-invite-approval-token-contract.sql) (PR #131) — for owner/admin approve + one-time invite token generation
+5. Insert the owner auth `user_id` into `public.owner_admin_users` (see §9)
 
 ### Page behaviour
 
@@ -299,15 +311,17 @@ Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not 
 |-------|-------------------|
 | Not signed in | Owner admin **sign-in only** — no signup, no public invite |
 | Signed in, not owner admin | **Owner admin access required.** — no MHP data |
-| Signed in as owner admin | **Pending MHP colleague invite requests** (PR #129 read-only intake) and **Mental Health Professional review queue** with filters and publication actions |
+| Signed in as owner admin | **Pending MHP colleague invite requests** (approve + one-time link in PR #131) and **Mental Health Professional review queue** with filters and publication actions |
 
-### Invite request intake (PR #129 — read-only)
+### Invite request intake and approval (PR #129 + PR #131)
 
-- Shows **pending** rows from `mental_health_professional_invite_requests` only.
+- Shows **pending** and **reviewing** rows from `mental_health_professional_invite_requests`.
+- **Approve and generate invite link** (PR #131) calls owner/admin RPC; raw token returned once; hash stored only.
+- **Generated invitation links** section keeps recently created links visible for copy/email after the request is approved.
 - Displays colleague name/email, optional requester note, requester Wayfinder ID, and submitted date.
-- **No approval or invite-token actions** in PR #129 — deferred to **PR #130** (status updates, admin notes, controlled invitation).
-- Client/browser grants are **column-limited**: counsellors and owner admin REST reads cannot select `admin_note`, `reviewed_by`, or `reviewed_at`; no client UPDATE/DELETE until PR #130.
-- If SQL is not applied, the section shows a friendly unavailable message; the MHP profile review queue still loads.
+- **No automatic email send** — admin copies link or opens mailto draft to colleague.
+- If approval SQL is not applied, approve shows unavailable message; pending queue still loads.
+- Invitee token consumption: **PR #132** — route `/counsellor.html?mhp_invite=<token>`.
 
 ### Review queue filters
 

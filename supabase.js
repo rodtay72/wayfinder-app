@@ -928,6 +928,7 @@ const isOwnerAdminRpcUnavailable = (status, responseText) => {
   if (text.includes('owner_set_mhp_publication') && text.includes('does not exist')) return true;
   if (text.includes('owner_list_mhp_profile_images') && text.includes('does not exist')) return true;
   if (text.includes('owner_select_mhp_approved_portrait') && text.includes('does not exist')) return true;
+  if (text.includes('create_mhp_invite_token_from_request') && text.includes('does not exist')) return true;
   return false;
 };
 
@@ -1030,6 +1031,17 @@ const normalizeMhpInviteRequestRow = (row) => {
     reviewedAt: row.reviewed_at || row.reviewedAt || null,
     createdAt: row.created_at || row.createdAt || null,
     updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
+const normalizeMhpInviteTokenFromRequestRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    requestId: row.request_id || row.requestId || null,
+    invitedEmail: row.invited_email || row.invitedEmail || '',
+    invitedName: row.invited_name || row.invitedName || '',
+    inviteToken: row.invite_token || row.inviteToken || row.raw_token || row.rawToken || '',
+    expiresAt: row.expires_at || row.expiresAt || null
   };
 };
 
@@ -3558,6 +3570,40 @@ const DB = {
       return { ok: false, unavailable: false, record: null };
     }
     return { ok: true, unavailable: false, record: result.rows[0] };
+  },
+
+  createMhpInviteTokenFromRequest: async (userId, requestId, authSession = null, expiresDays = 7) => {
+    const targetId = String(requestId || '').trim();
+    if (!userId || !targetId) {
+      return { ok: false, unavailable: false, forbidden: false, record: null };
+    }
+    const result = await callOwnerAdminRpcSafe({
+      rpcName: 'create_mhp_invite_token_from_request',
+      userId,
+      authSession,
+      context: 'createMhpInviteTokenFromRequest',
+      body: {
+        p_request_id: targetId,
+        p_expires_days: Number(expiresDays) || 7
+      }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, forbidden: false, record: null };
+    }
+    if (!result.ok) {
+      return {
+        ok: false,
+        unavailable: false,
+        forbidden: String(result.responseText || '').includes('Owner admin required'),
+        record: null
+      };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    const record = normalizeMhpInviteTokenFromRequestRow(rows[0]);
+    if (!record?.inviteToken) {
+      return { ok: false, unavailable: false, forbidden: false, record: null };
+    }
+    return { ok: true, unavailable: false, forbidden: false, record };
   },
 
   isOwnerAdmin: async (userId, authSession = null) => {

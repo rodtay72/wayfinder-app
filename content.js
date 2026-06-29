@@ -744,16 +744,33 @@ const MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST = {
 
 const OWNER_ADMIN_MHP_INVITE_REQUESTS = {
   sectionTitle: "Pending MHP colleague invite requests",
-  sectionIntro: "Counsellor-submitted requests awaiting owner review. This list does not create accounts, invite tokens, or publication. Approval and invitation are a separate admin step.",
+  sectionIntro: "Counsellor-submitted requests awaiting owner review. Approve to generate a one-time invitation link. The link does not create or publish MHP access automatically. Invitee sign-up is handled in a later step (PR #132).",
   emptyMessage: "No pending colleague invite requests right now.",
   loadErrorMessage: "We could not load pending invite requests right now.",
   unavailableMessage: "Invite request intake storage is not available yet. Apply supabase-mhp-invite-requests.sql in Supabase.",
+  approvalUnavailableMessage: "Invite approval is not available yet. Apply supabase-mhp-invite-approval-token-contract.sql in Supabase.",
   requestLabel: "MHP colleague invite request",
   requesterIdLabel: "Requester Wayfinder ID",
   submittedLabel: "Submitted",
   noteLabel: "Requester note",
-  readOnlyNote: "Read-only intake in this release. Use this queue to review requests before any invitation or access is created.",
-  refreshButton: "Refresh requests"
+  readOnlyNote: "Review the colleague details, then approve to generate a one-time invitation link for manual send.",
+  refreshButton: "Refresh requests",
+  approveButton: "Approve and generate invite link",
+  approvingButton: "Generating invite link…",
+  approvalFailureMessage: "This invitation link could not be generated right now. Please try again.",
+  inviteLinkLabel: "One-time invitation link",
+  inviteLinkHelper: "Copy or email this link to the colleague. It is shown once here and is not stored in Wayfinder.",
+  inviteSafetyNote: "This link is for invitation only. It does not activate or publish MHP access automatically.",
+  copyInviteLinkButton: "Copy invite link",
+  copiedInviteLinkButton: "Invite link copied",
+  copyInviteLinkFailedButton: "Copy failed — select link manually",
+  emailInviteButton: "Open email draft to colleague",
+  inviteEmailSubject: "Wayfinder Mental Health Professional invitation",
+  inviteEmailIntro: "You have been invited to join Wayfinder as a Mental Health Professional. Use this one-time link to begin invitation sign-up when it is available. This link does not activate or publish MHP access automatically.",
+  inviteExpiresLabel: "Link expires",
+  inviteRouteNote: "Invite route for PR #132: /counsellor.html?mhp_invite=<token>",
+  generatedInvitesTitle: "Generated invitation links",
+  generatedInvitesIntro: "Copy or email these links now. They are shown once here and are not stored in Wayfinder."
 };
 
 // PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)

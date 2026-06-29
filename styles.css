@@ -752,6 +752,15 @@
   .invite-request-actions{display:flex;flex-wrap:wrap;gap:8px;}
   .invite-request-submit-note--success{color:#2f473d;background:#E8F0E8;border:1px solid #C8D8C8;border-radius:8px;padding:10px 12px;}
   .invite-request-submit-note--error{color:#6b2d2d;background:#FDF3F3;border:1px solid #E8CACA;border-radius:8px;padding:10px 12px;}
+  .owner-admin-invite-safety-note{margin:12px 0 0;padding:10px 12px;background:#FAFCFA;border:1px solid #E0E8DC;border-radius:8px;color:#40514b;font-size:13px;line-height:1.5;}
+  .owner-admin-invite-action-error{margin:10px 0 0;color:#8A1F1F;font-size:13px;}
+  .owner-admin-invite-approval-unavailable{margin:10px 0 0;}
+  .owner-admin-invite-result{margin-top:12px;padding-top:12px;border-top:1px solid #E0E8DC;}
+  .owner-admin-invite-result-title{margin:0 0 6px;font-size:15px;color:#40514b;}
+  .owner-admin-invite-link-field input{font-family:Consolas,Monaco,monospace;font-size:12px;}
+  .owner-admin-invite-expires{margin:8px 0 0;}
+  .owner-admin-generated-invites{margin:0 0 16px;padding:16px 18px;border:1px solid #D8E2D8;border-radius:10px;background:#FAFCFA;}
+  .owner-admin-generated-invites-title{margin:0 0 6px;font-size:17px;color:#40514b;}
   .owner-admin-source-photo-section{margin:0 0 14px;padding:14px 16px;border:1px solid #E0E8DC;border-radius:10px;background:#FAFCFA;}
   .owner-admin-source-photo-title{margin:0 0 6px;font-size:15px;color:#40514b;}
   .owner-admin-source-photo-helper{margin:0 0 10px;}
