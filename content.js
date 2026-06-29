@@ -927,14 +927,16 @@ const WAYFINDER_I18N = {
 };
 
 // PR #126: lightweight runtime parity check (static UI keys only).
-if(typeof window!=='undefined'&&window.localStorage&&window.localStorage.getItem('wayfinder_debug_auth')==='1'){
+if(typeof window!=='undefined'){
  try{
-  const enKeys=Object.keys(WAYFINDER_I18N.en||{});
-  const zhKeys=Object.keys(WAYFINDER_I18N['zh-Hans']||{});
-  const missingZh=enKeys.filter(k=>!zhKeys.includes(k));
-  const missingEn=zhKeys.filter(k=>!enKeys.includes(k));
-  if(missingZh.length||missingEn.length){
-   console.warn('[Wayfinder i18n] dictionary parity mismatch', {missingZh,missingEn});
+  if(window.localStorage&&window.localStorage.getItem('wayfinder_debug_auth')==='1'){
+   const enKeys=Object.keys(WAYFINDER_I18N.en||{});
+   const zhKeys=Object.keys(WAYFINDER_I18N['zh-Hans']||{});
+   const missingZh=enKeys.filter(k=>!zhKeys.includes(k));
+   const missingEn=zhKeys.filter(k=>!enKeys.includes(k));
+   if(missingZh.length||missingEn.length){
+    console.warn('[Wayfinder i18n] dictionary parity mismatch', {missingZh,missingEn});
+   }
   }
  }catch(_err){}
 }
