@@ -183,6 +183,79 @@ returning p.user_id, p.parent_id, p.role;
 
 PR #133A route isolation prevents the same mistaken parent profile from being recreated when the invite link is used correctly.
 
+### MHP invite signup — Supabase Auth email delivery
+
+**Status:** The in-app MHP invite onboarding flow is **complete** (PR #132–#133D):
+
+`Invite link` → `Create account` → `Check your email to continue` → Supabase confirmation link → return to `/counsellor.html?mhp_invite=<token>&setup=profile` → token consume → existing `MentalHealthProfessionalProfileEditor`.
+
+**Important:** Wayfinder frontend code does **not** send signup confirmation emails. **Supabase Auth** sends confirmation, invite, and reset-password emails. The app only sets `emailRedirectTo` for invite-bound signup/resend and waits for Supabase email confirmation before continuing.
+
+**Remaining blocker:** Supabase Dashboard **email delivery configuration** — not a frontend bug. Do **not** add browser workarounds, bypass verification, disable Confirm Email, auto-confirm production users, or send confirmation email from app code.
+
+#### Required Supabase settings
+
+1. **Keep email verification ON**
+   - `Authentication > Providers > Email` → **Confirm email: ON**
+   - **Do not** enable auto-confirm for email signup.
+   - **Do not** disable confirmation for production onboarding.
+
+2. **Configure Custom SMTP** (required/recommended for reliable production delivery)
+   - `Authentication > SMTP Settings` — configure **after** `psytec.com.sg` domain verification with the email provider.
+   - **Sender name:** `Wayfinder by PsyTec`
+   - **Sender email:** `ask.anything@psytec.com.sg`
+   - **Reply-to:** `ask.anything@psytec.com.sg`
+   - **SPF / DKIM / DMARC** must be configured with the email provider before expecting reliable inbox delivery.
+   - Full checklists: [supabase-branded-email-rollout.md](./supabase-branded-email-rollout.md)
+
+3. **Confirmation email template**
+   - `Authentication > Email Templates` → **Confirm signup**
+   - **Must keep** `{{ .ConfirmationURL }}` — do not replace with a static URL or custom unverified path.
+   - Branding guidance: [supabase-branded-email-rollout.md](./supabase-branded-email-rollout.md)
+
+4. **Redirect URL allow list**
+   - `Authentication > URL Configuration`
+   - **Site URL:** `https://wayfinder-modular.vercel.app`
+   - **Redirect URLs must include:**
+     - `https://wayfinder-modular.vercel.app/counsellor.html`
+     - `https://wayfinder-modular.vercel.app/counsellor.html**` (wildcard — allows query parameters)
+   - **MHP invite flow uses:**
+     - `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>&setup=profile`
+   - If the wildcard entry is missing, confirmation links may be rejected even when email is delivered.
+
+#### Diagnose missing confirmation email
+
+Check in this order (do **not** paste SMTP passwords, API keys, raw tokens, Supabase UUIDs, or real invite links into GitHub):
+
+1. **Supabase Dashboard → Authentication → Users** — was the test user created? Is email unconfirmed?
+2. **Supabase Dashboard → Authentication → Logs** — signup / mail / rate-limit errors?
+3. **SMTP provider delivery logs** — message accepted, bounced, or deferred?
+4. **Recipient spam/junk folder** — especially before SPF/DKIM/DMARC are verified.
+5. **Redirect URL allow list** — does it include `counsellor.html**` for invite query params?
+6. **Custom SMTP** — is it enabled and sending as `ask.anything@psytec.com.sg`?
+
+Supabase default mail may be rate-limited or unreliable for production; Custom SMTP is the expected production path.
+
+#### MHP invite email smoke test (after SMTP + redirect URLs configured)
+
+1. Owner generates invite link from `/admin.html`.
+2. Invitee opens invite link.
+3. Invitee creates account → app shows **Check your email to continue** (not an error).
+4. Confirmation email arrives from `Wayfinder by PsyTec <ask.anything@psytec.com.sg>`.
+5. Invitee clicks confirmation link.
+6. Browser returns to `/counsellor.html?mhp_invite=<token>&setup=profile`.
+7. Token consumes after verified sign-in with invited email.
+8. Existing `MentalHealthProfessionalProfileEditor` opens.
+
+Resend confirmation from the pending screen must also preserve the invite redirect URL.
+
+#### Do not
+
+- Disable email verification or auto-confirm production users in Supabase or frontend.
+- Bypass verification with service-role keys, manual `email_confirmed_at` updates for production onboarding, or custom unverified access paths.
+- Add frontend “send email ourselves” workarounds unless separately approved as a distinct auth architecture change.
+- Commit SMTP passwords, API keys, raw invite tokens, or private test emails to the repo or GitHub.
+
 ---
 
 ## 6. Data / privacy guardrails
