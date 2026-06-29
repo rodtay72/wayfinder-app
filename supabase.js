@@ -3444,6 +3444,7 @@ const DB = {
       authSession,
       context: 'insertMhpInviteRequest',
       table: 'mental_health_professional_invite_requests',
+      query: 'select=id,requester_user_id,requester_profile_id,requester_parent_id,colleague_name,colleague_email,note,status,created_at,updated_at',
       unavailableCheck: isMhpInviteRequestsUnavailable,
       body: {
         requester_user_id: userId,
