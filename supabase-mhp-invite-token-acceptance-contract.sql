@@ -47,6 +47,11 @@ begin
     raise exception 'MHP invite token acceptance blocked: public.profiles does not exist.'
       using errcode = 'P0001';
   end if;
+
+  if to_regclass('public.mental_health_professional_memberships') is null then
+    raise exception 'MHP invite token acceptance blocked: mental_health_professional_memberships does not exist.'
+      using errcode = 'P0001';
+  end if;
 end;
 $$;
 
@@ -354,9 +359,55 @@ revoke all on function public.consume_mhp_invite_token_for_current_user(text) fr
 grant execute on function public.consume_mhp_invite_token_for_current_user(text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 4. Verification notes
+-- 4. Journal read gate — active membership required
+-- ---------------------------------------------------------------------------
+-- Invited MHP onboarding uses is_wayfinder_counsellor() for profile/licence draft
+-- RLS. Broad parent journal read must require active membership so pending_review
+-- invitees cannot read parent journal_entries before owner/admin activation.
+
+create or replace function public.can_read_parent_journals_as_mhp()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    join public.mental_health_professional_memberships m
+      on m.user_id = p.user_id
+    where p.user_id = auth.uid()
+      and p.role = 'counsellor'
+      and m.membership_status = 'active'
+      and (
+        m.institutional_membership_expires_at is null
+        or m.institutional_membership_expires_at > now()
+      )
+  );
+$$;
+
+revoke all on function public.can_read_parent_journals_as_mhp() from public;
+grant execute on function public.can_read_parent_journals_as_mhp() to authenticated;
+
+drop policy if exists "Counsellors can read journal entries"
+  on public.journal_entries;
+
+create policy "Counsellors can read journal entries"
+  on public.journal_entries
+  for select
+  to authenticated
+  using (public.can_read_parent_journals_as_mhp());
+
+-- Grant-scoped counsellor journal reads (review grants) remain unchanged in
+-- supabase-counsellor-review-grants.sql — this patch tightens only the broad policy.
+
+-- ---------------------------------------------------------------------------
+-- 5. Verification notes
 -- ---------------------------------------------------------------------------
 -- Token table remains without authenticated grants.
 -- Parents and counsellors cannot SELECT token hashes via REST.
 -- Consumption creates counsellor profile (C- Wayfinder ID), draft MHP profile,
 -- and pending_review membership only — not publication.
+-- Pending-review MHPs must not pass can_read_parent_journals_as_mhp() until
+-- owner/admin sets membership_status = 'active'.

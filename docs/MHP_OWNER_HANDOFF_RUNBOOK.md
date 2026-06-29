@@ -116,6 +116,7 @@ If any item is unclear, pause enablement and resolve before granting access or s
 - Expired, revoked, or already-used tokens show safe errors without exposing private data.
 - Raw token is never stored in SQL; browser must not log the token.
 - After acceptance, invitee enters existing MHP profile/licence draft onboarding — publication and licence admin review still required separately.
+- **Journal read safety (PR #132 patch):** broad `journal_entries` counsellor read now requires `can_read_parent_journals_as_mhp()` — active membership only. Invited MHPs in `pending_review` can onboard but cannot read parent journals until owner/admin activates membership. Grant-scoped review reads remain separate.
 
 ---
 
