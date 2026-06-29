@@ -276,8 +276,8 @@ Explicitly **out of scope** for language work:
 | Step | PR theme (suggested) | Delivers |
 |------|----------------------|----------|
 | 1 | **PR #123 (this)** | Strategy spec only |
-| 2 | PR #124+ | Static UI dictionary structure + language toggle UI (parent portal) |
-| 3 | Later | Optional `preferred_language` persistence after schema review |
+| 2 | **PR #124 (runtime foundation)** | Static UI dictionary + parent dashboard toggle (`localStorage` only) |
+| 3 | PR #125+ | Broader parent portal static copy translation |
 | 4 | Later | MHP portal static copy translation |
 | 5 | Later | Payment upgrade copy localisation (with payment runtime) |
 | 6 | Later | Self-read relationship bytes zh-Hans content |

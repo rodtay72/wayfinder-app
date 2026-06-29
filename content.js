@@ -753,6 +753,40 @@ const SIGNUP_PRIVACY_ACKNOWLEDGEMENT = {
   retryButton: "Try again"
 };
 
+// Parent-facing static UI copy — PR #124 language toggle foundation (no private user content)
+const WAYFINDER_I18N = {
+  en: {
+    "language.label": "Language",
+    "language.english": "English",
+    "language.zhHans": "简体中文",
+    "nav.journalTrail": "Journal trail",
+    "nav.journalTrailOpen": "Open my journal trail",
+    "relationshipGarden.title": "Your Relationship Garden",
+    "decode.guidedReflection": "Guided reflection",
+    "decode.title": "Decode a Moment",
+    "decode.cardSubtitle": "\"My child did something and I don't know why.\"",
+    "decode.cardHelper": "Pause, notice what may have been happening, and choose one steady next step.",
+    "decode.start": "Start Decode",
+    "trail.pageTitle": "Journal trail",
+    "trail.loading": "Loading your journal trail..."
+  },
+  "zh-Hans": {
+    "language.label": "语言",
+    "language.english": "English",
+    "language.zhHans": "简体中文",
+    "nav.journalTrail": "反思记录",
+    "nav.journalTrailOpen": "打开我的反思记录",
+    "relationshipGarden.title": "关系花园",
+    "decode.guidedReflection": "引导式反思",
+    "decode.title": "解读一个时刻",
+    "decode.cardSubtitle": "「孩子做了一件事，我不确定背后的原因。」",
+    "decode.cardHelper": "先慢下来，留意可能发生了什么，并选择一个稳妥的下一步。",
+    "decode.start": "开始解读",
+    "trail.pageTitle": "反思记录",
+    "trail.loading": "正在加载您的反思记录…"
+  }
+};
+
 // Export everything
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -784,6 +818,7 @@ if (typeof module !== 'undefined' && module.exports) {
     SIGNUP_PRIVACY_ACKNOWLEDGEMENT,
     MENTAL_HEALTH_PROFESSIONAL_ONBOARDING,
     PARENT_SIGNUP_INVITE,
-    MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST
+    MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST,
+    WAYFINDER_I18N
   };
 }

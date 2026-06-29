@@ -10,6 +10,78 @@
 
 const { useState, useEffect, useMemo, useRef } = React;
 
+/* ============ LANGUAGE (PR #124) ============ */
+const WAYFINDER_LANG_STORAGE_KEY = 'wayfinder_preferred_language';
+const WAYFINDER_SUPPORTED_LANGUAGES = ['en', 'zh-Hans'];
+
+function normalizePreferredLanguage(value){
+ const lang=String(value||'').trim();
+ return WAYFINDER_SUPPORTED_LANGUAGES.includes(lang)?lang:'en';
+}
+
+function getPreferredLanguage(){
+ try{return normalizePreferredLanguage(localStorage.getItem(WAYFINDER_LANG_STORAGE_KEY));}
+ catch{return'en';}
+}
+
+function setPreferredLanguage(lang){
+ const next=normalizePreferredLanguage(lang);
+ try{localStorage.setItem(WAYFINDER_LANG_STORAGE_KEY,next);}
+ catch(_err){}
+ if(typeof document!=='undefined'){
+  document.documentElement.lang=next==='zh-Hans'?'zh-Hans':'en';
+ }
+ if(typeof window!=='undefined'){
+  window.dispatchEvent(new CustomEvent('wayfinder:languagechange',{detail:{lang:next}}));
+ }
+ return next;
+}
+
+function t(key,fallback){
+ const lang=getPreferredLanguage();
+ const dict=typeof WAYFINDER_I18N!=='undefined'?WAYFINDER_I18N:{};
+ const bucket=dict[lang]||dict.en||{};
+ const value=bucket[key];
+ if(value!==undefined&&value!=='') return value;
+ const enValue=(dict.en||{})[key];
+ if(enValue!==undefined&&enValue!=='') return enValue;
+ return fallback!==undefined?fallback:key;
+}
+
+function usePreferredLanguage(){
+ const [lang,setLangState]=useState(()=>getPreferredLanguage());
+ useEffect(()=>{
+  const onChange=(e)=>setLangState(normalizePreferredLanguage(e?.detail?.lang||getPreferredLanguage()));
+  window.addEventListener('wayfinder:languagechange',onChange);
+  if(typeof document!=='undefined'){
+   document.documentElement.lang=lang==='zh-Hans'?'zh-Hans':'en';
+  }
+  return ()=>window.removeEventListener('wayfinder:languagechange',onChange);
+ },[lang]);
+ const setLang=(next)=>setLangState(setPreferredLanguage(next));
+ return [lang,setLang];
+}
+
+function LanguageToggle({className=''}){
+ const [lang,setLang]=usePreferredLanguage();
+ const options=[
+  {code:'en',label:t('language.english','English')},
+  {code:'zh-Hans',label:t('language.zhHans','简体中文')}
+ ];
+ return <div className={'language-toggle'+(className?' '+className:'')} role="group" aria-label={t('language.label','Language')}>
+  <span className="language-toggle-label">{t('language.label','Language')}</span>
+  <div className="language-toggle-options">
+   {options.map(opt=><button
+    key={opt.code}
+    type="button"
+    className={'language-toggle-btn'+(lang===opt.code?' is-active':'')}
+    aria-pressed={lang===opt.code}
+    onClick={()=>setLang(opt.code)}
+   >{opt.label}</button>)}
+  </div>
+ </div>;
+}
+
 /* ============ DATA ============ */
 // PHASES, ACTIVITIES, MARKERS, VALUE_GROUPS, CHILD_NEEDS_WORDS, CULTURE, SHIFT_WORDS
 // are all loaded from content.js (edit that file to change content)
@@ -2212,6 +2284,7 @@ const buildAlignJourneySummary=(entries)=>{
  }
 };
 function AlignJourneySection({entries,onStartDecode}){
+ usePreferredLanguage();
  const summary=buildAlignJourneySummary(entries);
  return <div className="card dashboard-section align-journey-section" role="region" aria-label="Your ALIGN Journey">
   <div className="dashboard-section-head">
@@ -2223,7 +2296,7 @@ function AlignJourneySection({entries,onStartDecode}){
   {summary.showEmpty ? <div className="dashboard-empty align-journey-empty">
    <p className="align-journey-empty-title">Your ALIGN Journey is beginning</p>
    <p className="align-journey-empty-body">After you decode a few moments, Wayfinder will reflect back possible patterns in needs, CAB responses, growth practices, and next actions.</p>
-   {onStartDecode ? <button type="button" className="btn btn-primary align-journey-empty-cta" onClick={onStartDecode}>Start Decode</button> : null}
+   {onStartDecode ? <button type="button" className="btn btn-primary align-journey-empty-cta" onClick={onStartDecode}>{t('decode.start','Start Decode')}</button> : null}
   </div> : <>
    <div className="align-journey-grid">
     <div className="align-journey-card align-journey-item">
@@ -2647,6 +2720,7 @@ function AppVersionPage({back,onSignOut}){
 }
 
 function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,onShareForReview,onSaved,onSignOut}){
+ usePreferredLanguage();
  const [step,setStep]=useState(0);
  const [decode,setDecode]=useState(emptyDecodeMoment);
  const [saveState,setSaveState]=useState('idle');
@@ -2712,7 +2786,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
 
  const screen=()=>{
   if(step===0)return <div className="card decode-step-card">
-   <h1>Decode a Moment</h1>
+   <h1>{t('decode.title','Decode a Moment')}</h1>
    <p className="decode-lead">Sometimes a child’s behaviour is the visible part of something they cannot yet explain. This is not about finding what is wrong with your child. It is about slowing the moment down, noticing what may have been happening for them, and noticing what happened in your thinking, feelings, and behaviour.</p>
    <div className="decode-teach">
     <h2>Why realignment matters</h2>
@@ -2876,7 +2950,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
  };
 
  return <div className="wrap decode-shell">
-  <Bar title="Decode a Moment" back={back} onSignOut={onSignOut}/>
+  <Bar title={t('decode.title','Decode a Moment')} back={back} onSignOut={onSignOut}/>
   <Stepper/>
   {screen()}
  </div>;
@@ -2950,6 +3024,7 @@ const logGardenDebug=(childId,evidence,stage)=>{
 };
 
 function RelationshipGarden({dyads,entries}){
+ usePreferredLanguage();
  const PLANT_COLORS=['#7FA87A','#BF8066','#8880A0','#5888B4'];
  const colorOf=(id)=>{let h=0;for(let j=0;j<id.length;j++)h=(h*31+id.charCodeAt(j))&0xffff;return PLANT_COLORS[h%PLANT_COLORS.length];};
  const stageOf=(dyad)=>{
@@ -2992,9 +3067,9 @@ function RelationshipGarden({dyads,entries}){
   </g>}
  </svg>;
  if(!dyads||dyads.length===0) return null;
- return <div className="card garden-card" role="region" aria-label="Your Relationship Garden">
+ return <div className="card garden-card" role="region" aria-label={t('relationshipGarden.title','Your Relationship Garden')}>
   <div className="garden-header">
-   <h2>Your Relationship Garden</h2>
+   <h2>{t('relationshipGarden.title','Your Relationship Garden')}</h2>
    <p className="dashboard-helper">Each relationship can be tended through pause, reflection, repair, and ALIGN.</p>
   </div>
   <div className="garden-pots" role="list">
@@ -3572,6 +3647,7 @@ function MentalHealthProfessionalInvitePanel({inviteShareMeta,professionalInvite
 }
 
 function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut}){
+ usePreferredLanguage();
  const [dyads,setDyads]=useState([]);
  const [dyad,setDyad]=useState(null);
  const [entries,setEntries]=useState([]);
@@ -3854,9 +3930,10 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <ProfileSettings user={user} profile={profile} dyads={dyads} entries={entries} compact/>
     </div>
     <div className="dashboard-actions">
+     <LanguageToggle className="language-toggle-dashboard"/>
      <button className="switch" onClick={startNewChild}>+ New child</button>
      <button className="switch" onClick={startNewEntry}>Start new activity</button>
-     <button className="switch switch-trail" onClick={()=>setStage('trail')}>Journal trail</button>
+     <button className="switch switch-trail" onClick={()=>setStage('trail')}>{t('nav.journalTrail','Journal trail')}</button>
      <button className="switch switch-trail" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardActionLabel||'Share for counsellor review'}</button>
      <button type="button" className="switch switch-trail" title={inviteShareMeta.parentButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={()=>setInviteShareOpen(true)}>{inviteShareMeta.parentButtonLabel||'Invite another parent'}</button>
      <button className="switch switch-trail" onClick={()=>setStage('events')}>Events</button>
@@ -3905,12 +3982,12 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
    <div className="card decode-card">
     <div>
-     <p className="pill">Guided reflection</p>
-     <h2>Decode a Moment</h2>
-     <p className="decode-card-subtitle">"My child did something and I don't know why."</p>
-     <p className="dashboard-helper">Pause, notice what may have been happening, and choose one steady next step.</p>
+     <p className="pill">{t('decode.guidedReflection','Guided reflection')}</p>
+     <h2>{t('decode.title','Decode a Moment')}</h2>
+     <p className="decode-card-subtitle">{t('decode.cardSubtitle','"My child did something and I don\'t know why."')}</p>
+     <p className="dashboard-helper">{t('decode.cardHelper','Pause, notice what may have been happening, and choose one steady next step.')}</p>
     </div>
-    <button className="btn btn-primary" onClick={startDecode}>Start Decode</button>
+    <button className="btn btn-primary" onClick={startDecode}>{t('decode.start','Start Decode')}</button>
    </div>
 
    <div className="card review-share-dashboard-card">
@@ -3990,7 +4067,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
       </div>;
      })}
     </div>}
-    <button className="btn btn-secondary btn-block dashboard-trail-btn" onClick={()=>setStage('trail')}>Open my journal trail</button>
+    <button className="btn btn-secondary btn-block dashboard-trail-btn" onClick={()=>setStage('trail')}>{t('nav.journalTrailOpen','Open my journal trail')}</button>
    </div>
 
    <div className="card dashboard-lean-card">
@@ -4303,6 +4380,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
 }
 
 function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialShareEntryId=null,scrollToSharePanel=false,onShareNavHandled,feedbackMeta:feedbackMetaProp}){
+ usePreferredLanguage();
  const reviewMeta=typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING:{};
  const feedbackMeta=feedbackMetaProp||parentCounsellorFeedbackMeta();
  const [entries,setEntries]=useState([]);
@@ -4420,7 +4498,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
   return date.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
  };
 
- if(loading) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading your journal trail...</div></div>;
+ if(loading) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>{t('trail.loading','Loading your journal trail...')}</div></div>;
 
  if(shareMode) return <div className="wrap review-share-mode-wrap">
   <Bar title={reviewMeta.title||'Share for counsellor review'} back={exitShareMode} onSignOut={onSignOut}/>
@@ -4429,7 +4507,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
  </div>;
 
  return <div className="wrap">
-  <Bar title={'Journal trail - '+parentId} back={back} onSignOut={onSignOut}/>
+  <Bar title={t('trail.pageTitle','Journal trail')+' - '+parentId} back={back} onSignOut={onSignOut}/>
   <div className="card review-share-cta">
    <div>
     <h2>{reviewMeta.title||'Share for counsellor review'}</h2>
