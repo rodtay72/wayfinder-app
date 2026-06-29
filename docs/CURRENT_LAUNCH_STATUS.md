@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-29
 
-**Last verified merge:** PR #130A — Hotfix MHP invite request insert return
+**Last verified merge:** PR #131 — Owner-admin MHP invite approval token contract
 
-**Next proposed PR:** PR #131 — Owner-admin MHP invite approval token contract
+**Next proposed PR:** PR #132 — Invited MHP token acceptance and onboarding entry
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -172,7 +172,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #128 MHP invite request email recipient | Pre-fill Wayfinder admin To on mailto draft; clearer admin-mediated copy | Complete (merged) |
 | PR #129 MHP invite request intake | SQL/RLS contract (column-limited grants) + in-app pending request submit + owner admin read-only queue; approval/invite deferred to PR #130 | Complete (merged) |
 | PR #130A MHP invite request insert return hotfix | Explicit safe PostgREST `select` on invite request POST for column-limited grants | Complete (merged) |
-| PR #131 MHP invite approval token contract | Owner/admin approve pending request + one-time invite token RPC; no auth/profile/publication | In flight |
+| PR #131 MHP invite approval token contract | Owner/admin approve pending request + one-time invite token RPC; no auth/profile/publication | Complete (merged) |
+| PR #132 MHP invite token acceptance | Invitee opens `/counsellor.html?mhp_invite=<token>`, email-bound one-time consumption, MHP onboarding entry | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -183,7 +184,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A)
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128–#131)** — **PR #129–#130A merged**; **PR #131 in flight** — owner/admin approval token contract; invitee sign-up deferred to **PR #132**; payment gateway remains paused until MHP invitation pipeline is stable; owner must apply [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql) and [supabase-mhp-invite-approval-token-contract.sql](../supabase-mhp-invite-approval-token-contract.sql) for full intake + approval flow
+- **MHP invite request pipeline (PR #128–#132)** — **PR #129–#131 merged**; **PR #132 in flight** — invitee token acceptance at `/counsellor.html?mhp_invite=<token>`; payment gateway remains paused until MHP invitation pipeline is stable; owner must apply invite SQL files through [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) for full flow
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
@@ -213,8 +214,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 13. MHP invite request intake (after PR #129 + SQL apply): counsellor can submit pending colleague invite request from MHP modal; owner `/admin.html` shows pending request queue; copy/email fallback still works; no auth/profile/token/publication created.
 14. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 15. MHP invite approval (after PR #131 + SQL apply): owner approves pending request; one-time invite link shown; request status `approved`; token row has hash only; no auth/profile/publication created.
-
-## Agent ops notes
+16. MHP invite acceptance (after PR #132 + SQL apply): invitee opens `/counsellor.html?mhp_invite=<token>`, signs in with invited email, token consumed once, draft MHP profile/onboarding opens; wrong email/expired/consumed token blocked safely; pending-review MHP cannot read broad parent `journal_entries` until membership is `active`.
+17. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 
 - **Launch freeze active** — [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 - One branch, one merge at a time.

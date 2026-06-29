@@ -372,15 +372,42 @@ function Landing({onEnter,user,profile,onSignOut,authReady,role}){
  </div>;
 }
 
+const MHP_INVITE_STORAGE_KEY='wayfinder_mhp_invite_token';
+
+const readStoredMhpInviteToken=()=>{
+ if(typeof window==='undefined') return '';
+ try{
+  const stored=sessionStorage.getItem(MHP_INVITE_STORAGE_KEY);
+  return stored&&String(stored).trim()?String(stored).trim():'';
+ }catch(_){
+  return '';
+ }
+};
+
+const storeMhpInviteToken=(token)=>{
+ const raw=String(token||'').trim();
+ if(!raw||typeof window==='undefined') return;
+ try{sessionStorage.setItem(MHP_INVITE_STORAGE_KEY,raw);}catch(_){}
+};
+
+const clearStoredMhpInviteToken=()=>{
+ if(typeof window==='undefined') return;
+ try{sessionStorage.removeItem(MHP_INVITE_STORAGE_KEY);}catch(_){}
+};
+
 const parseInviteTokenFromUrl=()=>{
  if(typeof window==='undefined') return '';
  try{
   const url=new URL(window.location.href);
+  const fromMhpInvite=url.searchParams.get('mhp_invite');
+  if(fromMhpInvite&&String(fromMhpInvite).trim()) return String(fromMhpInvite).trim();
   const fromQuery=url.searchParams.get('invite');
   if(fromQuery&&String(fromQuery).trim()) return String(fromQuery).trim();
   const hash=url.hash&&url.hash.startsWith('#')?url.hash.slice(1):'';
   if(hash){
    const hashParams=new URLSearchParams(hash);
+   const fromHashMhp=hashParams.get('mhp_invite');
+   if(fromHashMhp&&String(fromHashMhp).trim()) return String(fromHashMhp).trim();
    const fromHash=hashParams.get('invite');
    if(fromHash&&String(fromHash).trim()) return String(fromHash).trim();
   }
@@ -394,13 +421,26 @@ const clearInviteFromUrl=()=>{
  if(typeof window==='undefined') return;
  try{
   const url=new URL(window.location.href);
-  if(!url.searchParams.has('invite')) return;
-  url.searchParams.delete('invite');
+  let changed=false;
+  if(url.searchParams.has('mhp_invite')){url.searchParams.delete('mhp_invite');changed=true;}
+  if(url.searchParams.has('invite')){url.searchParams.delete('invite');changed=true;}
+  if(!changed) return;
   window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
  }catch(_){}
 };
 
-function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
+function MhpInviteInvalidScreen({meta,message,onClear}){
+ return <div className="wrap">
+  <div className="card mhp-invite-card mhp-invite-invalid-card">
+   <h2>{meta.inviteInvalidTitle||'Invitation link unavailable'}</h2>
+   <p className="dashboard-helper">{message||meta.inviteInvalidFallback||'This invitation link is invalid, expired, or no longer active.'}</p>
+   <p className="sub mhp-invite-note">{meta.inviteAdminContactFallback||'If this keeps happening, contact Wayfinder admin for support.'}</p>
+   {onClear ? <button type="button" className="btn btn-ghost" onClick={onClear}>Return to sign in</button> : null}
+  </div>
+ </div>;
+}
+
+function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteStatus}){
  const [mode,setMode]=useState('signin');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -426,6 +466,10 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
  const pdpaBody=String(pdpaNotice.body||'').trim();
  const pdpaCheckboxLabel=String(pdpaNotice.checkboxLabel||'I have read and understood this privacy and data-use notice.').trim();
  const pdpaUncheckedMessage=String(pdpaNotice.uncheckedMessage||'Please read the privacy and data-use notice and confirm you understand it before creating your account.').trim();
+ useEffect(()=>{
+  if(!inviteToken||!inviteStatus?.invitedEmail) return;
+  setEmail((prev)=>prev||inviteStatus.invitedEmail);
+ },[inviteToken,inviteStatus?.invitedEmail]);
  const switchMode=(nextMode)=>{
   setMode(nextMode);
   setError('');
@@ -492,8 +536,10 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken}){
   </div>
   {inviteToken ? <div className="card mhp-invite-card">
    <h2>{mhpMeta.inviteTitle||"You've been invited as a Mental Health Professional"}</h2>
-   <p className="dashboard-helper">{mhpMeta.inviteSubtitle||'Sign in or create an account using the email address your invitation was sent to.'}</p>
-   <p className="sub mhp-invite-note">{mhpMeta.inviteSignInNote||'Use the invited email address. Your invite link has been received — you do not need to enter it again.'}</p>
+   <p className="dashboard-helper">{mhpMeta.inviteSubtitle||'You have been invited to begin Mental Health Professional onboarding for Wayfinder.'}</p>
+   <p className="sub mhp-invite-note">{mhpMeta.inviteOnboardingSafetyNote||'This invitation does not publish your profile or activate public access automatically.'}</p>
+   {inviteStatus?.invitedEmail ? <p className="sub mhp-invite-email-hint"><span className="mhp-invite-email-label">{mhpMeta.inviteUseEmailLabel||'Invited email'}: </span>{inviteStatus.invitedEmail}</p> : null}
+   <p className="sub mhp-invite-note">{mhpMeta.inviteSignInNote||'Sign in or create an account using the invited email address below.'}</p>
   </div> : null}
   <div className="card auth-login-card" style={{padding:0,overflow:'hidden'}}>
    {(role==='parent'||role==='counsellor') ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'}/> : null}
@@ -1567,20 +1613,68 @@ function App(){
  const [authMessage,setAuthMessage]=useState('');
  const [authMessageEmail,setAuthMessageEmail]=useState('');
  const [pendingInviteToken,setPendingInviteToken]=useState('');
+ const [inviteStatus,setInviteStatus]=useState({loading:false,checked:false,valid:false,invitedEmail:'',invitedName:'',expiresAt:null,message:'',unavailable:false});
+ const [inviteConsumeError,setInviteConsumeError]=useState('');
+ const [startMhpOnboarding,setStartMhpOnboarding]=useState(false);
  const profileLoadRef = useRef({ userId: null, promise: null });
  const passwordRecoveryRef = useRef(false);
  const pendingInviteTokenRef = useRef('');
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
  const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
 
+ const clearPendingInviteToken=()=>{
+  pendingInviteTokenRef.current='';
+  setPendingInviteToken('');
+  clearStoredMhpInviteToken();
+ };
+
  useEffect(()=>{
-  const token=parseInviteTokenFromUrl();
+  const fromUrl=parseInviteTokenFromUrl();
+  const fromStorage=readStoredMhpInviteToken();
+  const token=fromUrl||fromStorage;
   if(token){
    pendingInviteTokenRef.current=token;
    setPendingInviteToken(token);
-   clearInviteFromUrl();
+   storeMhpInviteToken(token);
+   if(fromUrl) clearInviteFromUrl();
   }
  },[]);
+
+ useEffect(()=>{
+  if(APP_ROLE!=='counsellor'||!pendingInviteToken) return undefined;
+  let cancelled=false;
+  const checkInvite=async()=>{
+   setInviteStatus((prev)=>({...prev,loading:true,checked:false}));
+   try{
+    const result=await DB.getMhpInviteTokenStatus(pendingInviteToken);
+    if(cancelled) return;
+    if(result.unavailable){
+     setInviteStatus({loading:false,checked:true,valid:false,invitedEmail:'',invitedName:'',expiresAt:null,message:mhpMeta.inviteAcceptanceUnavailable||'',unavailable:true});
+     return;
+    }
+    if(!result.ok||!result.status){
+     setInviteStatus({loading:false,checked:true,valid:false,invitedEmail:'',invitedName:'',expiresAt:null,message:mhpMeta.inviteInvalidFallback||'',unavailable:false});
+     return;
+    }
+    setInviteStatus({
+     loading:false,
+     checked:true,
+     valid:!!result.status.valid,
+     invitedEmail:result.status.invitedEmail||'',
+     invitedName:result.status.invitedName||'',
+     expiresAt:result.status.expiresAt||null,
+     message:result.status.message||'',
+     unavailable:false
+    });
+   }catch(err){
+    if(cancelled) return;
+    AuthDebug.log('[mhp invite] status check failed:', { message: err?.message || String(err) });
+    setInviteStatus({loading:false,checked:true,valid:false,invitedEmail:'',invitedName:'',expiresAt:null,message:mhpMeta.inviteInvalidFallback||'',unavailable:false});
+   }
+  };
+  checkInvite();
+  return ()=>{cancelled=true;};
+ },[APP_ROLE,pendingInviteToken,mhpMeta.inviteAcceptanceUnavailable,mhpMeta.inviteInvalidFallback]);
 
  const startPasswordRecovery=async(rawSession,source='auth-state')=>{
   let session=rawSession||null;
@@ -1725,13 +1819,37 @@ function App(){
    localStorage.removeItem('sj_v2_reviews');
    try{
     let profilePromise=profileLoadRef.current.promise;
+    const inviteTokenActive=APP_ROLE==='counsellor'&&!!pendingInviteTokenRef.current;
 
     if(profileLoadRef.current.userId!==session.user.id||!profilePromise){
-     const counsellorUsesExisting=APP_ROLE==='counsellor'&&!pendingInviteTokenRef.current;
-     const adminUsesExisting=APP_ROLE==='admin';
-     profilePromise=adminUsesExisting||counsellorUsesExisting
-      ? Profile.getExisting(session.user.id,session)
-      : Profile.getOrCreate(session.user.id,APP_ROLE,session);
+     if(inviteTokenActive){
+      setInviteConsumeError('');
+      const consumeResult=await DB.consumeMhpInviteTokenForCurrentUser(session.user.id,pendingInviteTokenRef.current,session);
+      if(consumeResult.unavailable){
+       setProfile(null);
+       setInviteConsumeError(mhpMeta.inviteAcceptanceUnavailable||'Invitation acceptance is not available yet.');
+       setAuthReady(true);
+       return false;
+      }
+      if(!consumeResult.ok||!consumeResult.accepted||!consumeResult.record){
+       const consumeMessage=consumeResult.record?.message||mhpMeta.inviteConsumeFailure||'We could not accept this invitation right now.';
+       setProfile(null);
+       setAccessDenied(consumeMessage);
+       setInviteConsumeError(consumeMessage);
+       setAuthReady(true);
+       return false;
+      }
+      clearPendingInviteToken();
+      setInviteStatus({loading:false,checked:true,valid:false,invitedEmail:'',invitedName:'',expiresAt:null,message:'',unavailable:false});
+      setStartMhpOnboarding(true);
+      profilePromise=Profile.getExisting(session.user.id,session);
+     }else{
+      const counsellorUsesExisting=APP_ROLE==='counsellor';
+      const adminUsesExisting=APP_ROLE==='admin';
+      profilePromise=adminUsesExisting||counsellorUsesExisting
+       ? Profile.getExisting(session.user.id,session)
+       : Profile.getOrCreate(session.user.id,APP_ROLE,session);
+     }
      profileLoadRef.current={userId:session.user.id,promise:profilePromise};
     }
 
@@ -1891,14 +2009,25 @@ function App(){
  });
 
  if(!authReady){AuthDebug.log('[render] branch: auth loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>Loading…</div></div>;}
-  if(passwordRecovery.active){AuthDebug.log('[render] branch: password recovery');return <PasswordRecoveryScreen status={passwordRecovery} role={APP_ROLE} onSubmit={completePasswordRecovery} onSignOut={signOut}/>;}
-  if(!user){AuthDebug.log('[render] branch: auth screen');return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={pendingInviteToken||null}/>;}
-  if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
-  if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
-   <h2 style={{marginBottom:12}}>{accessDenied}</h2>
-   <p className="sub">This portal is limited to verified counsellor accounts.</p>
-   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
-  </div></div>;}
+ if(passwordRecovery.active){AuthDebug.log('[render] branch: password recovery');return <PasswordRecoveryScreen status={passwordRecovery} role={APP_ROLE} onSubmit={completePasswordRecovery} onSignOut={signOut}/>;}
+ if(!user){
+  if(APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.loading){
+   AuthDebug.log('[render] branch: mhp invite checking');
+   return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>{mhpMeta.inviteCheckingMessage||'Checking your invitation…'}</div></div>;
+  }
+  if(APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.checked&&!inviteStatus.valid&&!inviteStatus.unavailable){
+   AuthDebug.log('[render] branch: mhp invite invalid');
+   return <MhpInviteInvalidScreen meta={mhpMeta} message={inviteStatus.message} onClear={clearPendingInviteToken}/>;
+  }
+  AuthDebug.log('[render] branch: auth screen');
+  return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={pendingInviteToken||null} inviteStatus={inviteStatus.valid?inviteStatus:null}/>;
+ }
+ if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
+ if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
+  <h2 style={{marginBottom:12}}>{accessDenied}</h2>
+  <p className="sub">{inviteConsumeError? (mhpMeta.inviteAdminContactFallback||'If this keeps happening, contact Wayfinder admin for support.') : 'This portal is limited to verified counsellor accounts.'}</p>
+  <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
+ </div></div>;}
   if(profileError){AuthDebug.log('[render] branch: profile error');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40}}>
   <h2 style={{marginBottom:10}}>Profile loading issue</h2>
   <p className="sub">{profileError}</p>
@@ -1915,7 +2044,7 @@ function App(){
  </div></div>;}
 
  if(APP_ROLE==='admin'){AuthDebug.log('[render] branch: owner admin app');return <OwnerAdminApp user={user} authSession={authSession} onSignOut={signOut}/>;}
- if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} profile={profile} authSession={authSession} onSignOut={signOut}/>;}
+ if(APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: counsellor app');return <CounsellorApp back={()=>setEntered(false)} user={user} profile={profile} authSession={authSession} onSignOut={signOut} startMhpOnboarding={startMhpOnboarding} onMhpOnboardingStarted={()=>setStartMhpOnboarding(false)}/>;}
  AuthDebug.log('[render] branch: client dashboard');
  return <ClientApp back={()=>setEntered(false)} user={user} parentId={profile.parent_id} profile={profile} authReady={authReady} authSession={authSession} onSignOut={signOut}/>;
 }
@@ -6439,7 +6568,8 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
  </>;
 }
 
-function CounsellorApp({back,user,profile,authSession,onSignOut}){
+function CounsellorApp({back,user,profile,authSession,onSignOut,startMhpOnboarding=false,onMhpOnboardingStarted}){
+ const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
  const [entries,setEntries]=useState([]);
  const [grantGroups,setGrantGroups]=useState([]);
  const [openId,setOpenId]=useState(null);
@@ -6456,6 +6586,14 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const [usingLegacyJournalAccess,setUsingLegacyJournalAccess]=useState(false);
  const [inviteShareOpen,setInviteShareOpen]=useState(false);
  const [mhpInviteRequestOpen,setMhpInviteRequestOpen]=useState(false);
+ const [inviteAcceptedNotice,setInviteAcceptedNotice]=useState('');
+
+ useEffect(()=>{
+  if(!startMhpOnboarding) return;
+  setCounsellorStage('editProfile');
+  setInviteAcceptedNotice(mhpMeta.inviteAcceptedMessage||'You may begin your Mental Health Professional profile and licence draft.');
+  if(typeof onMhpOnboardingStarted==='function') onMhpOnboardingStarted();
+ },[startMhpOnboarding,onMhpOnboardingStarted,mhpMeta.inviteAcceptedMessage]);
 
  const entryChildAge=(e)=>{
   if(!e.childDob||!e.date) return 'unknown';
@@ -6595,7 +6733,6 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const openGrantGroup=open?grantGroups.find((g)=>(g.entries||[]).some((e)=>e._key===open._key)):null;
  const hostingMeta=typeof COUNSELLOR_EVENTS_HOSTING!=='undefined'?COUNSELLOR_EVENTS_HOSTING:{};
  const reviewMeta=typeof COUNSELLOR_REVIEW_SHARING!=='undefined'?COUNSELLOR_REVIEW_SHARING:{};
- const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
  const inviteShareMeta=parentSignupInviteMeta();
  const professionalInviteMeta=mhpProfessionalInviteMeta();
  const inviteShareModal=<ParentSignupInviteModal open={inviteShareOpen} context="counsellor" onClose={()=>setInviteShareOpen(false)}/>;
@@ -6614,6 +6751,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  if(counsellorStage==='editProfile') return <><div className="wrap">
   <Bar title="Counsellor workspace" back={back} onSignOut={onSignOut}/>
   <CounsellorWorkspaceNav activeStage="editProfile" reviewMeta={reviewMeta} hostingMeta={hostingMeta} mhpMeta={mhpMeta} onStageChange={setCounsellorStage}/>
+  {inviteAcceptedNotice ? <div className="card review-share-notice mhp-invite-accepted-notice" role="status">{inviteAcceptedNotice}</div> : null}
   {invitePanel}
   <MentalHealthProfessionalProfileEditor user={user} authSession={authSession} meta={mhpMeta}/>
  </div>{workspaceModals}</>;
