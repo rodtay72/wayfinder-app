@@ -265,6 +265,10 @@
   .mhp-invite-card{padding:22px 24px;background:#F6FAF7;border:1px solid #D8E6DC;margin-bottom:16px;}
   .mhp-invite-card h2{margin:0 0 10px;font-size:20px;color:#40514b;}
   .mhp-invite-note{margin:10px 0 0;font-size:13px;line-height:1.55;color:#5d6c66;}
+  .mhp-invite-email-hint{margin:10px 0 0;font-size:13px;line-height:1.55;color:#40514b;}
+  .mhp-invite-email-label{font-weight:700;color:#5d6c66;}
+  .mhp-invite-invalid-card{text-align:left;}
+  .mhp-invite-accepted-notice{margin-bottom:14px;}
   .mhp-onboarding-card{padding:28px 24px;text-align:left;}
   .mhp-onboarding-card h2{margin:0 0 12px;font-size:22px;color:#40514b;}
   .mhp-onboarding-card .dashboard-helper{margin-bottom:20px;}

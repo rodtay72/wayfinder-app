@@ -1015,6 +1015,17 @@ const isMhpInviteRequestsUnavailable = (status, responseText) => {
   return false;
 };
 
+const isMhpInviteAcceptanceUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst202')) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('get_mhp_invite_token_status') && text.includes('does not exist')) return true;
+  if (text.includes('consume_mhp_invite_token_for_current_user') && text.includes('does not exist')) return true;
+  if (text.includes('hash_mhp_invite_token') && text.includes('does not exist')) return true;
+  return false;
+};
+
 const normalizeMhpInviteRequestRow = (row) => {
   if (!row || typeof row !== 'object') return null;
   return {
@@ -1044,6 +1055,70 @@ const normalizeMhpInviteTokenFromRequestRow = (row) => {
     expiresAt: row.expires_at || row.expiresAt || null
   };
 };
+
+const normalizeMhpInviteTokenStatusRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    valid: !!row.valid,
+    status: row.status || '',
+    invitedEmail: row.invited_email || row.invitedEmail || '',
+    invitedName: row.invited_name || row.invitedName || '',
+    expiresAt: row.expires_at || row.expiresAt || null,
+    message: row.message || ''
+  };
+};
+
+const normalizeMhpInviteConsumeRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    accepted: !!row.accepted,
+    role: row.role || '',
+    invitedEmail: row.invited_email || row.invitedEmail || '',
+    invitedName: row.invited_name || row.invitedName || '',
+    message: row.message || ''
+  };
+};
+
+const callPublicRpcSafe = async ({ rpcName, body, context, unavailableCheck = isMhpInviteAcceptanceUnavailable }) => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body || {})
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      if (unavailableCheck(response.status, responseText)) {
+        AuthDebug.log('[db] public RPC unavailable:', { context, rpcName, status: response.status });
+        return { ok: false, unavailable: true, data: null, responseText };
+      }
+      AuthDebug.log('[db] public RPC failed:', { context, rpcName, status: response.status, responseText });
+      return { ok: false, unavailable: false, data: null, responseText };
+    }
+    let data = null;
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      data = responseText || null;
+    }
+    return { ok: true, unavailable: false, data, responseText };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (unavailableCheck(0, message)) {
+      return { ok: false, unavailable: true, data: null, responseText: message };
+    }
+    AuthDebug.log('[db] public RPC exception:', { context, rpcName, message });
+    return { ok: false, unavailable: false, data: null, responseText: message };
+  }
+};
+
+const callMhpInviteAcceptanceRpcSafe = (args) => callReviewResponseRpcSafe({
+  ...args,
+  unavailableCheck: isMhpInviteAcceptanceUnavailable
+});
 
 const isReviewGrantsUnavailable = (status, responseText) => {
   const text = String(responseText || '').toLowerCase();
@@ -3570,6 +3645,72 @@ const DB = {
       return { ok: false, unavailable: false, record: null };
     }
     return { ok: true, unavailable: false, record: result.rows[0] };
+  },
+
+  getMhpInviteTokenStatus: async (token) => {
+    const rawToken = String(token || '').trim();
+    if (!rawToken) {
+      return {
+        ok: false,
+        unavailable: false,
+        status: {
+          valid: false,
+          status: 'invalid',
+          invitedEmail: '',
+          invitedName: '',
+          expiresAt: null,
+          message: 'This invitation link is invalid or incomplete.'
+        }
+      };
+    }
+    const result = await callPublicRpcSafe({
+      rpcName: 'get_mhp_invite_token_status',
+      context: 'getMhpInviteTokenStatus',
+      body: { p_token: rawToken }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, status: null };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, status: null };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    const status = normalizeMhpInviteTokenStatusRow(rows[0]);
+    if (!status) {
+      return { ok: false, unavailable: false, status: null };
+    }
+    return { ok: true, unavailable: false, status };
+  },
+
+  consumeMhpInviteTokenForCurrentUser: async (userId, token, authSession = null) => {
+    const rawToken = String(token || '').trim();
+    if (!userId || !rawToken) {
+      return { ok: false, unavailable: false, accepted: false, record: null };
+    }
+    const result = await callMhpInviteAcceptanceRpcSafe({
+      rpcName: 'consume_mhp_invite_token_for_current_user',
+      userId,
+      authSession,
+      context: 'consumeMhpInviteTokenForCurrentUser',
+      body: { p_token: rawToken }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, accepted: false, record: null };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, accepted: false, record: null };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    const record = normalizeMhpInviteConsumeRow(rows[0]);
+    if (!record) {
+      return { ok: false, unavailable: false, accepted: false, record: null };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      accepted: !!record.accepted,
+      record
+    };
   },
 
   createMhpInviteTokenFromRequest: async (userId, requestId, authSession = null, expiresDays = 7) => {

@@ -102,10 +102,20 @@ If any item is unclear, pause enablement and resolve before granting access or s
 - Request status becomes **`approved`**; the row leaves the pending queue on refresh.
 - Admin UI shows a one-time link, **Copy invite link**, and **Open email draft to colleague** — no automatic email send.
 - Copy must state: *This link is for invitation only. It does not activate or publish MHP access automatically.*
-- Planned invite route for **PR #132** (not implemented in PR #131): `/counsellor.html?mhp_invite=<token>`
-- **Does not** create Supabase auth users, profiles, counsellor roles, membership, or publication.
-- Invitee acceptance / sign-up is deferred to **PR #132**.
+- Planned invite route for **PR #132**: `/counsellor.html?mhp_invite=<token>`
+- **Does not** create Supabase auth users, profiles, counsellor roles, membership, or publication at approval time.
 - Payment gateway runtime remains paused until the MHP invitation pipeline is stable.
+
+### Invitee token acceptance and onboarding entry (PR #132)
+
+- Invitee opens `/counsellor.html?mhp_invite=<token>` (requires [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql)).
+- `get_mhp_invite_token_status` validates token possession before sign-in (anon-safe, minimal fields only).
+- Invitee signs up or signs in with the **invited email address** only.
+- `consume_mhp_invite_token_for_current_user` marks token **consumed** (one-time), creates counsellor profile (`C-` Wayfinder ID), draft MHP profile, and `pending_review` membership — **not publication**.
+- Token consumption is **email-bound**; wrong signed-in email cannot consume.
+- Expired, revoked, or already-used tokens show safe errors without exposing private data.
+- Raw token is never stored in SQL; browser must not log the token.
+- After acceptance, invitee enters existing MHP profile/licence draft onboarding — publication and licence admin review still required separately.
 
 ---
 
@@ -303,7 +313,8 @@ Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not 
 2. Apply [supabase-mhp-owner-admin-review-rpc.sql](../supabase-mhp-owner-admin-review-rpc.sql) (PR #105)
 3. Apply [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql) (PR #129) — for in-app pending invite request submit and owner admin intake queue
 4. Apply [supabase-mhp-invite-approval-token-contract.sql](../supabase-mhp-invite-approval-token-contract.sql) (PR #131) — for owner/admin approve + one-time invite token generation
-5. Insert the owner auth `user_id` into `public.owner_admin_users` (see §9)
+5. Apply [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132) — for invitee token validation + consumption
+6. Insert the owner auth `user_id` into `public.owner_admin_users` (see §9)
 
 ### Page behaviour
 
