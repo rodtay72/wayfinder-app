@@ -721,7 +721,7 @@ const MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST = {
   professionalButtonTitle: "Prepare an admin invitation request. No public professional signup link.",
   modalTitle: "Invite counsellors to Wayfinder",
   modalIntro: "Mental Health Professional accounts are created by Wayfinder administrator invitation only.",
-  modalAdminNote: "There is no public counsellor or Mental Health Professional signup link. Use the fields below to prepare a request for Wayfinder admin review. Copy the message or open an email draft. You must send the email yourself. Admin must review this request before any MHP access is created. This does not create an account, send an invitation, create an invite token, or provision another professional.",
+  modalAdminNote: "There is no public counsellor or Mental Health Professional signup link. Submit a request for Wayfinder admin review, or copy the message / open an email draft. You must send email yourself if you use the draft. Admin must review this request before any MHP access is created. This does not create an account, send an invitation, create an invite token, or provision another professional.",
   fieldColleagueName: "Colleague name",
   fieldColleagueEmail: "Colleague email",
   fieldNote: "Optional note for Wayfinder admin",
@@ -732,7 +732,28 @@ const MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST = {
   emailDraftNote: "This opens an email draft in your mail app with Wayfinder admin in the To field. Review the message and click Send. Nothing is sent automatically and no MHP access is created until admin review.",
   closeButton: "Close",
   requestDraftIntro: "Wayfinder Mental Health Professional invitation request",
-  requestDraftFooter: "Please review and send this request to Wayfinder admin if appropriate. Admin must review before any invitation or access is created. No self-serve professional signup is available."
+  requestDraftFooter: "Please review and send this request to Wayfinder admin if appropriate. Admin must review before any invitation or access is created. No self-serve professional signup is available.",
+  submitRequestButton: "Submit request for admin review",
+  submittingRequestButton: "Submitting request…",
+  submitSuccessMessage: "Request sent for Wayfinder admin review. No access has been created yet.",
+  submitFailureMessage: "We could not save this request right now. You can copy the message or open an email draft instead.",
+  submitUnavailableMessage: "In-app request storage is not available yet. Copy the message or open an email draft to Wayfinder admin.",
+  submitValidationMessage: "Please enter your colleague's name and email before submitting.",
+  submitFallbackNote: "You can still copy the request message or open an email draft if in-app submit is unavailable."
+};
+
+const OWNER_ADMIN_MHP_INVITE_REQUESTS = {
+  sectionTitle: "Pending MHP colleague invite requests",
+  sectionIntro: "Counsellor-submitted requests awaiting owner review. This list does not create accounts, invite tokens, or publication. Approval and invitation are a separate admin step.",
+  emptyMessage: "No pending colleague invite requests right now.",
+  loadErrorMessage: "We could not load pending invite requests right now.",
+  unavailableMessage: "Invite request intake storage is not available yet. Apply supabase-mhp-invite-requests.sql in Supabase.",
+  requestLabel: "MHP colleague invite request",
+  requesterIdLabel: "Requester Wayfinder ID",
+  submittedLabel: "Submitted",
+  noteLabel: "Requester note",
+  readOnlyNote: "Read-only intake in this release. Use this queue to review requests before any invitation or access is created.",
+  refreshButton: "Refresh requests"
 };
 
 // PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)
@@ -975,6 +996,7 @@ if (typeof module !== 'undefined' && module.exports) {
     MENTAL_HEALTH_PROFESSIONAL_ONBOARDING,
     PARENT_SIGNUP_INVITE,
     MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST,
+    OWNER_ADMIN_MHP_INVITE_REQUESTS,
     WAYFINDER_I18N
   };
 }
