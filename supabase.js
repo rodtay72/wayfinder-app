@@ -1575,7 +1575,14 @@ const parseApiJson = async (response) => {
 
 // ---- AUTH ----
 const Auth = {
-  signUp: (email, password) => sb.auth.signUp({ email, password }),
+  signUp: (email, password, options = {}) => {
+    const payload = { email, password };
+    const emailRedirectTo = String(options.emailRedirectTo || '').trim();
+    if (emailRedirectTo) {
+      payload.options = { emailRedirectTo };
+    }
+    return sb.auth.signUp(payload);
+  },
   signIn: (email, password) => sb.auth.signInWithPassword({ email, password }),
   requestPasswordReset: async (email) => {
     const target = String(email || '').trim();
@@ -1593,7 +1600,7 @@ const Auth = {
     return { data, error };
   },
   updatePassword: (password) => sb.auth.updateUser({ password }),
-  resendVerification: async (target) => {
+  resendVerification: async (target, options = {}) => {
     const session = target && typeof target === 'object' ? target : null;
     const email = (typeof target === 'string' ? target : session?.user?.email || '').trim();
     if (!email) {
@@ -1603,9 +1610,10 @@ const Auth = {
       };
     }
 
-    const redirectTo = typeof window !== 'undefined'
-      ? `${window.location.origin}${window.location.pathname}`
-      : undefined;
+    const redirectTo = String(options?.emailRedirectTo || '').trim()
+      || (typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        : '');
     const resendRequest = {
       type: 'signup',
       email
