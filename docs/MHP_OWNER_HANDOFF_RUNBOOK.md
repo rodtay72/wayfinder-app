@@ -305,7 +305,8 @@ Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not 
 
 - Shows **pending** rows from `mental_health_professional_invite_requests` only.
 - Displays colleague name/email, optional requester note, requester Wayfinder ID, and submitted date.
-- **No approval or invite-token actions** in PR #129 — deferred to PR #130.
+- **No approval or invite-token actions** in PR #129 — deferred to **PR #130** (status updates, admin notes, controlled invitation).
+- Client/browser grants are **column-limited**: counsellors and owner admin REST reads cannot select `admin_note`, `reviewed_by`, or `reviewed_at`; no client UPDATE/DELETE until PR #130.
 - If SQL is not applied, the section shows a friendly unavailable message; the MHP profile review queue still loads.
 
 ### Review queue filters

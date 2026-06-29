@@ -170,7 +170,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #126 parent language QA hardening | Fallback/localStorage/html lang/overflow hardening; key parity audit | Complete (merged) |
 | PR #127 i18n debug storage guard | Follow-up: wrap debug parity localStorage in try/catch | Complete (merged) |
 | PR #128 MHP invite request email recipient | Pre-fill Wayfinder admin To on mailto draft; clearer admin-mediated copy | Complete (merged) |
-| PR #129 MHP invite request intake | SQL/RLS contract + in-app pending request submit + owner admin read-only queue | In flight |
+| PR #129 MHP invite request intake | SQL/RLS contract (column-limited grants) + in-app pending request submit + owner admin read-only queue; approval/invite deferred to PR #130 | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -181,7 +181,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A)
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128–#129)** — **PR #128 merged**; **PR #129 in flight** — in-app pending request intake + owner admin read-only queue; prioritised ahead of payment gateway runtime; owner must apply [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql) before runtime submit/admin list works
+- **MHP invite request pipeline (PR #128–#129)** — **PR #128 merged**; **PR #129 in flight** — read-only intake with column-limited grants (no client access to admin review fields); owner approval/invitation in **PR #130**; owner must apply [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql) before runtime submit/admin list works
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented

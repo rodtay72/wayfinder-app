@@ -159,16 +159,42 @@ create trigger trg_set_mhp_invite_request_updated_at
 -- ---------------------------------------------------------------------------
 -- 3. RLS and grants
 -- ---------------------------------------------------------------------------
+-- PR #129 is read-only intake.
+-- Owner/admin approval, status updates, admin notes, invite-token creation,
+-- and controlled invitation actions are deferred to PR #130.
+--
 -- Parents have no policy — no access.
--- Counsellors may insert pending requests for themselves and read own rows.
--- Owner/admin may read all and update review fields.
--- No client DELETE in v1 except owner/admin.
+-- Counsellors may insert pending requests for themselves and read own safe columns.
+-- Owner/admin may read all rows via the same client-safe column grant.
+-- No client UPDATE/DELETE in PR #129.
 
 alter table public.mental_health_professional_invite_requests enable row level security;
 
 revoke all on public.mental_health_professional_invite_requests from public;
-grant select, insert on public.mental_health_professional_invite_requests to authenticated;
-grant update, delete on public.mental_health_professional_invite_requests to authenticated;
+revoke all on public.mental_health_professional_invite_requests from anon;
+revoke all on public.mental_health_professional_invite_requests from authenticated;
+
+grant select (
+  id,
+  requester_user_id,
+  requester_profile_id,
+  requester_parent_id,
+  colleague_name,
+  colleague_email,
+  note,
+  status,
+  created_at,
+  updated_at
+) on public.mental_health_professional_invite_requests to authenticated;
+
+grant insert (
+  requester_user_id,
+  requester_profile_id,
+  requester_parent_id,
+  colleague_name,
+  colleague_email,
+  note
+) on public.mental_health_professional_invite_requests to authenticated;
 
 drop policy if exists "Counsellors insert own MHP invite requests"
   on public.mental_health_professional_invite_requests;
@@ -180,10 +206,17 @@ create policy "Counsellors insert own MHP invite requests"
   with check (
     public.is_wayfinder_counsellor()
     and requester_user_id = auth.uid()
+    and (requester_profile_id is null or requester_profile_id = auth.uid())
+    and (
+      requester_parent_id is null
+      or exists (
+        select 1
+        from public.profiles p
+        where p.user_id = auth.uid()
+          and p.parent_id = requester_parent_id
+      )
+    )
     and status = 'pending'
-    and admin_note is null
-    and reviewed_by is null
-    and reviewed_at is null
     and btrim(colleague_name) <> ''
     and btrim(colleague_email) <> ''
   );
@@ -198,6 +231,16 @@ create policy "Owner admin insert MHP invite requests"
   with check (
     public.is_wayfinder_owner_admin()
     and requester_user_id = auth.uid()
+    and (requester_profile_id is null or requester_profile_id = auth.uid())
+    and (
+      requester_parent_id is null
+      or exists (
+        select 1
+        from public.profiles p
+        where p.user_id = auth.uid()
+          and p.parent_id = requester_parent_id
+      )
+    )
     and status = 'pending'
   );
 
@@ -225,31 +268,23 @@ create policy "Owner admin read MHP invite requests"
 drop policy if exists "Owner admin update MHP invite requests"
   on public.mental_health_professional_invite_requests;
 
-create policy "Owner admin update MHP invite requests"
-  on public.mental_health_professional_invite_requests
-  for update
-  to authenticated
-  using (public.is_wayfinder_owner_admin())
-  with check (public.is_wayfinder_owner_admin());
-
 drop policy if exists "Owner admin delete MHP invite requests"
   on public.mental_health_professional_invite_requests;
 
-create policy "Owner admin delete MHP invite requests"
-  on public.mental_health_professional_invite_requests
-  for delete
-  to authenticated
-  using (public.is_wayfinder_owner_admin());
+-- PR #130 will add owner/admin UPDATE/DELETE policies and controlled approval RPCs
+-- with separate column grants or SECURITY DEFINER paths for admin_note/reviewed_*.
 
 -- ---------------------------------------------------------------------------
 -- 4. Verification notes
 -- ---------------------------------------------------------------------------
 -- Counsellor submit (runtime PR #129):
---   insert pending row only — no auth/profile/token side effects.
+--   insert pending row only — client cannot set status (table default applies).
+--   Client cannot SELECT admin_note, reviewed_by, or reviewed_at.
 --
--- Owner admin review (read-only intake in PR #129; approval in PR #130):
---   select * from public.mental_health_professional_invite_requests
---   where status in ('pending', 'reviewing')
+-- Owner admin intake (read-only in PR #129; approval in PR #130):
+--   select id, colleague_name, colleague_email, note, status, requester_parent_id, created_at
+--   from public.mental_health_professional_invite_requests
+--   where status = 'pending'
 --   order by created_at desc;
 --
 -- Parent users must receive zero rows from this table via RLS.

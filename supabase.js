@@ -3451,8 +3451,7 @@ const DB = {
         requester_parent_id: parentId || null,
         colleague_name: colleagueName,
         colleague_email: colleagueEmail,
-        note: note || null,
-        status: 'pending'
+        note: note || null
       }
     });
     if (result.unavailable) {
@@ -3504,7 +3503,7 @@ const DB = {
     const result = await fetchReviewGrantsSafe({
       table: 'mental_health_professional_invite_requests',
       query: {
-        select: 'id,requester_user_id,requester_profile_id,requester_parent_id,colleague_name,colleague_email,note,status,admin_note,reviewed_by,reviewed_at,created_at,updated_at',
+        select: 'id,requester_user_id,requester_profile_id,requester_parent_id,colleague_name,colleague_email,note,status,created_at,updated_at',
         order: 'created_at.desc'
       },
       userId,
