@@ -449,10 +449,16 @@ function MhpInviteInvalidScreen({meta,message,onClear}){
  </div>;
 }
 
+function isAuthAccountExistsError(message){
+ const m=String(message||'').toLowerCase();
+ return m.includes('already registered')||m.includes('already exists')||m.includes('user already')||m.includes('email address is already');
+}
+
 function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteStatus}){
- const [mode,setMode]=useState('signin');
+ const [mode,setMode]=useState(inviteToken?'signup':'signin');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
+ const [confirmPassword,setConfirmPassword]=useState('');
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(false);
  const [resendStatus,setResendStatus]=useState('');
@@ -462,10 +468,14 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
  const [forgotOpen,setForgotOpen]=useState(false);
  const [resetLoading,setResetLoading]=useState(false);
  const [resetStatus,setResetStatus]=useState('');
+ const [accountExistsOffer,setAccountExistsOffer]=useState(false);
  const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
  const inviteSetupUrl=inviteToken?buildMhpInviteSetupUrl(inviteToken):'';
  const allowSignup=(role!=='counsellor'&&role!=='admin')||!!inviteToken;
  const activeMode=allowSignup?mode:'signin';
+ const inviteCreateMode=!!inviteToken&&activeMode==='signup';
+ const inviteSignInMode=!!inviteToken&&activeMode==='signin';
+ const inviteEmailLocked=!!inviteToken&&!!String(inviteStatus?.invitedEmail||email||'').trim();
  const portalLabel=role==='admin'
   ? 'Wayfinder Owner Admin'
   : role==='counsellor'
@@ -476,21 +486,40 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
  const pdpaBody=String(pdpaNotice.body||'').trim();
  const pdpaCheckboxLabel=String(pdpaNotice.checkboxLabel||'I have read and understood this privacy and data-use notice.').trim();
  const pdpaUncheckedMessage=String(pdpaNotice.uncheckedMessage||'Please read the privacy and data-use notice and confirm you understand it before creating your account.').trim();
+ const authHeading=inviteCreateMode
+  ? (mhpMeta.inviteCreateAccountTitle||'Create your Wayfinder Mental Health Professional account')
+  : inviteSignInMode
+  ? (mhpMeta.inviteSignInTitle||'Sign in with your invited email')
+  : (activeMode==='signin'?'Sign in':'Create account');
+ const submitLabel=loading
+  ? 'Please wait…'
+  : inviteCreateMode
+  ? (mhpMeta.inviteCreateAccountButton||'Create account and continue')
+  : inviteSignInMode
+  ? (mhpMeta.inviteSignInButton||'Sign in and continue profile setup')
+  : (activeMode==='signin'?'Sign in':'Create account');
  useEffect(()=>{
   if(!inviteToken||!inviteStatus?.invitedEmail) return;
-  setEmail((prev)=>prev||inviteStatus.invitedEmail);
+  setEmail(inviteStatus.invitedEmail);
  },[inviteToken,inviteStatus?.invitedEmail]);
  const switchMode=(nextMode)=>{
   setMode(nextMode);
   setError('');
   setPdpaNoticePrompt('');
+  setAccountExistsOffer(false);
+  setConfirmPassword('');
   if(nextMode==='signin')setPdpaAcknowledged(false);
  };
  const submit=async()=>{
   setError('');
   setPdpaNoticePrompt('');
+  setAccountExistsOffer(false);
   if(activeMode==='signup'&&!pdpaAcknowledged){
    setPdpaNoticePrompt(pdpaUncheckedMessage);
+   return;
+  }
+  if(inviteCreateMode&&confirmPassword!==password){
+   setError(mhpMeta.invitePasswordMismatch||'Passwords do not match. Please check both password fields.');
    return;
   }
   setLoading(true);
@@ -505,7 +534,16 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
     setLoading(false);
     return;
    }
-  }catch(e){setError(e.message||'Something went wrong.');}
+  }catch(e){
+   const msg=e.message||'Something went wrong.';
+   if(activeMode==='signup'&&inviteToken&&isAuthAccountExistsError(msg)){
+    setAccountExistsOffer(true);
+    setError('');
+   }else{
+    setAccountExistsOffer(false);
+    setError(msg);
+   }
+  }
   setLoading(false);
  };
  const resendVerification=async()=>{
@@ -547,11 +585,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
    <p className="auth-brand-subtitle">{portalLabel}</p>
   </div>
   {inviteToken ? <div className="card mhp-invite-card">
-   <h2>{mhpMeta.inviteProfileSetupTitle||mhpMeta.inviteTitle||'Set up your Wayfinder Mental Health Professional profile'}</h2>
-   <p className="dashboard-helper">{mhpMeta.inviteProfileSetupIntro||mhpMeta.inviteSubtitle||"You've been invited to begin Mental Health Professional onboarding with Wayfinder."}</p>
    <p className="sub mhp-invite-note">{mhpMeta.inviteProfileSetupDetail||mhpMeta.inviteOnboardingSafetyNote||'This invitation lets you create your profile draft and upload licence details for review. It does not publish your profile or activate public access automatically.'}</p>
-   {inviteStatus?.invitedEmail ? <p className="sub mhp-invite-email-hint"><span className="mhp-invite-email-label">{mhpMeta.inviteUseEmailLabel||'Invited email'}: </span>{inviteStatus.invitedEmail}</p> : null}
-   <p className="sub mhp-invite-note">{mhpMeta.inviteSignInNote||'Sign in or create an account using the invited email address below.'}</p>
   </div> : null}
   <div className="card auth-login-card" style={{padding:0,overflow:'hidden'}}>
    {(role==='parent'||(role==='counsellor'&&!inviteToken)) ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'}/> : null}
@@ -559,21 +593,31 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
    {forgotOpen ? <>
     <h2>{mhpMeta.forgotPasswordTitle||'Reset your password'}</h2>
     <p className="sub auth-forgot-copy">{mhpMeta.forgotPasswordPrompt||'Enter the email you used for Wayfinder. If an account exists, we will send a password reset link.'}</p>
-    <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&requestPasswordReset()}/></div>
+    <div className="field"><label>Email</label><input type="email" value={email} readOnly={inviteEmailLocked} className={inviteEmailLocked?'field-input-locked':''} onChange={e=>!inviteEmailLocked&&setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&requestPasswordReset()}/></div>
     {error&&<div style={{color:'#c0392b',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fdecea',borderRadius:6}}>{error}</div>}
     {resetStatus&&<div style={{color:'#4f7a5e',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#edf7ef',borderRadius:6}}>{resetStatus}</div>}
     <button className="btn btn-primary btn-block" onClick={requestPasswordReset} disabled={resetLoading}>{resetLoading?'Please wait…':(mhpMeta.forgotPasswordSubmit||'Send reset link')}</button>
     <button type="button" className="btn btn-ghost btn-block auth-forgot-back" onClick={()=>{setForgotOpen(false);setResetStatus('');setError('');}}>{mhpMeta.forgotPasswordBack||'Back to sign in'}</button>
    </> : <>
-   <h2>{activeMode==='signin'?'Sign in':'Create account'}</h2>
-   <div className="field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
-   <div className="field"><label>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
-   {activeMode==='signin' && <p className="auth-forgot-wrap"><button type="button" className="auth-forgot-link" onClick={()=>{setForgotOpen(true);setError('');setResetStatus('');}}>{mhpMeta.forgotPasswordLink||'Forgot password?'}</button></p>}
+   <h2>{authHeading}</h2>
+   {inviteCreateMode ? <p className="sub auth-invite-subtitle">{mhpMeta.inviteCreateAccountSubtitle||'Use the invited email address below. After email verification, you will continue to profile and licence setup.'}</p> : null}
+   <div className="field"><label>Email</label><input type="email" value={email} readOnly={inviteEmailLocked} className={inviteEmailLocked?'field-input-locked':''} onChange={e=>!inviteEmailLocked&&setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   {inviteToken&&inviteStatus?.invitedEmail ? <p className="hint mhp-invite-email-locked-note">{mhpMeta.inviteEmailLockedNote||'This invitation is tied to this email address.'}</p> : null}
+   <div className="field"><label>{inviteCreateMode?(mhpMeta.inviteCreatePasswordLabel||'Create password'):'Password'}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+   {inviteCreateMode ? <div className="field"><label>{mhpMeta.inviteConfirmPasswordLabel||'Confirm password'}</label><input type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Re-enter password" onKeyDown={e=>e.key==='Enter'&&submit()}/></div> : null}
+   {activeMode==='signin' && !inviteCreateMode && <p className="auth-forgot-wrap"><button type="button" className="auth-forgot-link" onClick={()=>{setForgotOpen(true);setError('');setResetStatus('');setAccountExistsOffer(false);}}>{mhpMeta.forgotPasswordLink||'Forgot password?'}</button></p>}
    {message&&<div style={{color:'#8a5a00',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fff4d6',borderRadius:6}}>
     <div>{message}</div>
     <button className="btn btn-secondary" style={{marginTop:10,width:'100%'}} onClick={resendVerification} disabled={resendLoading}>{resendLoading?'Sending...':'Resend verification email'}</button>
     {resendStatus&&<div style={{marginTop:8,color:'#4f7a5e'}}>{resendStatus}</div>}
    </div>}
+   {accountExistsOffer ? <div className="auth-invite-exists-offer" role="alert">
+    <p className="dashboard-helper">{mhpMeta.inviteAccountExistsMessage||'This email may already have a Wayfinder account. Sign in instead, or reset your password.'}</p>
+    <div className="auth-invite-exists-actions">
+     <button type="button" className="btn btn-secondary btn-sm" onClick={()=>switchMode('signin')}>{mhpMeta.inviteSignInInsteadAction||'Sign in instead'}</button>
+     <button type="button" className="btn btn-ghost btn-sm" onClick={()=>{setAccountExistsOffer(false);setForgotOpen(true);setError('');setResetStatus('');}}>{mhpMeta.inviteResetPasswordAction||'Reset password'}</button>
+    </div>
+   </div> : null}
    {error&&<div style={{color:'#c0392b',fontSize:13,marginBottom:12,padding:'8px 12px',background:'#fdecea',borderRadius:6}}>{error}</div>}
    {activeMode==='signup'&&pdpaBody ? <div className="pdpa-notice-block" role="region" aria-label={pdpaTitle}>
     <h3 className="pdpa-notice-title">{pdpaTitle}</h3>
@@ -588,10 +632,11 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
     </label>
     {pdpaNoticePrompt ? <p className="pdpa-notice-prompt" role="status">{pdpaNoticePrompt}</p> : null}
    </div> : null}
-   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading||(activeMode==='signup'&&!pdpaAcknowledged)}>{loading?'Please wait…':activeMode==='signin'?'Sign in':'Create account'}</button>
-   {allowSignup ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
-    {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>{inviteToken?'Create account with invited email':'Sign up'}</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
-   </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : role==='counsellor' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{mhpMeta.counsellorSignInOnlyNote||'New Mental Health Professional onboarding requires an invitation from Wayfinder admin.'}</p> : null}
+   <button className="btn btn-primary btn-block" onClick={submit} disabled={loading||(activeMode==='signup'&&!pdpaAcknowledged)}>{submitLabel}</button>
+   {inviteCreateMode ? <p className="auth-invite-mode-switch"><span className="auth-invite-mode-switch-action" onClick={()=>switchMode('signin')}>{mhpMeta.inviteSignInInsteadLink||'Already have a Wayfinder account? Sign in instead.'}</span></p> : null}
+   {allowSignup&&!inviteToken ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
+    {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
+   </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : role==='counsellor'&&!inviteToken ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{mhpMeta.counsellorSignInOnlyNote||'New Mental Health Professional onboarding requires an invitation from Wayfinder admin.'}</p> : null}
    </>}
    </div>
   </div>
