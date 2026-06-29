@@ -3,23 +3,40 @@
   "name": "Wayfinder MHP",
   "short_name": "Wayfinder MHP",
   "description": "Mental Health Professional workspace for Wayfinder parent reflection review.",
-  "start_url": "/counsellor.html",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/counsellor.html?wayfinder-pwa=mhp",
   "scope": "/counsellor.html",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
   "background_color": "#F7F4EF",
   "theme_color": "#2f473d",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/counsellor/icon-192-20260619-pr111.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/counsellor/icon-512-20260619-pr111.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/counsellor/icon-192-20260619-pr111.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/counsellor/icon-512-20260619-pr111.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
