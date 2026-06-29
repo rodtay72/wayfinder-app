@@ -628,6 +628,7 @@ const MENTAL_HEALTH_PROFESSIONAL_ONBOARDING = {
   inviteSignupPendingSignInInstead: "Sign in instead",
   inviteSignupPendingResendSuccess: "If this email exists, a confirmation link has been sent. Please check your inbox.",
   inviteSignupPendingContinueWaiting: "We still cannot see a confirmed email for this account. If you just clicked the link, wait a moment and try again.",
+  officialMhpSignInLink: "Go to official MHP sign in",
   inviteSignInNote: "Sign in or create an account using the invited email address below. Your invitation link has already been received — you do not need to enter it again.",
   counsellorSignInOnlyNote: "New Mental Health Professional onboarding requires an invitation from Wayfinder admin.",
   inviteVerificationTitle: "Verify your email to continue profile setup",
