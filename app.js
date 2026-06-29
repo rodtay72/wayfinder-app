@@ -1165,10 +1165,40 @@ function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
  </article>;
 }
 
+function OwnerAdminInviteRequestCard({row,meta}){
+ const formatWhen=(value)=>{
+  if(!value) return '—';
+  const dt=new Date(value);
+  if(Number.isNaN(dt.getTime())) return '—';
+  return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
+ };
+ const statusLabel=String(row.status||'pending').replace(/_/g,' ');
+ return <article className="card owner-admin-mhp-card owner-admin-invite-request-card">
+  <div className="owner-admin-mhp-card-head">
+   <div>
+    <p className="dashboard-kicker">{meta.requestLabel||'MHP colleague invite request'}</p>
+    <h3>{row.colleagueName||'Colleague request'}</h3>
+    <p className="owner-admin-mhp-subtitle">{row.colleagueEmail||''}</p>
+   </div>
+   <span className="owner-admin-mhp-pill dashboard-pill">{statusLabel}</span>
+  </div>
+  <dl className="owner-admin-mhp-meta">
+   <div><dt>{meta.requesterIdLabel||'Requester Wayfinder ID'}</dt><dd>{row.requesterParentId||'—'}</dd></div>
+   <div><dt>{meta.submittedLabel||'Submitted'}</dt><dd>{formatWhen(row.createdAt)}</dd></div>
+  </dl>
+  {row.note ? <p className="owner-admin-bio-preview"><span className="owner-admin-bio-label">{meta.noteLabel||'Requester note'}: </span>{row.note}</p> : null}
+  <p className="dashboard-helper owner-admin-invite-request-readonly">{meta.readOnlyNote||'Read-only intake in this release. Approval and invitation are handled in a later admin step.'}</p>
+ </article>;
+}
+
 function OwnerAdminApp({user,authSession,onSignOut}){
+ const inviteRequestMeta=typeof OWNER_ADMIN_MHP_INVITE_REQUESTS!=='undefined'?OWNER_ADMIN_MHP_INVITE_REQUESTS:{};
  const [adminGate,setAdminGate]=useState({loading:true,isAdmin:false,unavailable:false});
  const [profiles,setProfiles]=useState([]);
+ const [inviteRequests,setInviteRequests]=useState([]);
  const [queueLoading,setQueueLoading]=useState(false);
+ const [inviteQueueLoading,setInviteQueueLoading]=useState(false);
+ const [inviteRequestsUnavailable,setInviteRequestsUnavailable]=useState(false);
  const [filter,setFilter]=useState('pending_draft');
  const [banner,setBanner]=useState({type:'',message:''});
  const [actionState,setActionState]=useState({});
@@ -1196,6 +1226,30 @@ function OwnerAdminApp({user,authSession,onSignOut}){
    setBanner({type:'error',message:'We could not load the Mental Health Professional review queue right now.'});
   }finally{
    setQueueLoading(false);
+  }
+ };
+
+ const loadInviteRequests=async()=>{
+  if(!user?.id||!authSession?.access_token) return;
+  setInviteQueueLoading(true);
+  try{
+   const result=await DB.listOwnerMhpInviteRequests(user.id,authSession);
+   if(result.unavailable){
+    setInviteRequests([]);
+    setInviteRequestsUnavailable(true);
+    return;
+   }
+   setInviteRequestsUnavailable(false);
+   if(!result.ok){
+    setInviteRequests([]);
+    return;
+   }
+   setInviteRequests(result.rows||[]);
+  }catch(err){
+   AuthDebug.log('[owner admin] invite requests load failed:', { message: err?.message || String(err) });
+   setInviteRequests([]);
+  }finally{
+   setInviteQueueLoading(false);
   }
  };
 
@@ -1227,9 +1281,11 @@ function OwnerAdminApp({user,authSession,onSignOut}){
  useEffect(()=>{
   if(!adminGate.isAdmin) return;
   loadQueue();
+  loadInviteRequests();
  },[user?.id,authSession?.access_token,adminGate.isAdmin]);
 
  const filteredProfiles=profiles.filter(row=>ownerMhpMatchesFilter(row,filter));
+ const pendingInviteRequests=inviteRequests.filter(row=>String(row.status||'').toLowerCase()==='pending');
 
  const runPublicationAction=async(row,actionKey)=>{
   const mhpUserId=row?.mhpUserId;
@@ -1311,6 +1367,24 @@ function OwnerAdminApp({user,authSession,onSignOut}){
   </div>
 
   {banner.message ? <div className={`card review-share-notice owner-admin-banner${banner.type==='error'?' review-share-notice--legacy':''}`} role={banner.type==='error'?'alert':'status'}>{banner.message}</div> : null}
+
+  <div className="card owner-admin-invite-requests-section">
+   <div className="owner-admin-section-head">
+    <div>
+     <h2>{inviteRequestMeta.sectionTitle||'Pending MHP colleague invite requests'}</h2>
+     <p className="dashboard-helper">{inviteRequestMeta.sectionIntro||'Counsellor-submitted requests awaiting owner review.'}</p>
+    </div>
+    <button type="button" className="switch switch-muted" onClick={loadInviteRequests} disabled={inviteQueueLoading}>{inviteQueueLoading?(inviteRequestMeta.refreshButton||'Refresh requests')+'…':(inviteRequestMeta.refreshButton||'Refresh requests')}</button>
+   </div>
+   {inviteRequestsUnavailable ? <p className="dashboard-helper owner-admin-invite-requests-unavailable">{inviteRequestMeta.unavailableMessage||'Invite request intake storage is not available yet.'}</p> : null}
+   {!inviteRequestsUnavailable && inviteQueueLoading && !pendingInviteRequests.length ? <div className="owner-admin-empty">Loading pending invite requests…</div> : null}
+   {!inviteRequestsUnavailable && !inviteQueueLoading && !pendingInviteRequests.length ? <div className="owner-admin-empty">
+    <p className="dashboard-helper">{inviteRequestMeta.emptyMessage||'No pending colleague invite requests right now.'}</p>
+   </div> : null}
+   {!inviteRequestsUnavailable && pendingInviteRequests.length ? <div className="owner-admin-queue owner-admin-invite-requests-queue">
+    {pendingInviteRequests.map(row=><OwnerAdminInviteRequestCard key={row.id||`${row.colleagueEmail}-${row.createdAt}`} row={row} meta={inviteRequestMeta}/>)}
+   </div> : null}
+  </div>
 
   <div className="owner-admin-filters" role="tablist" aria-label="MHP review filters">
    {OWNER_MHP_FILTERS.map(item=><button
@@ -3573,16 +3647,18 @@ function ParentSignupInviteModal({open,context,onClose}){
 
 const mhpProfessionalInviteMeta=()=>typeof MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST:{};
 
-// Admin-mediated only: local draft text, clipboard, and mailto. No signup link, invite token, Supabase write, role change, membership, or profile publication.
-function MentalHealthProfessionalInviteRequestModal({open,onClose}){
+// Admin-mediated only: in-app pending request, local draft text, clipboard, and mailto. No signup link, invite token, role change, membership, or profile publication.
+function MentalHealthProfessionalInviteRequestModal({open,onClose,user,authSession,parentId}){
  const meta=mhpProfessionalInviteMeta();
  const [form,setForm]=useState({colleagueName:'',colleagueEmail:'',note:''});
  const [copyState,setCopyState]=useState('');
+ const [submitState,setSubmitState]=useState({busy:false,status:'',message:''});
 
  useEffect(()=>{
   if(!open){
    setForm({colleagueName:'',colleagueEmail:'',note:''});
    setCopyState('');
+   setSubmitState({busy:false,status:'',message:''});
   }
  },[open]);
 
@@ -3643,6 +3719,35 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose}){
 
  const setField=(key,value)=>setForm((prev)=>({...prev,[key]:value}));
 
+ const submitRequest=async()=>{
+  const colleagueName=String(form.colleagueName||'').trim();
+  const colleagueEmail=String(form.colleagueEmail||'').trim();
+  if(!colleagueName||!colleagueEmail){
+   setSubmitState({busy:false,status:'error',message:meta.submitValidationMessage||'Please enter your colleague\'s name and email before submitting.'});
+   return;
+  }
+  if(!user?.id||!authSession?.access_token){
+   setSubmitState({busy:false,status:'unavailable',message:meta.submitUnavailableMessage||meta.submitFailureMessage||''});
+   return;
+  }
+  setSubmitState({busy:true,status:'',message:''});
+  try{
+   const result=await DB.insertMhpInviteRequest(user.id,parentId||null,{colleagueName,colleagueEmail,note:form.note},authSession);
+   if(result.unavailable){
+    setSubmitState({busy:false,status:'unavailable',message:meta.submitUnavailableMessage||''});
+    return;
+   }
+   if(!result.ok){
+    setSubmitState({busy:false,status:'error',message:meta.submitFailureMessage||''});
+    return;
+   }
+   setSubmitState({busy:false,status:'success',message:meta.submitSuccessMessage||'Request sent for Wayfinder admin review. No access has been created yet.'});
+  }catch(err){
+   AuthDebug.log('[mhp invite request] submit failed:', { message: err?.message || String(err) });
+   setSubmitState({busy:false,status:'error',message:meta.submitFailureMessage||''});
+  }
+ };
+
  return <div className="invite-share-overlay" role="presentation" onClick={onClose}>
   <div className="invite-share-modal invite-request-modal card" role="dialog" aria-modal="true" aria-labelledby="mhp-invite-request-title" onClick={(event)=>event.stopPropagation()}>
    <div className="invite-share-head">
@@ -3656,10 +3761,13 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose}){
     <label className="field"><span>{meta.fieldColleagueEmail||'Colleague email'}</span><input type="email" value={form.colleagueEmail} onChange={(event)=>setField('colleagueEmail',event.target.value)}/></label>
     <label className="field"><span>{meta.fieldNote||'Optional note for Wayfinder admin'}</span><textarea rows={3} value={form.note} onChange={(event)=>setField('note',event.target.value)}/></label>
    </div>
-   <div className="invite-share-actions">
-    <button type="button" className="btn btn-primary" onClick={copyRequest}>{copyState==='copied'?(meta.copiedRequestButton||'Request message copied'):(meta.copyRequestButton||'Copy request message')}</button>
-    <button type="button" className="btn btn-secondary" onClick={emailAdmin}>{meta.emailAdminButton||'Open email draft to Wayfinder admin'}</button>
+   <div className="invite-share-actions invite-request-actions">
+    <button type="button" className="btn btn-primary" disabled={submitState.busy||submitState.status==='success'} onClick={submitRequest}>{submitState.busy?(meta.submittingRequestButton||'Submitting request…'):(meta.submitRequestButton||'Submit request for admin review')}</button>
+    <button type="button" className="btn btn-secondary" onClick={copyRequest}>{copyState==='copied'?(meta.copiedRequestButton||'Request message copied'):(meta.copyRequestButton||'Copy request message')}</button>
+    <button type="button" className="btn btn-ghost" onClick={emailAdmin}>{meta.emailAdminButton||'Open email draft to Wayfinder admin'}</button>
    </div>
+   {submitState.message ? <p className={`invite-request-note invite-request-submit-note${submitState.status==='success'?' invite-request-submit-note--success':''}${submitState.status==='error'||submitState.status==='unavailable'?' invite-request-submit-note--error':''}`} role={submitState.status==='success'?'status':'alert'}>{submitState.message}</p> : null}
+   {(submitState.status==='unavailable'||submitState.status==='error') && meta.submitFallbackNote ? <p className="invite-request-note invite-request-email-note">{meta.submitFallbackNote}</p> : null}
    {meta.emailDraftNote ? <p className="invite-request-note invite-request-email-note">{meta.emailDraftNote}</p> : null}
   </div>
  </div>;
@@ -6357,7 +6465,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut}){
  const inviteShareMeta=parentSignupInviteMeta();
  const professionalInviteMeta=mhpProfessionalInviteMeta();
  const inviteShareModal=<ParentSignupInviteModal open={inviteShareOpen} context="counsellor" onClose={()=>setInviteShareOpen(false)}/>;
- const mhpInviteRequestModal=<MentalHealthProfessionalInviteRequestModal open={mhpInviteRequestOpen} onClose={()=>setMhpInviteRequestOpen(false)}/>;
+ const mhpInviteRequestModal=<MentalHealthProfessionalInviteRequestModal open={mhpInviteRequestOpen} onClose={()=>setMhpInviteRequestOpen(false)} user={user} authSession={authSession} parentId={profile?.parent_id||profile?.parentId||null}/>;
  const openInviteShare=()=>setInviteShareOpen(true);
  const openMhpInviteRequest=()=>setMhpInviteRequestOpen(true);
  const invitePanel=<MentalHealthProfessionalInvitePanel inviteShareMeta={inviteShareMeta} professionalInviteMeta={professionalInviteMeta} onInviteParents={openInviteShare} onInviteProfessionals={openMhpInviteRequest}/>;

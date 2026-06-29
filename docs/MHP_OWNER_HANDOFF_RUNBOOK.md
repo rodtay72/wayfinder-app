@@ -32,7 +32,7 @@ The following MHP-related work is substantially complete on the Issue #71 track:
 | MHP licence extraction / details review | Completed — **viewer-first** read-only review by default; optional “Adjust extracted details” when needed |
 | MHP profile draft behaviour | Completed — profile remains draft until explicitly saved/reviewed by the professional |
 | Parent invite / share flow | Completed — parent dashboard can share a **parent signup link only** |
-| MHP colleague invite request | Completed — **admin-mediated only**; copy request message or open email draft to Wayfinder admin (`ask.anything@psytec.com.sg`); counsellor must send; no signup link |
+| MHP colleague invite request | Completed — **admin-mediated only**; in-app pending request submit (PR #129 when SQL applied), copy request message, or open email draft to Wayfinder admin (`ask.anything@psytec.com.sg`); counsellor must send email if using draft; no signup link; **no automatic access** |
 | Public MHP signup | **Not enabled** |
 | Counsellor self-creating counsellors | **Not enabled** |
 | Mobile install identities | Completed — separate home-screen names and icons for **Wayfinder Parent** and **Wayfinder MHP** |
@@ -84,9 +84,17 @@ If any item is unclear, pause enablement and resolve before granting access or s
 
 - The MHP **invite request** flow does **not** create professional accounts automatically.
 - Copy explains that **Mental Health Professional accounts are created by Wayfinder administrator invitation only**.
-- The professional can copy a request message or open an email draft to Wayfinder admin (`ask.anything@psytec.com.sg` when configured in app copy) — there is **no public signup link** for MHP.
+- The professional can **submit a pending request for admin review** (PR #129 — requires owner-applied [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql)), **copy a request message**, or **open an email draft** to Wayfinder admin (`ask.anything@psytec.com.sg` when configured in app copy) — there is **no public signup link** for MHP.
+- **Submit request** creates only a `pending` row in `mental_health_professional_invite_requests`. It does **not** create auth users, profiles, counsellor roles, invite tokens, membership, or publication.
 - The **Email / open draft** action pre-fills **To**, subject, and body, but **does not send email automatically**. The counsellor must click **Send** in their mail app. Admin must review before any access is created.
 - MHP accounts require **owner/admin invitation or manual enablement** after the safety checklist (§4).
+
+### Owner admin invite request intake (PR #129)
+
+- Owner/admin can view **pending** colleague invite requests on `/admin.html` when signed in as owner admin and after SQL apply.
+- This queue is **read-only intake** in PR #129 — approval, invite-token creation, and provisioning are deferred to **PR #130**.
+- Parents have **no access** to invite request rows via RLS.
+- Request rows may include colleague name/email, optional requester note, requester Wayfinder ID, and timestamps — **not** parent journal/reflection/child data.
 
 ---
 
@@ -282,7 +290,8 @@ Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not 
 
 1. Apply [supabase-mhp-owner-publish-contract.sql](../supabase-mhp-owner-publish-contract.sql) (PR #104)
 2. Apply [supabase-mhp-owner-admin-review-rpc.sql](../supabase-mhp-owner-admin-review-rpc.sql) (PR #105)
-3. Insert the owner auth `user_id` into `public.owner_admin_users` (see §9)
+3. Apply [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql) (PR #129) — for in-app pending invite request submit and owner admin intake queue
+4. Insert the owner auth `user_id` into `public.owner_admin_users` (see §9)
 
 ### Page behaviour
 
@@ -290,7 +299,14 @@ Wayfinder provides an owner-admin review page at **`/admin.html`**. It is **not 
 |-------|-------------------|
 | Not signed in | Owner admin **sign-in only** — no signup, no public invite |
 | Signed in, not owner admin | **Owner admin access required.** — no MHP data |
-| Signed in as owner admin | **Mental Health Professional review queue** with filters and publication actions |
+| Signed in as owner admin | **Pending MHP colleague invite requests** (PR #129 read-only intake) and **Mental Health Professional review queue** with filters and publication actions |
+
+### Invite request intake (PR #129 — read-only)
+
+- Shows **pending** rows from `mental_health_professional_invite_requests` only.
+- Displays colleague name/email, optional requester note, requester Wayfinder ID, and submitted date.
+- **No approval or invite-token actions** in PR #129 — deferred to PR #130.
+- If SQL is not applied, the section shows a friendly unavailable message; the MHP profile review queue still loads.
 
 ### Review queue filters
 

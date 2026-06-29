@@ -743,6 +743,15 @@
   .owner-admin-empty{padding:24px;text-align:center;}
   .owner-admin-empty h2{margin-bottom:8px;font-size:18px;}
   .owner-admin-banner{margin-bottom:14px;}
+  .owner-admin-invite-requests-section{padding:20px 22px;margin-bottom:14px;border-color:#D8E2D8;}
+  .owner-admin-section-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;}
+  .owner-admin-section-head h2{margin:0 0 6px;font-size:20px;color:#40514b;}
+  .owner-admin-invite-requests-queue{margin-top:4px;}
+  .owner-admin-invite-request-readonly{margin:12px 0 0;}
+  .owner-admin-invite-requests-unavailable{margin:0 0 10px;}
+  .invite-request-actions{display:flex;flex-wrap:wrap;gap:8px;}
+  .invite-request-submit-note--success{color:#2f473d;background:#E8F0E8;border:1px solid #C8D8C8;border-radius:8px;padding:10px 12px;}
+  .invite-request-submit-note--error{color:#6b2d2d;background:#FDF3F3;border:1px solid #E8CACA;border-radius:8px;padding:10px 12px;}
   .owner-admin-source-photo-section{margin:0 0 14px;padding:14px 16px;border:1px solid #E0E8DC;border-radius:10px;background:#FAFCFA;}
   .owner-admin-source-photo-title{margin:0 0 6px;font-size:15px;color:#40514b;}
   .owner-admin-source-photo-helper{margin:0 0 10px;}

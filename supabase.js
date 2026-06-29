@@ -999,6 +999,40 @@ const isConsentRecordsUnavailable = (status, responseText) => {
   return false;
 };
 
+const isMhpInviteRequestsUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('42p01')) return true;
+  if (text.includes('mental_health_professional_invite_requests') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  if (text.includes('42501') && text.includes('permission denied')) return false;
+  return false;
+};
+
+const normalizeMhpInviteRequestRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    id: row.id || null,
+    requesterUserId: row.requester_user_id || row.requesterUserId || null,
+    requesterProfileId: row.requester_profile_id || row.requesterProfileId || null,
+    requesterParentId: row.requester_parent_id || row.requesterParentId || '',
+    colleagueName: row.colleague_name || row.colleagueName || '',
+    colleagueEmail: row.colleague_email || row.colleagueEmail || '',
+    note: row.note || '',
+    status: row.status || 'pending',
+    adminNote: row.admin_note || row.adminNote || '',
+    reviewedBy: row.reviewed_by || row.reviewedBy || null,
+    reviewedAt: row.reviewed_at || row.reviewedAt || null,
+    createdAt: row.created_at || row.createdAt || null,
+    updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
 const isReviewGrantsUnavailable = (status, responseText) => {
   const text = String(responseText || '').toLowerCase();
   if (status === 404) return true;
@@ -3394,6 +3428,101 @@ const DB = {
       ok: true,
       unavailable: false,
       accepted: (result.rows || []).length > 0
+    };
+  },
+
+  insertMhpInviteRequest: async (userId, parentId, payload, authSession = null) => {
+    const colleagueName = String(payload?.colleagueName || '').trim();
+    const colleagueEmail = String(payload?.colleagueEmail || '').trim().toLowerCase();
+    const note = String(payload?.note || '').trim();
+    if (!userId || !colleagueName || !colleagueEmail) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    const result = await reviewGrantWriteSafe({
+      method: 'POST',
+      userId,
+      authSession,
+      context: 'insertMhpInviteRequest',
+      table: 'mental_health_professional_invite_requests',
+      unavailableCheck: isMhpInviteRequestsUnavailable,
+      body: {
+        requester_user_id: userId,
+        requester_profile_id: userId,
+        requester_parent_id: parentId || null,
+        colleague_name: colleagueName,
+        colleague_email: colleagueEmail,
+        note: note || null,
+        status: 'pending'
+      }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, record: null };
+    }
+    if (!result.ok || !(result.rows || []).length) {
+      return { ok: false, unavailable: false, record: null };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      record: normalizeMhpInviteRequestRow(result.rows[0])
+    };
+  },
+
+  listOwnMhpInviteRequests: async (userId, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false, rows: [] };
+    }
+    const result = await fetchReviewGrantsSafe({
+      table: 'mental_health_professional_invite_requests',
+      query: {
+        select: 'id,requester_user_id,requester_profile_id,requester_parent_id,colleague_name,colleague_email,note,status,created_at,updated_at',
+        requester_user_id: `eq.${userId}`,
+        order: 'created_at.desc'
+      },
+      userId,
+      authSession,
+      context: 'listOwnMhpInviteRequests',
+      unavailableCheck: isMhpInviteRequestsUnavailable
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, rows: [] };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, rows: [] };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      rows: (result.rows || []).map(normalizeMhpInviteRequestRow).filter(Boolean)
+    };
+  },
+
+  listOwnerMhpInviteRequests: async (userId, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false, rows: [], forbidden: false };
+    }
+    const result = await fetchReviewGrantsSafe({
+      table: 'mental_health_professional_invite_requests',
+      query: {
+        select: 'id,requester_user_id,requester_profile_id,requester_parent_id,colleague_name,colleague_email,note,status,admin_note,reviewed_by,reviewed_at,created_at,updated_at',
+        order: 'created_at.desc'
+      },
+      userId,
+      authSession,
+      context: 'listOwnerMhpInviteRequests',
+      unavailableCheck: isMhpInviteRequestsUnavailable
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, rows: [], forbidden: false };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, rows: [], forbidden: false };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      forbidden: false,
+      rows: (result.rows || []).map(normalizeMhpInviteRequestRow).filter(Boolean)
     };
   },
 

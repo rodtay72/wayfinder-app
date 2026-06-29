@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-29
 
-**Last verified merge:** PR #127 — Guard i18n parity debug storage access
+**Last verified merge:** PR #128 — MHP invite request email recipient clarity
 
-**Next proposed PR:** PR #128 — MHP invite request email recipient clarity
+**Next proposed PR:** PR #129 — Admin-visible MHP invite request intake
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -169,7 +169,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #125 parent static copy zh-Hans | Broaden parent portal static UI translation; no private content translation | Complete (merged) |
 | PR #126 parent language QA hardening | Fallback/localStorage/html lang/overflow hardening; key parity audit | Complete (merged) |
 | PR #127 i18n debug storage guard | Follow-up: wrap debug parity localStorage in try/catch | Complete (merged) |
-| PR #128 MHP invite request email recipient | Pre-fill Wayfinder admin To on mailto draft; clearer admin-mediated copy | In flight |
+| PR #128 MHP invite request email recipient | Pre-fill Wayfinder admin To on mailto draft; clearer admin-mediated copy | Complete (merged) |
+| PR #129 MHP invite request intake | SQL/RLS contract + in-app pending request submit + owner admin read-only queue | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -180,7 +181,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A)
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128)** — **in flight** — admin mailto recipient clarity; prioritised ahead of payment gateway runtime
+- **MHP invite request pipeline (PR #128–#129)** — **PR #128 merged**; **PR #129 in flight** — in-app pending request intake + owner admin read-only queue; prioritised ahead of payment gateway runtime; owner must apply [supabase-mhp-invite-requests.sql](../supabase-mhp-invite-requests.sql) before runtime submit/admin list works
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
@@ -207,7 +208,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 10. Counsellor workspace: parent-approved entries show response status badges (Pending response, Draft saved, Published, Revoked, or Status unavailable) without exposing private identifiers or hidden response content.
 11. Parent Feedback Library: read/published counsellor feedback remains visible and reopenable from the parent dashboard after unread notice clears.
 12. MHP portrait pipeline (after PR #118): owner `/admin.html` shows **Current approved portrait**; parent review-sharing selector shows selected approved portrait only; source/generated/history portraits and storage paths not visible to parents; journal/dashboard and MHP portal unchanged.
-13. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
+13. MHP invite request intake (after PR #129 + SQL apply): counsellor can submit pending colleague invite request from MHP modal; owner `/admin.html` shows pending request queue; copy/email fallback still works; no auth/profile/token/publication created.
+14. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 
 ## Agent ops notes
 
