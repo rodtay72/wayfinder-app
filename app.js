@@ -438,13 +438,18 @@ const clearInviteFromUrl=()=>{
  }catch(_){}
 };
 
-function MhpInviteInvalidScreen({meta,message,onClear}){
+function MhpInviteLeaveLink({meta,onLeave}){
+ if(typeof onLeave!=='function') return null;
+ return <p className="auth-invite-leave-wrap"><button type="button" className="auth-invite-leave-link" onClick={onLeave}>{meta.officialMhpSignInLink||'Go to official MHP sign in'}</button></p>;
+}
+
+function MhpInviteInvalidScreen({meta,message,onLeave}){
  return <div className="wrap">
   <div className="card mhp-invite-card mhp-invite-invalid-card">
    <h2>{meta.inviteInvalidTitle||'Invitation link unavailable'}</h2>
    <p className="dashboard-helper">{message||meta.inviteInvalidFallback||'This invitation link is invalid, expired, or no longer active.'}</p>
    <p className="sub mhp-invite-note">{meta.inviteAdminContactFallback||'If this keeps happening, contact Wayfinder admin for support.'}</p>
-   {onClear ? <button type="button" className="btn btn-ghost" onClick={onClear}>Return to sign in</button> : null}
+   {typeof onLeave==='function' ? <button type="button" className="btn btn-ghost" onClick={onLeave}>{meta.officialMhpSignInLink||'Go to official MHP sign in'}</button> : null}
   </div>
  </div>;
 }
@@ -454,7 +459,7 @@ function isAuthAccountExistsError(message){
  return m.includes('already registered')||m.includes('already exists')||m.includes('user already')||m.includes('email address is already');
 }
 
-function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteStatus, onRefreshSession}){
+function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteStatus, onRefreshSession, onLeaveInviteFlow}){
  const [mode,setMode]=useState(inviteToken?'signup':'signin');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -636,6 +641,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
      <button type="button" className="btn btn-primary btn-block" onClick={continueAfterVerification} disabled={resendLoading||continueLoading}>{continueLoading?'Checking…':(mhpMeta.inviteSignupPendingContinueButton||"I've verified my email — continue")}</button>
      <button type="button" className="btn btn-ghost btn-block" onClick={()=>switchMode('signin')} disabled={resendLoading||continueLoading}>{mhpMeta.inviteSignupPendingSignInInstead||'Sign in instead'}</button>
     </div>
+    <MhpInviteLeaveLink meta={mhpMeta} onLeave={onLeaveInviteFlow}/>
    </div> : forgotOpen ? <>
     <h2>{mhpMeta.forgotPasswordTitle||'Reset your password'}</h2>
     <p className="sub auth-forgot-copy">{mhpMeta.forgotPasswordPrompt||'Enter the email you used for Wayfinder. If an account exists, we will send a password reset link.'}</p>
@@ -680,6 +686,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
    </div> : null}
    <button className="btn btn-primary btn-block" onClick={submit} disabled={loading||(activeMode==='signup'&&!pdpaAcknowledged)}>{submitLabel}</button>
    {inviteCreateMode ? <p className="auth-invite-mode-switch"><span className="auth-invite-mode-switch-action" onClick={()=>switchMode('signin')}>{mhpMeta.inviteSignInInsteadLink||'Already have a Wayfinder account? Sign in instead.'}</span></p> : null}
+   {inviteToken ? <MhpInviteLeaveLink meta={mhpMeta} onLeave={onLeaveInviteFlow}/> : null}
    {allowSignup&&!inviteToken ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
     {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
    </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : role==='counsellor'&&!inviteToken ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{mhpMeta.counsellorSignInOnlyNote||'New Mental Health Professional onboarding requires an invitation from Wayfinder admin.'}</p> : null}
@@ -689,7 +696,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
  </div>;
 }
 
-function VerificationRequiredScreen({authSession, role, onRefreshSession, onSignOut, inviteToken, inviteSetupRedirectUrl}){
+function VerificationRequiredScreen({authSession, role, onRefreshSession, onSignOut, inviteToken, inviteSetupRedirectUrl, onLeaveInviteFlow}){
  const [status,setStatus]=useState('Check your inbox for your Wayfinder verification link.');
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(false);
@@ -746,6 +753,7 @@ function VerificationRequiredScreen({authSession, role, onRefreshSession, onSign
     <button className="btn btn-secondary" onClick={refresh} disabled={loading||refreshing}>{refreshing?'Checking...':'I have verified - refresh'}</button>
     <button className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
    </div>
+   {inviteSetupActive ? <MhpInviteLeaveLink meta={mhpMeta} onLeave={onLeaveInviteFlow}/> : null}
    <p className="hint" style={{marginTop:18}}>Need help? Contact ask.anything@psytec.com.sg.</p>
   </div>
  </div>;
@@ -1733,16 +1741,25 @@ function App(){
   clearStoredMhpInviteToken();
  };
 
+ const goToOfficialMhpSignIn=()=>{
+  clearPendingInviteToken();
+  if(typeof window!=='undefined') window.location.href='/counsellor.html';
+ };
+
  useEffect(()=>{
   const fromUrl=parseInviteTokenFromUrl();
-  const fromStorage=readStoredMhpInviteToken();
-  const token=fromUrl||fromStorage;
-  if(token){
-   pendingInviteTokenRef.current=token;
-   setPendingInviteToken(token);
-   storeMhpInviteToken(token);
-   if(fromUrl) clearInviteFromUrl();
+  if(!fromUrl){
+   if(APP_ROLE==='counsellor'||APP_ROLE==='parent'){
+    clearStoredMhpInviteToken();
+    pendingInviteTokenRef.current='';
+    setPendingInviteToken('');
+   }
+   return;
   }
+  pendingInviteTokenRef.current=fromUrl;
+  setPendingInviteToken(fromUrl);
+  storeMhpInviteToken(fromUrl);
+  clearInviteFromUrl();
  },[]);
 
  useEffect(()=>{
@@ -2134,13 +2151,13 @@ function App(){
   }
   if(APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.checked&&(!inviteStatus.valid||inviteStatus.unavailable)){
    AuthDebug.log('[render] branch: mhp invite invalid');
-   return <MhpInviteInvalidScreen meta={mhpMeta} message={inviteStatus.unavailable?(mhpMeta.inviteAcceptanceUnavailable||inviteStatus.message):inviteStatus.message} onClear={clearPendingInviteToken}/>;
+   return <MhpInviteInvalidScreen meta={mhpMeta} message={inviteStatus.unavailable?(mhpMeta.inviteAcceptanceUnavailable||inviteStatus.message):inviteStatus.message} onLeave={goToOfficialMhpSignIn}/>;
   }
   AuthDebug.log('[render] branch: auth screen');
   const inviteAuthActive=APP_ROLE==='counsellor'&&pendingInviteToken&&inviteStatus.valid;
-  return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={inviteAuthActive?pendingInviteToken:null} inviteStatus={inviteAuthActive?inviteStatus:null} onRefreshSession={inviteAuthActive?refreshAuthSession:undefined}/>;
+  return <AuthScreen onAuth={setUser} role={APP_ROLE} message={authMessage} messageEmail={authMessageEmail} inviteToken={inviteAuthActive?pendingInviteToken:null} inviteStatus={inviteAuthActive?inviteStatus:null} onRefreshSession={inviteAuthActive?refreshAuthSession:undefined} onLeaveInviteFlow={inviteAuthActive?goToOfficialMhpSignIn:undefined}/>;
  }
- if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} inviteToken={APP_ROLE==='counsellor'&&pendingInviteToken?pendingInviteToken:null} inviteSetupRedirectUrl={APP_ROLE==='counsellor'&&pendingInviteToken?buildMhpInviteSetupUrl(pendingInviteToken):null} onRefreshSession={refreshAuthSession} onSignOut={signOut}/>;}
+ if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} inviteToken={APP_ROLE==='counsellor'&&pendingInviteToken?pendingInviteToken:null} inviteSetupRedirectUrl={APP_ROLE==='counsellor'&&pendingInviteToken?buildMhpInviteSetupUrl(pendingInviteToken):null} onRefreshSession={refreshAuthSession} onSignOut={signOut} onLeaveInviteFlow={APP_ROLE==='counsellor'&&pendingInviteToken?goToOfficialMhpSignIn:undefined}/>;}
  if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
   <h2 style={{marginBottom:12}}>{accessDenied}</h2>
   <p className="sub">{inviteConsumeError? (mhpMeta.inviteAdminContactFallback||'If this keeps happening, contact Wayfinder admin for support.') : 'This portal is limited to verified counsellor accounts.'}</p>
