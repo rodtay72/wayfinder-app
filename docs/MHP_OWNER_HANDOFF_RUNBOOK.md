@@ -32,7 +32,7 @@ The following MHP-related work is substantially complete on the Issue #71 track:
 | MHP licence extraction / details review | Completed — **viewer-first** read-only review by default; optional “Adjust extracted details” when needed |
 | MHP profile draft behaviour | Completed — profile remains draft until explicitly saved/reviewed by the professional |
 | Parent invite / share flow | Completed — parent dashboard can share a **parent signup link only** |
-| MHP colleague invite request | Completed — **admin-mediated only**; copy request message or email Wayfinder admin; no signup link |
+| MHP colleague invite request | Completed — **admin-mediated only**; copy request message or open email draft to Wayfinder admin (`ask.anything@psytec.com.sg`); counsellor must send; no signup link |
 | Public MHP signup | **Not enabled** |
 | Counsellor self-creating counsellors | **Not enabled** |
 | Mobile install identities | Completed — separate home-screen names and icons for **Wayfinder Parent** and **Wayfinder MHP** |
@@ -84,7 +84,8 @@ If any item is unclear, pause enablement and resolve before granting access or s
 
 - The MHP **invite request** flow does **not** create professional accounts automatically.
 - Copy explains that **Mental Health Professional accounts are created by Wayfinder administrator invitation only**.
-- The professional can copy a request message or email Wayfinder admin — there is **no public signup link** for MHP.
+- The professional can copy a request message or open an email draft to Wayfinder admin (`ask.anything@psytec.com.sg` when configured in app copy) — there is **no public signup link** for MHP.
+- The **Email / open draft** action pre-fills **To**, subject, and body, but **does not send email automatically**. The counsellor must click **Send** in their mail app. Admin must review before any access is created.
 - MHP accounts require **owner/admin invitation or manual enablement** after the safety checklist (§4).
 
 ---

@@ -721,16 +721,18 @@ const MENTAL_HEALTH_PROFESSIONAL_INVITE_REQUEST = {
   professionalButtonTitle: "Prepare an admin invitation request. No public professional signup link.",
   modalTitle: "Invite counsellors to Wayfinder",
   modalIntro: "Mental Health Professional accounts are created by Wayfinder administrator invitation only.",
-  modalAdminNote: "There is no public counsellor or Mental Health Professional signup link. Use the fields below to prepare a request message for the Wayfinder administrator. This does not create an account, send an invitation, create an invite token, or provision another professional.",
+  modalAdminNote: "There is no public counsellor or Mental Health Professional signup link. Use the fields below to prepare a request for Wayfinder admin review. Copy the message or open an email draft. You must send the email yourself. Admin must review this request before any MHP access is created. This does not create an account, send an invitation, create an invite token, or provision another professional.",
   fieldColleagueName: "Colleague name",
   fieldColleagueEmail: "Colleague email",
   fieldNote: "Optional note for Wayfinder admin",
   copyRequestButton: "Copy request message",
   copiedRequestButton: "Request message copied",
-  emailAdminButton: "Email Wayfinder admin",
+  adminEmail: "ask.anything@psytec.com.sg",
+  emailAdminButton: "Open email draft to Wayfinder admin",
+  emailDraftNote: "This opens an email draft in your mail app with Wayfinder admin in the To field. Review the message and click Send. Nothing is sent automatically and no MHP access is created until admin review.",
   closeButton: "Close",
   requestDraftIntro: "Wayfinder Mental Health Professional invitation request",
-  requestDraftFooter: "Please review and ask the Wayfinder administrator to send an invitation to this colleague if appropriate. No self-serve professional signup is available."
+  requestDraftFooter: "Please review and send this request to Wayfinder admin if appropriate. Admin must review before any invitation or access is created. No self-serve professional signup is available."
 };
 
 // PDPA / privacy notice for new signup only (UI acknowledgement - not persisted in Phase A)
