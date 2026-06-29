@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-29
 
-**Last verified merge:** PR #123 — Simplified Chinese language toggle strategy (docs-only)
+**Last verified merge:** PR #124 — Static language dictionary foundation and parent toggle shell
 
-**Next proposed PR:** PR #124 — Static language dictionary foundation and parent toggle shell
+**Next proposed PR:** PR #125 — Broaden parent portal static copy translation
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -127,7 +127,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Strategy (PR #123):** Complete — [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 
-**Runtime foundation (PR #124):** In flight — static UI dictionary (`WAYFINDER_I18N`), `localStorage` preference (`wayfinder_preferred_language`), parent dashboard language toggle; **no auto-translate** of private reflections; **no external translation APIs**.
+**Runtime foundation (PR #124):** Complete — static UI dictionary (`WAYFINDER_I18N`), `localStorage` preference (`wayfinder_preferred_language`), parent dashboard language toggle.
+
+**Broader static copy (PR #125):** In flight — dashboard headings/helpers, nav buttons, Relationship Garden, ALIGN Journey shell, Journal Trail filters/empty states, Decode intro static text only; **no auto-translate** of private reflections; **no external translation APIs**.
 
 **Languages:** English (`en`) · 简体中文 (`zh-Hans`)
 
@@ -161,7 +163,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #120A payment/pricing strategy revision | Privacy-baseline plan table + Stripe/entitlement spec + future roadmap; docs only | Complete (merged) |
 | PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
 | PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
-| PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | In flight |
+| PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | Complete (merged) |
+| PR #125 parent static copy zh-Hans | Broaden parent portal static UI translation; no private content translation | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -171,7 +174,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A)
-- **Simplified Chinese language toggle runtime** — **PR #124 in flight** — foundation: static UI dictionary + parent toggle; full app translation not started — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
+- **Simplified Chinese language toggle runtime** — **PR #125 in flight** — PR #124 foundation merged; broadening parent static copy — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
