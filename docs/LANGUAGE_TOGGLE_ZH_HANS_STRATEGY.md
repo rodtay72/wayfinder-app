@@ -2,7 +2,7 @@
 
 **PR #123 — docs-only strategy spec**
 
-**Status:** Strategy only — no runtime in this PR  
+**Status:** Strategy only — no runtime in this PR
 **Last updated:** 2026-06-29
 
 Read first:
