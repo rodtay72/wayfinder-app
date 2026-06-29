@@ -10,7 +10,7 @@
 
 const { useState, useEffect, useMemo, useRef } = React;
 
-/* ============ LANGUAGE (PR #124) ============ */
+/* ============ LANGUAGE (PR #124 / PR #126 QA) ============ */
 const WAYFINDER_LANG_STORAGE_KEY = 'wayfinder_preferred_language';
 const WAYFINDER_SUPPORTED_LANGUAGES = ['en', 'zh-Hans'];
 
@@ -19,18 +19,39 @@ function normalizePreferredLanguage(value){
  return WAYFINDER_SUPPORTED_LANGUAGES.includes(lang)?lang:'en';
 }
 
+function applyDocumentLanguage(lang){
+ if(typeof document==='undefined') return;
+ document.documentElement.lang=lang==='zh-Hans'?'zh-Hans':'en';
+}
+
+function repairStoredLanguagePreference(){
+ try{
+  const raw=localStorage.getItem(WAYFINDER_LANG_STORAGE_KEY);
+  if(raw===null||raw===undefined) return;
+  const normalized=normalizePreferredLanguage(raw);
+  if(String(raw).trim()!==normalized){
+   if(normalized==='en') localStorage.removeItem(WAYFINDER_LANG_STORAGE_KEY);
+   else localStorage.setItem(WAYFINDER_LANG_STORAGE_KEY,normalized);
+  }
+ }catch(_err){}
+}
+
 function getPreferredLanguage(){
- try{return normalizePreferredLanguage(localStorage.getItem(WAYFINDER_LANG_STORAGE_KEY));}
- catch{return'en';}
+ try{
+  repairStoredLanguagePreference();
+  return normalizePreferredLanguage(localStorage.getItem(WAYFINDER_LANG_STORAGE_KEY));
+ }catch{
+  return'en';
+ }
 }
 
 function setPreferredLanguage(lang){
  const next=normalizePreferredLanguage(lang);
- try{localStorage.setItem(WAYFINDER_LANG_STORAGE_KEY,next);}
- catch(_err){}
- if(typeof document!=='undefined'){
-  document.documentElement.lang=next==='zh-Hans'?'zh-Hans':'en';
- }
+ try{
+  if(next==='en') localStorage.removeItem(WAYFINDER_LANG_STORAGE_KEY);
+  else localStorage.setItem(WAYFINDER_LANG_STORAGE_KEY,next);
+ }catch(_err){}
+ applyDocumentLanguage(next);
  if(typeof window!=='undefined'){
   window.dispatchEvent(new CustomEvent('wayfinder:languagechange',{detail:{lang:next}}));
  }
@@ -38,14 +59,19 @@ function setPreferredLanguage(lang){
 }
 
 function t(key,fallback){
+ const safeKey=String(key||'').trim();
+ if(!safeKey) return typeof fallback==='string'?fallback:'';
  const lang=getPreferredLanguage();
  const dict=typeof WAYFINDER_I18N!=='undefined'?WAYFINDER_I18N:{};
- const bucket=dict[lang]||dict.en||{};
- const value=bucket[key];
- if(value!==undefined&&value!=='') return value;
- const enValue=(dict.en||{})[key];
- if(enValue!==undefined&&enValue!=='') return enValue;
- return fallback!==undefined?fallback:key;
+ const pick=(bucket)=>{
+  if(!bucket) return '';
+  const value=bucket[safeKey];
+  return typeof value==='string'&&value.trim()?value.trim():'';
+ };
+ const localized=pick(dict[lang])||pick(dict.en);
+ if(localized) return localized;
+ if(typeof fallback==='string'&&fallback.trim()) return fallback;
+ return safeKey;
 }
 
 function usePreferredLanguage(){
@@ -53,14 +79,17 @@ function usePreferredLanguage(){
  useEffect(()=>{
   const onChange=(e)=>setLangState(normalizePreferredLanguage(e?.detail?.lang||getPreferredLanguage()));
   window.addEventListener('wayfinder:languagechange',onChange);
-  if(typeof document!=='undefined'){
-   document.documentElement.lang=lang==='zh-Hans'?'zh-Hans':'en';
-  }
+  applyDocumentLanguage(lang);
   return ()=>window.removeEventListener('wayfinder:languagechange',onChange);
  },[lang]);
  const setLang=(next)=>setLangState(setPreferredLanguage(next));
  return [lang,setLang];
 }
+
+(function initWayfinderLanguagePreference(){
+ repairStoredLanguagePreference();
+ applyDocumentLanguage(getPreferredLanguage());
+})();
 
 function LanguageToggle({className=''}){
  const [lang,setLang]=usePreferredLanguage();

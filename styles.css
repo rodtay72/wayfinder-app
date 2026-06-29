@@ -176,6 +176,22 @@
   .language-toggle-dashboard{width:100%;justify-content:flex-end;margin-bottom:2px;}
   .dashboard-actions .language-toggle-options{background:rgba(255,255,255,.18);}
   .dashboard-actions .language-toggle-btn.is-active{background:rgba(255,255,255,.92);color:var(--ink);}
+  html[lang="zh-Hans"] .dashboard-actions{max-width:400px;}
+  html[lang="zh-Hans"] .dashboard-actions .switch,
+  html[lang="zh-Hans"] .language-toggle-btn{line-height:1.35;white-space:normal;text-align:center;}
+  html[lang="zh-Hans"] .dashboard-helper,
+  html[lang="zh-Hans"] .align-journey-empty-body,
+  html[lang="zh-Hans"] .align-journey-text,
+  html[lang="zh-Hans"] .align-journey-note,
+  html[lang="zh-Hans"] .decode-card-subtitle,
+  html[lang="zh-Hans"] .decode-lead,
+  html[lang="zh-Hans"] .garden-foot,
+  html[lang="zh-Hans"] .trail-filter-intro{overflow-wrap:anywhere;word-break:break-word;line-height:1.65;}
+  html[lang="zh-Hans"] .trail-filter-label,
+  html[lang="zh-Hans"] .align-journey-label,
+  html[lang="zh-Hans"] .garden-guide-title{text-transform:none;letter-spacing:0;white-space:normal;line-height:1.4;}
+  html[lang="zh-Hans"] .trail-chip{white-space:normal;line-height:1.35;max-width:100%;}
+  html[lang="zh-Hans"] .garden-guide-steps{line-height:1.5;}
   .dashboard-profile-strip{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:8px;}
   .dashboard-profile-item{font-size:13px;color:rgba(255,255,255,.88);}
   .dashboard-profile-label{opacity:.75;font-weight:600;margin-right:4px;}
