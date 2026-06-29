@@ -1165,14 +1165,67 @@ function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
  </article>;
 }
 
-function OwnerAdminInviteRequestCard({row,meta}){
+function buildMhpInviteLink(token){
+ const raw=String(token||'').trim();
+ if(!raw||typeof window==='undefined') return '';
+ return `${window.location.origin}/counsellor.html?mhp_invite=${encodeURIComponent(raw)}`;
+}
+
+function OwnerAdminInviteRequestCard({row,meta,user,authSession,actionState,approvalUnavailable,onApprove}){
  const formatWhen=(value)=>{
   if(!value) return '—';
   const dt=new Date(value);
   if(Number.isNaN(dt.getTime())) return '—';
   return dt.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
  };
+ const requestId=row.id;
+ const state=actionState[requestId]||{};
+ const inviteResult=state.inviteResult||null;
+ const [copyState,setCopyState]=useState('');
  const statusLabel=String(row.status||'pending').replace(/_/g,' ');
+
+ const copyInviteLink=async()=>{
+  const link=inviteResult?.inviteLink||'';
+  if(!link) return;
+  try{
+   if(navigator.clipboard&&navigator.clipboard.writeText){
+    await navigator.clipboard.writeText(link);
+    setCopyState('copied');
+    return;
+   }
+  }catch(_){}
+  try{
+   const input=document.createElement('textarea');
+   input.value=link;
+   input.setAttribute('readonly','');
+   input.style.position='absolute';
+   input.style.left='-9999px';
+   document.body.appendChild(input);
+   input.select();
+   document.execCommand('copy');
+   document.body.removeChild(input);
+   setCopyState('copied');
+  }catch(_){
+   setCopyState('failed');
+  }
+ };
+
+ const emailColleague=()=>{
+  const link=inviteResult?.inviteLink||'';
+  const email=String(inviteResult?.invitedEmail||row.colleagueEmail||'').trim();
+  if(!link) return;
+  const subject=meta.inviteEmailSubject||'Wayfinder Mental Health Professional invitation';
+  const body=[
+   meta.inviteEmailIntro||'You have been invited to join Wayfinder as a Mental Health Professional.',
+   '',
+   link,
+   '',
+   meta.inviteSafetyNote||'This link is for invitation only. It does not activate or publish MHP access automatically.'
+  ].join('\n');
+  const mailtoBase=email?`mailto:${encodeURIComponent(email)}`:'mailto:';
+  window.location.href=`${mailtoBase}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+ };
+
  return <article className="card owner-admin-mhp-card owner-admin-invite-request-card">
   <div className="owner-admin-mhp-card-head">
    <div>
@@ -1187,7 +1240,23 @@ function OwnerAdminInviteRequestCard({row,meta}){
    <div><dt>{meta.submittedLabel||'Submitted'}</dt><dd>{formatWhen(row.createdAt)}</dd></div>
   </dl>
   {row.note ? <p className="owner-admin-bio-preview"><span className="owner-admin-bio-label">{meta.noteLabel||'Requester note'}: </span>{row.note}</p> : null}
-  <p className="dashboard-helper owner-admin-invite-request-readonly">{meta.readOnlyNote||'Read-only intake in this release. Approval and invitation are handled in a later admin step.'}</p>
+  {!inviteResult ? <p className="dashboard-helper owner-admin-invite-request-readonly">{meta.readOnlyNote||'Review the colleague details, then approve to generate a one-time invitation link for manual send.'}</p> : null}
+  {state.error ? <p className="owner-admin-invite-action-error" role="alert">{state.error}</p> : null}
+  {!inviteResult && !approvalUnavailable ? <div className="owner-admin-mhp-actions">
+   <button type="button" className="btn btn-primary btn-sm" disabled={!!state.busy||!requestId||!user?.id} onClick={()=>onApprove(row)}>{state.busy?(meta.approvingButton||'Generating invite link…'):(meta.approveButton||'Approve and generate invite link')}</button>
+  </div> : null}
+  {!inviteResult && approvalUnavailable ? <p className="dashboard-helper owner-admin-invite-approval-unavailable">{meta.approvalUnavailableMessage||'Invite approval is not available yet.'}</p> : null}
+  {inviteResult ? <div className="owner-admin-invite-result">
+   <p className="owner-admin-invite-result-title">{meta.inviteLinkLabel||'One-time invitation link'}</p>
+   <p className="dashboard-helper">{meta.inviteLinkHelper||'Copy or email this link to the colleague. It is shown once here and is not stored in Wayfinder.'}</p>
+   <label className="field owner-admin-invite-link-field"><span>{meta.inviteLinkLabel||'One-time invitation link'}</span><input type="text" readOnly value={inviteResult.inviteLink||''} onFocus={(event)=>event.target.select()}/></label>
+   {inviteResult.expiresAt ? <p className="dashboard-helper owner-admin-invite-expires">{meta.inviteExpiresLabel||'Link expires'}: {formatWhen(inviteResult.expiresAt)}</p> : null}
+   <div className="owner-admin-mhp-actions">
+    <button type="button" className="btn btn-primary btn-sm" onClick={copyInviteLink}>{copyState==='copied'?(meta.copiedInviteLinkButton||'Invite link copied'):copyState==='failed'?(meta.copyInviteLinkFailedButton||'Copy failed — select link manually'):(meta.copyInviteLinkButton||'Copy invite link')}</button>
+    <button type="button" className="btn btn-secondary btn-sm" onClick={emailColleague}>{meta.emailInviteButton||'Open email draft to colleague'}</button>
+   </div>
+   <p className="owner-admin-invite-safety-note">{meta.inviteSafetyNote||'This link is for invitation only. It does not activate or publish MHP access automatically.'}</p>
+  </div> : null}
  </article>;
 }
 
@@ -1199,6 +1268,9 @@ function OwnerAdminApp({user,authSession,onSignOut}){
  const [queueLoading,setQueueLoading]=useState(false);
  const [inviteQueueLoading,setInviteQueueLoading]=useState(false);
  const [inviteRequestsUnavailable,setInviteRequestsUnavailable]=useState(false);
+ const [inviteApprovalUnavailable,setInviteApprovalUnavailable]=useState(false);
+ const [inviteActionState,setInviteActionState]=useState({});
+ const [generatedInviteCards,setGeneratedInviteCards]=useState([]);
  const [filter,setFilter]=useState('pending_draft');
  const [banner,setBanner]=useState({type:'',message:''});
  const [actionState,setActionState]=useState({});
@@ -1285,7 +1357,44 @@ function OwnerAdminApp({user,authSession,onSignOut}){
  },[user?.id,authSession?.access_token,adminGate.isAdmin]);
 
  const filteredProfiles=profiles.filter(row=>ownerMhpMatchesFilter(row,filter));
- const pendingInviteRequests=inviteRequests.filter(row=>String(row.status||'').toLowerCase()==='pending');
+ const pendingInviteRequests=inviteRequests.filter(row=>{
+  const status=String(row.status||'').toLowerCase();
+  return status==='pending'||status==='reviewing';
+ });
+
+ const runApproveInviteRequest=async(row)=>{
+  const requestId=row?.id;
+  if(!requestId||!user?.id) return;
+  setInviteActionState(prev=>({...prev,[requestId]:{busy:true,error:'',inviteResult:null}}));
+  try{
+   const result=await DB.createMhpInviteTokenFromRequest(user.id,requestId,authSession);
+   if(result.unavailable){
+    setInviteApprovalUnavailable(true);
+    setInviteActionState(prev=>({...prev,[requestId]:{busy:false,error:inviteRequestMeta.approvalUnavailableMessage||'Invite approval is not available yet.',inviteResult:null}}));
+    return;
+   }
+   if(result.forbidden||!result.ok||!result.record?.inviteToken){
+    setInviteActionState(prev=>({...prev,[requestId]:{busy:false,error:inviteRequestMeta.approvalFailureMessage||'This invitation link could not be generated right now.',inviteResult:null}}));
+    return;
+   }
+   const inviteLink=buildMhpInviteLink(result.record.inviteToken);
+   const inviteResult={
+    inviteLink,
+    invitedEmail:result.record.invitedEmail||row.colleagueEmail||'',
+    invitedName:result.record.invitedName||row.colleagueName||'',
+    expiresAt:result.record.expiresAt||null
+   };
+   setInviteActionState(prev=>({...prev,[requestId]:{busy:false,error:'',inviteResult}}));
+   setGeneratedInviteCards(prev=>{
+    const next=[{...row,inviteResult},...prev.filter(item=>item.id!==requestId)];
+    return next.slice(0,5);
+   });
+   await loadInviteRequests();
+  }catch(err){
+   AuthDebug.log('[owner admin] invite approval failed:', { message: err?.message || String(err) });
+   setInviteActionState(prev=>({...prev,[requestId]:{busy:false,error:inviteRequestMeta.approvalFailureMessage||'This invitation link could not be generated right now.',inviteResult:null}}));
+  }
+ };
 
  const runPublicationAction=async(row,actionKey)=>{
   const mhpUserId=row?.mhpUserId;
@@ -1377,12 +1486,37 @@ function OwnerAdminApp({user,authSession,onSignOut}){
     <button type="button" className="switch switch-muted" onClick={loadInviteRequests} disabled={inviteQueueLoading}>{inviteQueueLoading?(inviteRequestMeta.refreshButton||'Refresh requests')+'…':(inviteRequestMeta.refreshButton||'Refresh requests')}</button>
    </div>
    {inviteRequestsUnavailable ? <p className="dashboard-helper owner-admin-invite-requests-unavailable">{inviteRequestMeta.unavailableMessage||'Invite request intake storage is not available yet.'}</p> : null}
+   {generatedInviteCards.length ? <div className="owner-admin-generated-invites">
+    <h3 className="owner-admin-generated-invites-title">{inviteRequestMeta.generatedInvitesTitle||'Generated invitation links'}</h3>
+    <p className="dashboard-helper">{inviteRequestMeta.generatedInvitesIntro||'Copy or email these links now. They are shown once here and are not stored in Wayfinder.'}</p>
+    <div className="owner-admin-queue owner-admin-invite-requests-queue">
+     {generatedInviteCards.map(row=><OwnerAdminInviteRequestCard
+      key={`generated-${row.id}`}
+      row={row}
+      meta={inviteRequestMeta}
+      user={user}
+      authSession={authSession}
+      actionState={{[row.id]:{busy:false,error:'',inviteResult:row.inviteResult}}}
+      approvalUnavailable={true}
+      onApprove={()=>{}}
+     />)}
+    </div>
+   </div> : null}
    {!inviteRequestsUnavailable && inviteQueueLoading && !pendingInviteRequests.length ? <div className="owner-admin-empty">Loading pending invite requests…</div> : null}
    {!inviteRequestsUnavailable && !inviteQueueLoading && !pendingInviteRequests.length ? <div className="owner-admin-empty">
     <p className="dashboard-helper">{inviteRequestMeta.emptyMessage||'No pending colleague invite requests right now.'}</p>
    </div> : null}
    {!inviteRequestsUnavailable && pendingInviteRequests.length ? <div className="owner-admin-queue owner-admin-invite-requests-queue">
-    {pendingInviteRequests.map(row=><OwnerAdminInviteRequestCard key={row.id||`${row.colleagueEmail}-${row.createdAt}`} row={row} meta={inviteRequestMeta}/>)}
+    {pendingInviteRequests.map(row=><OwnerAdminInviteRequestCard
+     key={row.id||`${row.colleagueEmail}-${row.createdAt}`}
+     row={row}
+     meta={inviteRequestMeta}
+     user={user}
+     authSession={authSession}
+     actionState={inviteActionState}
+     approvalUnavailable={inviteApprovalUnavailable}
+     onApprove={runApproveInviteRequest}
+    />)}
    </div> : null}
   </div>
 
