@@ -10,9 +10,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last verified merge:** PR #133D — Clear stale MHP invite token from sessionStorage
 
-**Next proposed PR:** PR #137 — Supabase Auth email delivery checklist for MHP invite onboarding (docs only)
+**Next proposed PR:** PR #138 — Email-bound MHP invite acceptance flow
 
-**Current owner blocker:** MHP invite **app flow is implemented** (PR #132–#133D). Remaining work is **Supabase Dashboard** email verification delivery — Custom SMTP, redirect allow list, branded sender — see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § MHP invite signup — Supabase Auth email delivery and [supabase-branded-email-rollout.md](./supabase-branded-email-rollout.md). **Payment gateway remains paused** until MHP invitation onboarding is stable end-to-end.
+**Current owner blocker:** Apply [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase; configure Supabase Auth email delivery (Custom SMTP, redirect allow list for `counsellor.html**` including `?mhp_setup=profile`) — see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md). **Payment gateway remains paused** until MHP invitation onboarding passes end-to-end smoke test.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -180,7 +180,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #133B MHP invite signup-default UX | Valid invite defaults to create-account mode; locked invited email | Complete (merged) |
 | PR #133C MHP invite verification-pending screen | Post-signup “Check your email to continue” screen instead of error on create form | Complete (merged) |
 | PR #133D Clear stale MHP invite token | Plain `/counsellor.html` clears sessionStorage invite token; official sign-in only | Complete (merged) |
-| PR #137 Supabase Auth email delivery checklist | Docs-only owner checklist for Custom SMTP, redirect URLs, MHP invite confirmation email | In flight |
+| PR #137 Supabase Auth email delivery checklist | Docs-only owner checklist for Custom SMTP, redirect URLs, MHP invite confirmation email | Complete (merged) |
+| PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -189,10 +190,11 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite signup email delivery (PR #137)** — **current owner blocker** — in-app invite onboarding flow complete (PR #132–#133D): invite link → create account → Check your email → Supabase confirmation → return to `/counsellor.html?mhp_invite=<token>&setup=profile` → token consume → existing `MentalHealthProfessionalProfileEditor`. **No further frontend workaround.** Owner must configure Supabase Auth: Confirm Email ON, Custom SMTP, redirect allow list, branded sender — see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) and [supabase-branded-email-rollout.md](./supabase-branded-email-rollout.md).
+- **MHP invite email-bound acceptance (PR #138)** — **in flight** — replaces token-continuation through browser tabs/redirects; owner must apply [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql); Supabase Auth email delivery still required — see runbook. **Payment gateway remains paused** until end-to-end smoke passes.
+- **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A); **remains paused until MHP invitation onboarding is stable end-to-end**
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128–#133D)** — **PR #129–#133D merged** — invitee opens `/counsellor.html?mhp_invite=<token>&setup=profile`, invite-bound auth, then existing `MentalHealthProfessionalProfileEditor` via `startMhpOnboarding`; owner must apply invite SQL files through [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) for full flow; **email delivery configuration** is the current owner blocker (PR #137 docs)
+- **MHP invite request pipeline (PR #128–#138)** — **PR #129–#137 merged**; **PR #138 in flight** — token opens invite page; verified email controls acceptance; owner must apply invite SQL through [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) for email-bound flow
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
@@ -222,7 +224,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 13. MHP invite request intake (after PR #129 + SQL apply): counsellor can submit pending colleague invite request from MHP modal; owner `/admin.html` shows pending request queue; email draft fallback still works; no auth/profile/token/publication created.
 14. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 15. MHP invite approval (after PR #131 + SQL apply): owner approves pending request; one-time invite link shown; request status `approved`; token row has hash only; no auth/profile/publication created.
-16. MHP invite acceptance (after PR #132 + #133A + SQL apply): invitee opens `/counsellor.html?mhp_invite=<token>&setup=profile`, invite-bound sign-in/sign-up, token consumed once, `CounsellorApp` opens directly to existing MHP profile/licence editor (`editProfile`); parent portal with `mhp_invite` redirects to counsellor route without parent profile creation; wrong email/expired/consumed token blocked safely; pending-review MHP cannot read broad parent `journal_entries` until membership is `active`.
+16. MHP invite acceptance (after PR #132 + #138 + SQL apply): invitee opens `/counsellor.html?mhp_invite=<token>`, creates account, confirms email → `/counsellor.html?mhp_setup=profile`, signs in with invited email, email-bound consume opens existing MHP profile/licence editor; recovery via plain `/counsellor.html` sign-in without original invite tab; wrong verified email cannot consume; pending-review MHP cannot read broad parent journals.
 17. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 
 - **Launch freeze active** — [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)

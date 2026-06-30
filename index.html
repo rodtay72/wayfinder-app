@@ -36,7 +36,7 @@
    var hashParams=hash?new URLSearchParams(hash):null;
    var token=params.get('mhp_invite')||params.get('invite')||(hashParams&&(hashParams.get('mhp_invite')||hashParams.get('invite')));
    if(token&&String(token).trim()){
-    window.location.replace('/counsellor.html?mhp_invite='+encodeURIComponent(String(token).trim())+'&setup=profile');
+    window.location.replace('/counsellor.html?mhp_invite='+encodeURIComponent(String(token).trim()));
    }
   }catch(e){}
  })();
