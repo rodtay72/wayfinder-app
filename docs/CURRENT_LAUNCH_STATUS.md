@@ -15,7 +15,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 **PR #138 review (2026-06-29):** Design direction **accepted**. Do **not** return to token/`sessionStorage` continuation. **Do not merge** until:
 
 1. Owner applies [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
-2. Fresh production smoke passes with a **new invite link** (production URL) and a **clean invited email** (no prior test account on that email).
+2. Fresh production smoke passes with a **new invite link** (production URL) and **test-state hygiene** complete — recurring owner test email: `rodney@thegreenhouse.sg` (see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § MHP invite smoke-test hygiene).
 
 **Preview smoke note:** Vercel protected preview deployments may block external invitees at Vercel Login — **not a Wayfinder auth bug**. Test preview while logged into Vercel as owner, or merge after SQL review and smoke on production `wayfinder-modular.vercel.app`. Owner-generated colleague links use `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`.
 
@@ -201,7 +201,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite email-bound acceptance (PR #138)** — **design accepted; do not merge yet** — apply [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) after PR #132 contract; fresh smoke with new invite + clean email required — see runbook § PR #138 merge gates. **Do not** return to token/`sessionStorage` continuation. **Payment gateway remains paused.**
+- **MHP invite email-bound acceptance (PR #138)** — **design accepted; do not merge yet** — apply email-bound SQL after PR #132 contract; **test-state hygiene required before each fresh smoke** (`rodney@thegreenhouse.sg` — inspect Auth user, profiles, MHP tables, dyads, journal_entries, invite tokens; clean reset before clean signup tests) — see runbook § MHP invite smoke-test hygiene. **Payment gateway remains paused.**
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A); **remains paused until MHP invitation onboarding is stable end-to-end**
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)

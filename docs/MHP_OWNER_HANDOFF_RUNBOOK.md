@@ -144,7 +144,7 @@ If any item is unclear, pause enablement and resolve before granting access or s
 **Do not merge PR #138 until all of the following are true:**
 
 1. **SQL applied** — Run [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
-2. **Fresh smoke** — Use a **new owner-generated invite link** and a **clean invited email** (no prior Wayfinder account on that address).
+2. **Fresh smoke** — Use a **new owner-generated invite link** on production and complete **test-state hygiene** first. Recurring owner smoke email: `rodney@thegreenhouse.sg` — see § MHP invite smoke-test hygiene below.
 
 **Vercel preview vs production (not a Wayfinder auth bug):**
 
@@ -178,6 +178,109 @@ Do **not** send preview-domain invite links to real external invitees. Do **not*
 - **Payment gateway remains paused** until this flow passes end-to-end
 
 Record Pass / Fail in operator notes only. Do not paste emails, UUIDs, tokens, or invite links into GitHub.
+
+### MHP invite smoke-test hygiene (recurring owner email)
+
+**Recurring owner smoke-test email:** `rodney@thegreenhouse.sg` — always treat this as Rodney’s default invited-email address for fresh MHP invite onboarding tests unless a different clean address is explicitly chosen.
+
+**Before every fresh MHP invite onboarding test**, run **test-state hygiene** in Supabase (SQL Editor + Authentication → Users). Do **not** start a “clean signup” test until inspection is complete.
+
+#### 1. Inspect current state (required)
+
+Run in Supabase SQL Editor:
+
+```sql
+-- Auth user
+select id, email, email_confirmed_at, created_at, last_sign_in_at
+from auth.users
+where lower(email) = lower('rodney@thegreenhouse.sg');
+
+-- App profile
+select user_id, parent_id, role, email_verified, created_at
+from public.profiles
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+-- MHP profile + membership
+select user_id, full_name, profile_status, profile_visible, updated_at
+from public.mental_health_professional_profiles
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+select user_id, membership_status, institutional_membership_expires_at, updated_at
+from public.mental_health_professional_memberships
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+-- Parent-side rows (should be zero for pure MHP invite tests)
+select count(*) as dyads
+from public.dyads
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+select count(*) as journal_entries
+from public.journal_entries
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+-- Invite tokens for this invited email (active / consumed / revoked)
+select id, token_status, expires_at, consumed_at, consumed_by, created_at, request_id
+from public.mental_health_professional_invite_tokens
+where lower(invited_email) = lower('rodney@thegreenhouse.sg')
+order by created_at desc;
+```
+
+Also check **Supabase Dashboard → Authentication → Users** for `rodney@thegreenhouse.sg` (confirmed vs unconfirmed, created_at).
+
+#### 2. Confirmation email diagnosis rule
+
+Do **not** interpret a missing confirmation email as an app or SMTP defect until you know whether an **Auth user already existed** for the invited email.
+
+- Existing unconfirmed user → resend may not behave like first signup; inspect Auth user + Logs first.
+- Leftover rows from a prior test → clean reset (below) before retrying.
+- Only after a **confirmed clean state** should missing email point to SMTP / redirect / template configuration.
+
+#### 3. Clean signup reset (when intent is fresh first-time onboarding)
+
+**Order matters.** Owner/manual only — do **not** add runtime cleanup in app code.
+
+1. **Delete app rows first** (only for the test user — replace nothing; email is fixed above):
+
+```sql
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.journal_entries j using target_user t where j.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.dyads d using target_user t where d.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.mental_health_professional_memberships m using target_user t where m.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.mental_health_professional_profiles p using target_user t where p.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.profiles p using target_user t where p.user_id = t.id;
+```
+
+2. **Delete the Auth user** — Supabase Dashboard → **Authentication → Users** → delete `rodney@thegreenhouse.sg` (do not use service-role keys in browser; do not auto-confirm or bypass verification).
+
+3. **Generate a fresh invite** — new owner approval from `/admin.html` on production; use the new production link only:
+
+   `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`
+
+#### 4. Test discipline
+
+- Do **not** reuse old invite links.
+- Do **not** reuse old confirmation emails (request a new signup or resend only after clean state).
+- Do **not** reintroduce token/`sessionStorage` continuation workarounds.
+- Do **not** weaken Supabase auth, RLS, email verification, MHP licence/privacy rules, publication rules, or journal read gates.
+- **Payment gateway remains paused** until MHP invite onboarding passes end-to-end smoke.
 
 ### Repair mistaken parent profile created during MHP invite testing
 
