@@ -179,6 +179,21 @@ Do **not** send preview-domain invite links to real external invitees. Do **not*
 
 Record Pass / Fail in operator notes only. Do not paste emails, UUIDs, tokens, or invite links into GitHub.
 
+### PR #139 — MHP invite verification handoff loop fix (hotfix)
+
+**Problem (post–PR #138 smoke):** After email verification, `/counsellor.html?mhp_setup=profile` could show **Continue profile setup** before a stable verified Bearer session existed; **Continue** failed with generic consume error; **Sign out** returned to invite/create-account instead of plain official MHP sign-in — causing a loop.
+
+**Fix (PR #139):**
+
+- After invite-bound signup: **Check your email to continue** only — **Resend confirmation** + **Go to MHP sign in** (no consume attempt, no “I've verified — continue”).
+- `/counsellor.html?mhp_setup=profile` when signed out → official MHP sign-in with guidance (not create-account).
+- **Continue profile setup** only when: signed in + verified Bearer session + `get_mhp_invite_status_for_current_user_email()` returns `has_active_invite=true`.
+- `consume_mhp_invite_for_current_user_by_email` only on explicit **Continue** click, after `Auth.getFreshSession()`.
+- Sign out from invite/setup/error → clear invite/setup UI state → `window.location.replace('/counsellor.html')` (no `mhp_invite`, no `mhp_setup`).
+- **No** token/`sessionStorage` recovery.
+
+**Do not re-test until PR #139 is on production.** Each failed attempt leaves Auth/token remnants — complete § MHP invite smoke-test hygiene for `rodney@thegreenhouse.sg` before the next attempt.
+
 ### MHP invite smoke-test hygiene (recurring owner email)
 
 **Recurring owner smoke-test email:** `rodney@thegreenhouse.sg` — always treat this as Rodney’s default invited-email address for fresh MHP invite onboarding tests unless a different clean address is explicitly chosen.
