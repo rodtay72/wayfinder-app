@@ -286,8 +286,8 @@ begin
       v_parent_id := 'C-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 5));
 
       begin
-        insert into public.profiles (user_id, parent_id, role, email_verified)
-        values (v_user_id, v_parent_id, 'counsellor', false)
+        insert into public.profiles (user_id, parent_id, role)
+        values (v_user_id, v_parent_id, 'counsellor')
         returning * into v_profile;
         exit;
       exception
