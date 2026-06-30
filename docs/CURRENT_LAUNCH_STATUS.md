@@ -15,7 +15,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 **PR #138 review (2026-06-29):** Design direction **accepted**. Do **not** return to token/`sessionStorage` continuation. **Do not merge** until:
 
 1. Owner applies [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
-2. Fresh production smoke passes with a **new invite link** and a **clean invited email** (no prior test account on that email).
+2. Fresh production smoke passes with a **new invite link** (production URL) and a **clean invited email** (no prior test account on that email).
+
+**Preview smoke note:** Vercel protected preview deployments may block external invitees at Vercel Login — **not a Wayfinder auth bug**. Test preview while logged into Vercel as owner, or merge after SQL review and smoke on production `wayfinder-modular.vercel.app`. Owner-generated colleague links use `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`.
 
 **Pre-merge smoke confirmations:** invite link shows invited email · signup uses locked invited email · confirmation redirects to `/counsellor.html?mhp_setup=profile` · sign-in consumes invite by verified email (not token) · tab-close recovery from `/counsellor.html` · wrong verified email cannot consume · `pending_review` MHP cannot broadly read parent journals · plain `/counsellor.html` remains official MHP sign-in when signed out.
 

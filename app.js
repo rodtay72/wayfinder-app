@@ -373,6 +373,7 @@ function Landing({onEnter,user,profile,onSignOut,authReady,role}){
 }
 
 const MHP_INVITE_SETUP_VALUE='profile';
+const WAYFINDER_PUBLIC_APP_ORIGIN='https://wayfinder-modular.vercel.app';
 
 const buildMhpInvitePageUrl=(token,origin)=>{
  const raw=String(token||'').trim();
@@ -1343,7 +1344,7 @@ function OwnerAdminMhpCard({row,user,authSession,actionState,onAction}){
 }
 
 function buildMhpInviteLink(token){
- return buildMhpInvitePageUrl(token);
+ return buildMhpInvitePageUrl(token, WAYFINDER_PUBLIC_APP_ORIGIN);
 }
 
 function OwnerAdminInviteRequestCard({row,meta,user,authSession,actionState,approvalUnavailable,onApprove}){

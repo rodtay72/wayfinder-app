@@ -799,7 +799,7 @@ const OWNER_ADMIN_MHP_INVITE_REQUESTS = {
   approvingButton: "Generating invite link…",
   approvalFailureMessage: "This invitation link could not be generated right now. Please try again.",
   inviteLinkLabel: "One-time invitation link",
-  inviteLinkHelper: "Copy or email this link to the colleague. It is shown once here and is not stored in Wayfinder.",
+  inviteLinkHelper: "Copy or email this link to the colleague. Links always use the public production portal (wayfinder-modular.vercel.app) so invitees are not blocked by Vercel preview login. The link is shown once here and is not stored in Wayfinder.",
   inviteSafetyNote: "This link is for invitation only. It does not activate or publish MHP access automatically.",
   copyInviteLinkButton: "Copy invite link",
   copiedInviteLinkButton: "Invite link copied",

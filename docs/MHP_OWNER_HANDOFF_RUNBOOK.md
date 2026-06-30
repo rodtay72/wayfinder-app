@@ -102,7 +102,7 @@ If any item is unclear, pause enablement and resolve before granting access or s
 - Request status becomes **`approved`**; the row leaves the pending queue on refresh.
 - Admin UI shows a one-time link, **Copy invite link**, and **Open email draft to colleague** — no automatic email send.
 - Copy must state: *This link is for invitation only. It does not activate or publish MHP access automatically.*
-- Planned invite route: `/counsellor.html?mhp_invite=<token>` (**PR #138** — token opens invitation page only; acceptance uses verified email after signup/sign-in)
+- Planned invite route: `/counsellor.html?mhp_invite=<token>` on **public production** — `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>` (**PR #138** — token opens invitation page only; acceptance uses verified email after signup/sign-in). Owner-generated colleague links **always use production origin**, not Vercel preview domains.
 - **Does not** create Supabase auth users, profiles, counsellor roles, membership, or publication at approval time.
 - Payment gateway runtime remains paused until the MHP invitation pipeline is stable end-to-end.
 
@@ -145,6 +145,20 @@ If any item is unclear, pause enablement and resolve before granting access or s
 
 1. **SQL applied** — Run [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
 2. **Fresh smoke** — Use a **new owner-generated invite link** and a **clean invited email** (no prior Wayfinder account on that address).
+
+**Vercel preview vs production (not a Wayfinder auth bug):**
+
+Owner/admin invite approval on a **Vercel protected preview deployment** previously built links from `window.location.origin`, which sent external invitees to **Vercel Login** before Wayfinder loaded. Runtime now always emits colleague-facing invite links on the **public production base URL**:
+
+`https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`
+
+For **smoke testing PR #138 before merge**, either:
+
+- Test the preview deployment while **logged into Vercel as owner** (preview protection bypass), or
+- **Merge after SQL review** and generate fresh invite links from **production** `/admin.html` on `wayfinder-modular.vercel.app`.
+
+Do **not** send preview-domain invite links to real external invitees. Do **not** treat Vercel preview login as a Wayfinder auth defect.
+
 3. **Smoke confirmations (all must pass):**
    - [ ] Invite link shows invited email
    - [ ] Signup uses locked invited email
