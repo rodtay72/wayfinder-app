@@ -458,16 +458,23 @@ function MhpInviteInvalidScreen({meta,message,onLeave}){
  </div>;
 }
 
-function MhpInviteContinueSetupScreen({meta,inviteStatus,loading,error,onContinue,onSignOut,onGoToMhpSignIn}){
+function MhpInviteAutoAcceptLoadingScreen({meta,inviteStatus}){
  return <div className="wrap">
   <div className="card mhp-invite-card">
-   <h2>{meta.inviteContinueSetupTitle||'Continue Mental Health Professional profile setup'}</h2>
-   <p className="sub auth-invite-subtitle">{meta.inviteContinueSetupBody||'An active invitation was found for your signed-in email. Continue to your profile and licence draft setup.'}</p>
+   <h2>{meta.inviteAutoAcceptTitle||'Setting up your Mental Health Professional profile…'}</h2>
+   <p className="sub auth-invite-subtitle">{meta.inviteAutoAcceptBody||'Please wait while Wayfinder prepares your profile and licence draft.'}</p>
    {inviteStatus?.invitedEmail ? <p className="sub mhp-invite-email-hint"><span className="mhp-invite-email-label">{meta.inviteUseEmailLabel||'Invited email'}: </span>{inviteStatus.invitedEmail}</p> : null}
-   {error ? <p className="auth-invite-pending-notice" role="alert">{error}</p> : null}
-   <button type="button" className="btn btn-primary btn-block" onClick={onContinue} disabled={loading}>{loading?'Continuing…':(meta.inviteContinueSetupButton||'Continue profile setup')}</button>
-   {typeof onGoToMhpSignIn==='function' ? <button type="button" className="btn btn-secondary btn-block" onClick={onGoToMhpSignIn} disabled={loading}>{meta.officialMhpSignInLink||'Go to MHP sign in'}</button> : null}
-   <button type="button" className="btn btn-ghost btn-block" onClick={onSignOut} disabled={loading}>Sign out</button>
+   <p className="dashboard-helper" style={{marginTop:20,color:'#666'}}>{meta.inviteCheckingMessage||'Checking your invitation…'}</p>
+  </div>
+ </div>;
+}
+
+function MhpInviteConsumeFailedScreen({meta,message,onGoToMhpSignIn}){
+ return <div className="wrap">
+  <div className="card mhp-invite-card mhp-invite-invalid-card">
+   <h2>{meta.inviteConsumeFailedTitle||'We could not complete your invitation setup'}</h2>
+   <p className="dashboard-helper" role="alert">{message||meta.inviteConsumeFailure||'We could not accept this invitation right now.'}</p>
+   {typeof onGoToMhpSignIn==='function' ? <button type="button" className="btn btn-primary btn-block" onClick={onGoToMhpSignIn}>{meta.officialMhpSignInLink||'Go to MHP sign in'}</button> : null}
    <p className="sub mhp-invite-note">{meta.inviteAdminContactFallback||'If this keeps happening, contact Wayfinder admin for support.'}</p>
   </div>
  </div>;
@@ -1734,16 +1741,17 @@ function App(){
  const [mhpSetupFromUrl,setMhpSetupFromUrl]=useState(false);
  const [inviteStatus,setInviteStatus]=useState({loading:false,checked:false,valid:false,invitedEmail:'',invitedName:'',expiresAt:null,message:'',unavailable:false});
  const [emailInviteStatus,setEmailInviteStatus]=useState({loading:false,checked:false,hasActiveInvite:false,invitedEmail:'',invitedName:'',expiresAt:null,message:'',unavailable:false});
- const [inviteContinuePending,setInviteContinuePending]=useState(false);
+ const [inviteAutoAcceptActive,setInviteAutoAcceptActive]=useState(false);
  const [inviteSetupNoActive,setInviteSetupNoActive]=useState(false);
  const [inviteSetupNoActiveMessage,setInviteSetupNoActiveMessage]=useState('');
- const [inviteContinueLoading,setInviteContinueLoading]=useState(false);
+ const [inviteAutoAcceptLoading,setInviteAutoAcceptLoading]=useState(false);
  const [inviteConsumeError,setInviteConsumeError]=useState('');
  const [startMhpOnboarding,setStartMhpOnboarding]=useState(false);
  const profileLoadRef = useRef({ userId: null, promise: null });
  const passwordRecoveryRef = useRef(false);
  const urlInviteTokenRef = useRef('');
  const mhpSetupFromUrlRef = useRef(false);
+ const inviteAutoAcceptStartedRef = useRef(false);
  const APP_ROLE = typeof PORTAL_ROLE !== 'undefined' ? PORTAL_ROLE : 'parent';
  const mhpMeta=typeof MENTAL_HEALTH_PROFESSIONAL_ONBOARDING!=='undefined'?MENTAL_HEALTH_PROFESSIONAL_ONBOARDING:{};
 
@@ -1757,10 +1765,12 @@ function App(){
   clearMhpSetupFromUrl();
   mhpSetupFromUrlRef.current=false;
   setMhpSetupFromUrl(false);
-  setInviteContinuePending(false);
+  setInviteAutoAcceptActive(false);
   setInviteSetupNoActive(false);
   setInviteSetupNoActiveMessage('');
   setInviteConsumeError('');
+  setInviteAutoAcceptLoading(false);
+  inviteAutoAcceptStartedRef.current=false;
   setAccessDenied('');
   setInviteStatus({loading:false,checked:false,valid:false,invitedEmail:'',invitedName:'',expiresAt:null,message:'',unavailable:false});
   setEmailInviteStatus({loading:false,checked:false,hasActiveInvite:false,invitedEmail:'',invitedName:'',expiresAt:null,message:'',unavailable:false});
@@ -1869,8 +1879,14 @@ function App(){
   return {ready:true,hasActiveInvite,unavailable:false,message:nextStatus.message};
  };
 
- const continueEmailBoundInviteSetup=async()=>{
-  setInviteContinueLoading(true);
+ const resolveInviteConsumeFailureMessage=(consumeResult,fallback='')=>{
+  const fromRecord=consumeResult?.record?.message||'';
+  const fromTop=consumeResult?.message||'';
+  return String(fromRecord||fromTop||fallback||'').trim();
+ };
+
+ const runEmailBoundInviteAutoAccept=async()=>{
+  setInviteAutoAcceptLoading(true);
   setInviteConsumeError('');
   setAccessDenied('');
   try{
@@ -1878,8 +1894,8 @@ function App(){
    if(fresh.error) throw fresh.error;
    const session=fresh.data?.session||null;
    if(!session?.access_token||!session?.user?.id||!Auth.isEmailConfirmed(session.user)){
+    setInviteAutoAcceptActive(false);
     setInviteConsumeError(mhpMeta.inviteContinueNeedsVerifiedSession||'Please sign in with your invited verified email before continuing profile setup.');
-    setInviteContinuePending(false);
     return;
    }
    Auth.setActiveSession(session);
@@ -1888,31 +1904,42 @@ function App(){
    setEmailVerified(true);
    const status=await refreshEmailInviteStatusForSession(session);
    if(status.unavailable){
+    setInviteAutoAcceptActive(false);
     setInviteConsumeError(status.message||mhpMeta.inviteAcceptanceUnavailable||'Invitation acceptance is not available yet.');
     return;
    }
    if(!status.hasActiveInvite){
     const noActiveMessage=status.message||mhpMeta.inviteNoActiveInviteMessage||'No active Mental Health Professional invitation was found for this signed-in email.';
-    setInviteConsumeError(noActiveMessage);
-    setInviteContinuePending(false);
+    setInviteAutoAcceptActive(false);
     setInviteSetupNoActive(true);
     setInviteSetupNoActiveMessage(noActiveMessage);
     return;
    }
    const consumeResult=await DB.consumeMhpInviteForCurrentUserByEmail(session.user.id,session);
+   AuthDebug.log('[mhp invite] auto-consume result:', {
+    ok: !!consumeResult.ok,
+    accepted: !!consumeResult.accepted,
+    unavailable: !!consumeResult.unavailable,
+    hasRecord: !!consumeResult.record,
+    messagePreview: String(resolveInviteConsumeFailureMessage(consumeResult,'')).slice(0, 180)
+   });
    if(consumeResult.unavailable){
+    setInviteAutoAcceptActive(false);
     setInviteConsumeError(mhpMeta.inviteAcceptanceUnavailable||'Invitation acceptance is not available yet.');
     return;
    }
    if(!consumeResult.ok||!consumeResult.accepted){
-    setInviteConsumeError(consumeResult.record?.message||mhpMeta.inviteConsumeFailure||'We could not accept this invitation right now.');
+    setInviteAutoAcceptActive(false);
+    setInviteConsumeError(
+     resolveInviteConsumeFailureMessage(consumeResult,mhpMeta.inviteConsumeFailure||'We could not accept this invitation right now.')
+    );
     return;
    }
    clearMhpSetupFromUrl();
    mhpSetupFromUrlRef.current=false;
    setMhpSetupFromUrl(false);
    clearUrlInviteToken();
-   setInviteContinuePending(false);
+   setInviteAutoAcceptActive(false);
    setInviteSetupNoActive(false);
    setStartMhpOnboarding(true);
    if(typeof window!=='undefined'){
@@ -1925,17 +1952,29 @@ function App(){
     }catch(_){}
    }
    const p=await Profile.getExisting(session.user.id,session);
-   if(!p||p.role!=='counsellor') throw new Error('Counsellor role required');
+   if(!p||p.role!=='counsellor') throw new Error('Counsellor profile could not be loaded after invitation acceptance.');
    profileLoadRef.current={userId:session.user.id,promise:Promise.resolve(p)};
    setProfile(p);
    setProfileError('');
    setEntered(true);
   }catch(e){
+   setInviteAutoAcceptActive(false);
+   AuthDebug.log('[mhp invite] auto-consume failed:', { message: e?.message || String(e) });
    setInviteConsumeError(e?.message||mhpMeta.inviteConsumeFailure||'We could not continue profile setup.');
   }finally{
-   setInviteContinueLoading(false);
+   setInviteAutoAcceptLoading(false);
   }
  };
+
+ useEffect(()=>{
+  if(!authReady||APP_ROLE!=='counsellor') return;
+  if(!user||!emailVerified||!authSession?.access_token) return;
+  if(!inviteAutoAcceptActive||!emailInviteStatus.checked||!emailInviteStatus.hasActiveInvite) return;
+  if(profile||inviteConsumeError) return;
+  if(inviteAutoAcceptStartedRef.current) return;
+  inviteAutoAcceptStartedRef.current=true;
+  runEmailBoundInviteAutoAccept();
+ },[authReady,user,emailVerified,authSession,inviteAutoAcceptActive,emailInviteStatus.checked,emailInviteStatus.hasActiveInvite,profile,inviteConsumeError]);
 
  const startPasswordRecovery=async(rawSession,source='auth-state')=>{
   let session=rawSession||null;
@@ -2095,7 +2134,7 @@ function App(){
       });
       if(existingProfile?.role==='counsellor'){
        profilePromise=Promise.resolve(existingProfile);
-       setInviteContinuePending(false);
+       setInviteAutoAcceptActive(false);
        setInviteSetupNoActive(false);
       }else{
        const status=await refreshEmailInviteStatusForSession(session);
@@ -2107,8 +2146,9 @@ function App(){
        }
        if(status.hasActiveInvite){
         setProfile(null);
-        setInviteContinuePending(true);
+        setInviteAutoAcceptActive(true);
         setInviteSetupNoActive(false);
+        inviteAutoAcceptStartedRef.current=false;
         profileLoadRef.current={userId:session.user.id,promise:null};
         setAuthReady(true);
         return false;
@@ -2116,7 +2156,7 @@ function App(){
        if(mhpSetupFromUrlRef.current&&status.ready){
         const noActiveMessage=status.message||mhpMeta.inviteNoActiveInviteMessage||'No active Mental Health Professional invitation was found for this signed-in email.';
         setProfile(null);
-        setInviteContinuePending(false);
+        setInviteAutoAcceptActive(false);
         setInviteSetupNoActive(true);
         setInviteSetupNoActiveMessage(noActiveMessage);
         profileLoadRef.current={userId:session.user.id,promise:null};
@@ -2309,7 +2349,8 @@ function App(){
  if(!emailVerified){AuthDebug.log('[render] branch: verification required');return <VerificationRequiredScreen authSession={authSession} role={APP_ROLE} inviteSetupRedirectUrl={APP_ROLE==='counsellor'?buildMhpProfileSetupRedirectUrl():null} onRefreshSession={refreshAuthSession} onSignOut={signOutFromInviteOrSetup} onLeaveInviteFlow={APP_ROLE==='counsellor'?goToOfficialMhpSignIn:undefined}/>;}
  if(APP_ROLE==='counsellor'&&user&&emailVerified&&!profile&&emailInviteStatus.loading){AuthDebug.log('[render] branch: mhp invite status loading');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>{mhpMeta.inviteCheckingMessage||'Checking your invitation…'}</div></div>;}
  if(inviteSetupNoActive&&APP_ROLE==='counsellor'){AuthDebug.log('[render] branch: mhp invite no active');return <MhpInviteNoActiveScreen meta={mhpMeta} message={inviteSetupNoActiveMessage} onGoToMhpSignIn={signOutFromInviteOrSetup} onSignOut={signOutFromInviteOrSetup}/>;}
- if(inviteContinuePending&&APP_ROLE==='counsellor'&&user&&emailVerified&&authSession?.access_token&&emailInviteStatus.hasActiveInvite&&!profile){AuthDebug.log('[render] branch: mhp invite continue setup');return <MhpInviteContinueSetupScreen meta={mhpMeta} inviteStatus={emailInviteStatus} loading={inviteContinueLoading} error={inviteConsumeError} onContinue={continueEmailBoundInviteSetup} onSignOut={signOutFromInviteOrSetup} onGoToMhpSignIn={signOutFromInviteOrSetup}/>;}
+ if(inviteConsumeError&&APP_ROLE==='counsellor'&&user&&emailVerified&&!profile&&(mhpSetupFromUrl||emailInviteStatus.hasActiveInvite||emailInviteStatus.checked)){AuthDebug.log('[render] branch: mhp invite consume failed');return <MhpInviteConsumeFailedScreen meta={mhpMeta} message={inviteConsumeError} onGoToMhpSignIn={signOutFromInviteOrSetup}/>;}
+ if(inviteAutoAcceptActive&&APP_ROLE==='counsellor'&&user&&emailVerified&&authSession?.access_token&&emailInviteStatus.hasActiveInvite&&!profile){AuthDebug.log('[render] branch: mhp invite auto accept loading');return <MhpInviteAutoAcceptLoadingScreen meta={mhpMeta} inviteStatus={emailInviteStatus}/>;}
  if(accessDenied){AuthDebug.log('[render] branch: access denied');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
   <h2 style={{marginBottom:12}}>{accessDenied}</h2>
   <p className="sub">{mhpMeta.inviteAdminContactFallback||'If this keeps happening, contact Wayfinder admin for support.'}</p>
