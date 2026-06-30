@@ -164,7 +164,7 @@ Do **not** send preview-domain invite links to real external invitees. Do **not*
    - [ ] Signup uses locked invited email
    - [ ] Confirmation email redirects to `/counsellor.html?mhp_setup=profile` (not a raw token URL)
    - [ ] Sign-in consumes invite by **verified email** (`consume_mhp_invite_for_current_user_by_email`) — not URL token
-   - [ ] Closing the tab after signup still allows recovery from `/counsellor.html` (sign in → **Continue profile setup**)
+   - [ ] Closing the tab after signup still allows recovery from `/counsellor.html` (sign in → auto-accept by verified email)
    - [ ] Wrong verified email cannot consume (no active invite for that email)
    - [ ] `pending_review` MHP cannot broadly read parent `journal_entries` (`can_read_parent_journals_as_mhp()` requires active membership)
    - [ ] Plain `/counsellor.html` remains official MHP sign-in when signed out (no public signup)
@@ -193,6 +193,21 @@ Record Pass / Fail in operator notes only. Do not paste emails, UUIDs, tokens, o
 - **No** token/`sessionStorage` recovery.
 
 **Do not re-test until PR #139 is on production.** Each failed attempt leaves Auth/token remnants — complete § MHP invite smoke-test hygiene for `rodney@thegreenhouse.sg` before the next attempt.
+
+### PR #140 — MHP invite auto-accept + consume RPC parsing fix (hotfix)
+
+**Problem (post–PR #139 smoke):** After email verification, `/counsellor.html?mhp_setup=profile` with a verified signed-in invited email found an active invite via `get_mhp_invite_status_for_current_user_email()`, but **Continue profile setup** failed with a generic consume error. Token was not consumed; counsellor profile was not created.
+
+**Fix (PR #140):**
+
+- When signed in + verified + `has_active_invite=true` on `/counsellor.html?mhp_setup=profile`, show **Setting up your Mental Health Professional profile…** and **automatically** call `consume_mhp_invite_for_current_user_by_email()` after `Auth.getFreshSession()` — **no Continue button**.
+- On success: clear `mhp_setup` / `mhp_invite` from URL → route to existing `CounsellorApp` → `editProfile` → `MentalHealthProfessionalProfileEditor` (`startMhpOnboarding`).
+- On failure: surface the **actual safe RPC message** (not only generic fallback); safe debug logs for `ok`, `accepted`, response shape, message — **no raw tokens**.
+- `DB.consumeMhpInviteForCurrentUserByEmail` parses array **and** object RPC responses; reads `accepted` / `message` from row, record, or first array element; extracts PostgREST error message on HTTP failure.
+- Failure screen offers only **Go to MHP sign in** + contact Wayfinder admin — does not route back to create-account mode.
+- **No** token/`sessionStorage` recovery. **No** new profile setup page. **No** auto-publish / active membership / broad journal access.
+
+**Do not re-test until PR #140 is on production.** Complete § MHP invite smoke-test hygiene for `rodney@thegreenhouse.sg` before the next attempt.
 
 ### MHP invite smoke-test hygiene (recurring owner email)
 
@@ -365,7 +380,7 @@ PR #133A route isolation prevents the same mistaken parent profile from being re
 
 **Canonical flow:**
 
-`Invite link (token)` → `Create account` → `Check your email to continue` → Supabase confirmation → `/counsellor.html?mhp_setup=profile` → sign in with invited email → `consume_mhp_invite_for_current_user_by_email()` → existing `MentalHealthProfessionalProfileEditor`.
+`Invite link (token)` → `Create account` → `Check your email to continue` → Supabase confirmation → `/counsellor.html?mhp_setup=profile` → verified session + active invite → auto `consume_mhp_invite_for_current_user_by_email()` → existing `MentalHealthProfessionalProfileEditor`.
 
 **Important:** The raw invite token opens the invitation page only. After email verification, onboarding access is based on the **authenticated user's verified email** matching an active approved invite — not on carrying `mhp_invite=<token>` through redirects. Invitees can recover by signing in at `/counsellor.html` with the invited email.
 
@@ -423,10 +438,10 @@ Supabase default mail may be rate-limited or unreliable for production; Custom S
 3. Invitee creates account → app shows **Check your email to continue**.
 4. Confirmation email arrives from `Wayfinder by PsyTec <ask.anything@psytec.com.sg>`.
 5. Invitee clicks confirmation link → browser returns to `/counsellor.html?mhp_setup=profile` (not token URL).
-6. Invitee signs in with invited verified email (if session not auto-established).
-7. App consumes invite by **verified email** (`consume_mhp_invite_for_current_user_by_email`) — not URL token.
+6. Invitee signs in with invited verified email if session not auto-established after verification redirect.
+7. App auto-accepts invite by **verified email** (`consume_mhp_invite_for_current_user_by_email`) — loading card, no Continue button — not URL token.
 8. Existing `MentalHealthProfessionalProfileEditor` opens.
-9. **Recovery test:** close tab after signup → go to `/counsellor.html` → sign in with invited email → **Continue profile setup** works without original invite tab.
+9. **Recovery test:** close tab after signup → go to `/counsellor.html` → sign in with invited email → auto-accept works without original invite tab.
 10. Wrong verified email cannot consume — no active invite for that email.
 
 #### Do not

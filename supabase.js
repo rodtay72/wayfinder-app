@@ -1072,12 +1072,87 @@ const normalizeMhpInviteTokenStatusRow = (row) => {
 
 const normalizeMhpInviteConsumeRow = (row) => {
   if (!row || typeof row !== 'object') return null;
+  const acceptedRaw = row.accepted;
+  const accepted = acceptedRaw === true || acceptedRaw === 'true' || acceptedRaw === 't';
   return {
-    accepted: !!row.accepted,
+    accepted,
     role: row.role || '',
     invitedEmail: row.invited_email || row.invitedEmail || '',
     invitedName: row.invited_name || row.invitedName || '',
     message: row.message || ''
+  };
+};
+
+const parseMhpInviteRpcRows = (data) => {
+  if (Array.isArray(data)) return data.filter(Boolean);
+  if (data && typeof data === 'object') return [data];
+  return [];
+};
+
+const resolveMhpInviteConsumeResult = (result, context = 'consumeMhpInviteForCurrentUserByEmail') => {
+  if (result.unavailable) {
+    return { ok: false, unavailable: true, accepted: false, record: null, message: '' };
+  }
+
+  let rows = [];
+  if (result.ok) {
+    rows = parseMhpInviteRpcRows(result.data);
+  } else if (result.responseText) {
+    try {
+      rows = parseMhpInviteRpcRows(JSON.parse(result.responseText));
+    } catch (_) {
+      rows = [];
+    }
+  }
+
+  const record = normalizeMhpInviteConsumeRow(rows[0]);
+  const responseShape = Array.isArray(result.data)
+    ? 'array'
+    : (result.data && typeof result.data === 'object' ? 'object' : (result.ok ? 'empty' : 'http-error'));
+
+  if (record) {
+    AuthDebug.log('[db] mhp invite consume parsed:', {
+      context,
+      httpOk: !!result.ok,
+      responseShape,
+      accepted: !!record.accepted,
+      hasMessage: !!record.message
+    });
+    return {
+      ok: true,
+      unavailable: false,
+      accepted: !!record.accepted,
+      record,
+      message: record.message || ''
+    };
+  }
+
+  let safeMessage = '';
+  if (result.responseText) {
+    try {
+      const parsed = JSON.parse(result.responseText);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        safeMessage = String(parsed.message || parsed.error || parsed.details || '').trim();
+      }
+    } catch (_) {
+      safeMessage = '';
+    }
+  }
+
+  AuthDebug.log('[db] mhp invite consume parse miss:', {
+    context,
+    httpOk: !!result.ok,
+    responseShape,
+    rowCount: rows.length,
+    hasSafeMessage: !!safeMessage
+  });
+
+  return {
+    ok: false,
+    unavailable: false,
+    accepted: false,
+    record: null,
+    message: safeMessage || String(result.responseText || '').slice(0, 240)
   };
 };
 
@@ -3748,10 +3823,16 @@ const DB = {
     if (result.unavailable) {
       return { ok: false, unavailable: true, status: null };
     }
-    if (!result.ok) {
-      return { ok: false, unavailable: false, status: null };
+    let rows = [];
+    if (result.ok) {
+      rows = parseMhpInviteRpcRows(result.data);
+    } else if (result.responseText) {
+      try {
+        rows = parseMhpInviteRpcRows(JSON.parse(result.responseText));
+      } catch (_) {
+        rows = [];
+      }
     }
-    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
     const status = normalizeMhpInviteEmailStatusRow(rows[0]);
     if (!status) {
       return { ok: false, unavailable: false, status: null };
@@ -3761,7 +3842,7 @@ const DB = {
 
   consumeMhpInviteForCurrentUserByEmail: async (userId, authSession = null) => {
     if (!userId) {
-      return { ok: false, unavailable: false, accepted: false, record: null };
+      return { ok: false, unavailable: false, accepted: false, record: null, message: '' };
     }
     const result = await callMhpInviteAcceptanceRpcSafe({
       rpcName: 'consume_mhp_invite_for_current_user_by_email',
@@ -3770,23 +3851,7 @@ const DB = {
       context: 'consumeMhpInviteForCurrentUserByEmail',
       body: {}
     });
-    if (result.unavailable) {
-      return { ok: false, unavailable: true, accepted: false, record: null };
-    }
-    if (!result.ok) {
-      return { ok: false, unavailable: false, accepted: false, record: null };
-    }
-    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
-    const record = normalizeMhpInviteConsumeRow(rows[0]);
-    if (!record) {
-      return { ok: false, unavailable: false, accepted: false, record: null };
-    }
-    return {
-      ok: true,
-      unavailable: false,
-      accepted: !!record.accepted,
-      record
-    };
+    return resolveMhpInviteConsumeResult(result, 'consumeMhpInviteForCurrentUserByEmail');
   },
 
   createMhpInviteTokenFromRequest: async (userId, requestId, authSession = null, expiresDays = 7) => {

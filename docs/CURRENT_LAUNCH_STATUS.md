@@ -6,17 +6,19 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-29
+**Last updated:** 2026-06-19
 
-**Last verified merge:** PR #138 — Email-bound MHP invite acceptance flow
+**Last verified merge:** PR #139 — MHP invite verification handoff loop fix
 
-**Next proposed PR:** PR #139 — MHP invite verification handoff loop fix (hotfix)
+**Next proposed PR:** PR #140 — MHP invite auto-accept + consume RPC parsing fix (hotfix)
 
-**PR #139 (hotfix — in flight):** Fixes post-verification loop on `/counsellor.html?mhp_setup=profile` — Continue setup without stable session, sign-out returning to create-account. **No token/`sessionStorage` changes.** **Do not re-test manually until hotfix deploys** — run test-state hygiene for `rodney@thegreenhouse.sg` first (see runbook).
+**PR #140 (hotfix — in flight):** Removes manual **Continue profile setup** when verified signed-in email has active invite; auto-calls `consume_mhp_invite_for_current_user_by_email()` with robust RPC response parsing; surfaces actual safe RPC error messages. **No token/`sessionStorage` changes.** **Do not re-test manually until hotfix deploys** — run test-state hygiene for `rodney@thegreenhouse.sg` first (see runbook § PR #140).
 
-**PR #138 (merged):** Email-bound invite acceptance on main. Pre-merge production access-denied was expected before merge.
+**PR #139 (merged):** Fixes post-verification sign-out loop and pending-signup UX on MHP invite flow.
 
-**Current owner blocker:** Deploy PR #139 → production smoke from clean state after hygiene. **Payment gateway remains paused.**
+**PR #138 (merged):** Email-bound invite acceptance on main.
+
+**Current owner blocker:** Deploy PR #140 → production smoke from clean state after hygiene. **Payment gateway remains paused.**
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -186,7 +188,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #133D Clear stale MHP invite token | Plain `/counsellor.html` clears sessionStorage invite token; official sign-in only | Complete (merged) |
 | PR #137 Supabase Auth email delivery checklist | Docs-only owner checklist for Custom SMTP, redirect URLs, MHP invite confirmation email | Complete (merged) |
 | PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | Complete (merged) |
-| PR #139 MHP invite verification handoff loop fix | Continue setup only with verified session; clean sign-out to /counsellor.html; no token/sessionStorage | In flight |
+| PR #139 MHP invite verification handoff loop fix | Continue setup only with verified session; clean sign-out to /counsellor.html; no token/sessionStorage | Complete (merged) |
+| PR #140 MHP invite auto-accept + consume parsing | Auto-consume on verified active invite; robust RPC response parsing; safe error messages | In flight |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -195,11 +198,11 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite email-bound acceptance (PR #138)** — **merged** — PR #139 hotfix addresses post-verification handoff loop; **do not re-test until PR #139 deploys**; hygiene for `rodney@thegreenhouse.sg` required — see runbook § PR #139. **Payment gateway remains paused.**
+- **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#139 merged** — PR #140 hotfix addresses consume failure / manual Continue UX; **do not re-test until PR #140 deploys**; hygiene for `rodney@thegreenhouse.sg` required — see runbook § PR #140. **Payment gateway remains paused.**
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A); **remains paused until MHP invitation onboarding is stable end-to-end**
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128–#139)** — **PR #129–#138 merged**; **PR #139 hotfix in flight**
+- **MHP invite request pipeline (PR #128–#140)** — **PR #129–#139 merged**; **PR #140 hotfix in flight**
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
@@ -229,7 +232,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 13. MHP invite request intake (after PR #129 + SQL apply): counsellor can submit pending colleague invite request from MHP modal; owner `/admin.html` shows pending request queue; email draft fallback still works; no auth/profile/token/publication created.
 14. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 15. MHP invite approval (after PR #131 + SQL apply): owner approves pending request; one-time invite link shown; request status `approved`; token row has hash only; no auth/profile/publication created.
-16. MHP invite acceptance (after PR #132 + #138 + SQL apply): invitee opens `/counsellor.html?mhp_invite=<token>`, creates account, confirms email → `/counsellor.html?mhp_setup=profile`, signs in with invited email, email-bound consume opens existing MHP profile/licence editor; recovery via plain `/counsellor.html` sign-in without original invite tab; wrong verified email cannot consume; pending-review MHP cannot read broad parent journals.
+16. MHP invite acceptance (after PR #132 + #138 + SQL apply): invitee opens `/counsellor.html?mhp_invite=<token>`, creates account, confirms email → `/counsellor.html?mhp_setup=profile`, verified session auto-consumes by email → existing MHP profile/licence editor; recovery via plain `/counsellor.html` sign-in without original invite tab; wrong verified email cannot consume; pending-review MHP cannot read broad parent journals.
 17. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 
 - **Launch freeze active** — [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
