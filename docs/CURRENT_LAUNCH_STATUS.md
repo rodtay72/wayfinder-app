@@ -10,9 +10,18 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last verified merge:** PR #133D — Clear stale MHP invite token from sessionStorage
 
-**Next proposed PR:** PR #138 — Email-bound MHP invite acceptance flow
+**Next proposed PR:** PR #138 — Email-bound MHP invite acceptance flow (**design accepted — do not merge until owner SQL + fresh smoke pass**)
 
-**Current owner blocker:** Apply [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase; configure Supabase Auth email delivery (Custom SMTP, redirect allow list for `counsellor.html**` including `?mhp_setup=profile`) — see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md). **Payment gateway remains paused** until MHP invitation onboarding passes end-to-end smoke test.
+**PR #138 review (2026-06-29):** Design direction **accepted**. Do **not** return to token/`sessionStorage` continuation. **Do not merge** until:
+
+1. Owner applies [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
+2. Fresh production smoke passes with a **new invite link** and a **clean invited email** (no prior test account on that email).
+
+**Pre-merge smoke confirmations:** invite link shows invited email · signup uses locked invited email · confirmation redirects to `/counsellor.html?mhp_setup=profile` · sign-in consumes invite by verified email (not token) · tab-close recovery from `/counsellor.html` · wrong verified email cannot consume · `pending_review` MHP cannot broadly read parent journals · plain `/counsellor.html` remains official MHP sign-in when signed out.
+
+**Non-negotiables (PR #138):** No browser `profiles.insert`/`profiles.upsert`. No service-role keys in browser. Do not weaken email verification, RLS, MHP publication, licence privacy, or active-membership journal-read gate. **Payment gateway remains paused.**
+
+**Current owner blocker:** Apply PR #138 SQL + Supabase Auth email delivery (Custom SMTP, redirect allow list for `counsellor.html**` including `?mhp_setup=profile`) — see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § PR #138 merge gates.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -181,7 +190,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #133C MHP invite verification-pending screen | Post-signup “Check your email to continue” screen instead of error on create form | Complete (merged) |
 | PR #133D Clear stale MHP invite token | Plain `/counsellor.html` clears sessionStorage invite token; official sign-in only | Complete (merged) |
 | PR #137 Supabase Auth email delivery checklist | Docs-only owner checklist for Custom SMTP, redirect URLs, MHP invite confirmation email | Complete (merged) |
-| PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | In flight |
+| PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | **Design accepted — merge blocked** pending owner SQL apply + fresh smoke |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -190,7 +199,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite email-bound acceptance (PR #138)** — **in flight** — replaces token-continuation through browser tabs/redirects; owner must apply [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql); Supabase Auth email delivery still required — see runbook. **Payment gateway remains paused** until end-to-end smoke passes.
+- **MHP invite email-bound acceptance (PR #138)** — **design accepted; do not merge yet** — apply [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) after PR #132 contract; fresh smoke with new invite + clean email required — see runbook § PR #138 merge gates. **Do not** return to token/`sessionStorage` continuation. **Payment gateway remains paused.**
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
 - **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A); **remains paused until MHP invitation onboarding is stable end-to-end**
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)

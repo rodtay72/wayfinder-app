@@ -137,6 +137,34 @@ If any item is unclear, pause enablement and resolve before granting access or s
 - Wrong verified email cannot consume — no active invite exists for that email.
 - **Journal read safety:** broad `journal_entries` counsellor read requires `can_read_parent_journals_as_mhp()` — active membership only.
 
+### PR #138 merge gates (owner — before merge)
+
+**Review status:** Design direction **accepted** (2026-06-29). Do **not** return to token/`sessionStorage` continuation for invite onboarding.
+
+**Do not merge PR #138 until all of the following are true:**
+
+1. **SQL applied** — Run [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
+2. **Fresh smoke** — Use a **new owner-generated invite link** and a **clean invited email** (no prior Wayfinder account on that address).
+3. **Smoke confirmations (all must pass):**
+   - [ ] Invite link shows invited email
+   - [ ] Signup uses locked invited email
+   - [ ] Confirmation email redirects to `/counsellor.html?mhp_setup=profile` (not a raw token URL)
+   - [ ] Sign-in consumes invite by **verified email** (`consume_mhp_invite_for_current_user_by_email`) — not URL token
+   - [ ] Closing the tab after signup still allows recovery from `/counsellor.html` (sign in → **Continue profile setup**)
+   - [ ] Wrong verified email cannot consume (no active invite for that email)
+   - [ ] `pending_review` MHP cannot broadly read parent `journal_entries` (`can_read_parent_journals_as_mhp()` requires active membership)
+   - [ ] Plain `/counsellor.html` remains official MHP sign-in when signed out (no public signup)
+
+**Non-negotiables:**
+
+- No browser-side `profiles.insert` or `profiles.upsert`
+- No service-role keys in browser code
+- Do not weaken email verification, RLS, MHP publication rules, licence privacy, or the active-membership journal-read gate
+- Do not bypass verification or auto-confirm production users
+- **Payment gateway remains paused** until this flow passes end-to-end
+
+Record Pass / Fail in operator notes only. Do not paste emails, UUIDs, tokens, or invite links into GitHub.
+
 ### Repair mistaken parent profile created during MHP invite testing
 
 **Context:** Before PR #133A, an invited MHP could accidentally fall into the parent signup route and create a parent profile. If the account has no parent data, owner may remove only the mistaken `public.profiles` row and then rerun the corrected MHP invite flow.
