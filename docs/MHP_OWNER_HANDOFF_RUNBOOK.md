@@ -137,11 +137,73 @@ If any item is unclear, pause enablement and resolve before granting access or s
 - Wrong verified email cannot consume — no active invite exists for that email.
 - **Journal read safety:** broad `journal_entries` counsellor read requires `can_read_parent_journals_as_mhp()` — active membership only.
 
-### PR #138 merge gates (owner — before merge)
+### PR #138 — merged; post-merge production smoke (owner)
 
-**Review status:** Design direction **accepted** (2026-06-29). Do **not** return to token/`sessionStorage` continuation for invite onboarding.
+**Merge status:** PR #138 **merged to main** (2026-06-29). After Vercel production deploy, smoke **only on** `https://wayfinder-modular.vercel.app`.
 
-**Do not merge PR #138 until all of the following are true:**
+**Pre-merge note (stop going in circles):** Production `/counsellor.html` showing access-denied or lacking email-bound invite consume **before PR #138 was on main** was **expected** — not a Wayfinder auth bug and not fixed by token/`sessionStorage` patches.
+
+**Owner SQL prerequisites (confirm applied before smoke):**
+
+1. [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132)
+2. [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) (PR #138) — **after** PR #132 contract
+
+Verify RPCs exist:
+
+```sql
+select proname from pg_proc
+where proname in (
+  'consume_mhp_invite_for_current_user_by_email',
+  'get_mhp_invite_status_for_current_user_email'
+);
+```
+
+**Post-merge production smoke — clean state (required before closing PR #138 track):**
+
+| Role | Email |
+|------|-------|
+| Invitee (colleague) | `rodney@thegreenhouse.sg` |
+| Requester (current counsellor) | existing production MHP account |
+| Owner/admin (approve + invite link) | `rodney@psytec.com.sg` |
+
+**Prepare clean state (see also § MHP invite smoke-test hygiene):**
+
+- [ ] Old **active** invite tokens for `rodney@thegreenhouse.sg` revoked or superseded by new approval
+- [ ] App rows deleted for test user (profiles, MHP profile, membership, dyads, journal_entries) if any exist
+- [ ] Auth user `rodney@thegreenhouse.sg` **deleted** from Supabase Dashboard before fresh signup
+- [ ] Do **not** reuse old invite links or old confirmation emails
+
+**Smoke steps (all must pass on production after deploy):**
+
+- [ ] Current counsellor submits **new** colleague invite request for `rodney@thegreenhouse.sg`
+- [ ] Owner/admin (`rodney@psytec.com.sg`) approves **new** pending request → production invite link `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`
+- [ ] Invitee opens **newest** production invite link → invited email shown
+- [ ] Signup uses locked invited email
+- [ ] Confirmation email redirects to `/counsellor.html?mhp_setup=profile`
+- [ ] Invitee signs in with verified email
+- [ ] `consume_mhp_invite_for_current_user_by_email` opens existing `MentalHealthProfessionalProfileEditor`
+- [ ] `profile_status = draft`
+- [ ] `profile_visible = false`
+- [ ] `membership_status = pending_review`
+- [ ] `pending_review` MHP **cannot** broadly read parent `journal_entries`
+- [ ] Plain `/counsellor.html` when signed out remains official MHP sign-in only (no public signup)
+- [ ] Tab-close recovery: sign in at `/counsellor.html` → **Continue profile setup** (optional but recommended)
+
+**Non-negotiables:**
+
+- No browser-side `profiles.insert` or `profiles.upsert`
+- No service-role keys in browser
+- Do not weaken Supabase auth, RLS, email verification, `ensure_profile`, Parent/Child IDs, journal save/read, privacy masking, MHP publication/licence rules, or active-membership journal-read gate
+- Do not reintroduce token/`sessionStorage` continuation
+- **Payment gateway remains paused** until this post-merge production smoke passes
+
+Record Pass / Fail in operator notes only. Do not paste tokens or invite links into GitHub.
+
+### PR #138 merge gates (historical — merged 2026-06-29)
+
+**Review status:** Design direction **accepted**. Do **not** return to token/`sessionStorage` continuation for invite onboarding.
+
+**Merged.** Pre-merge checklist below retained for reference.
 
 1. **SQL applied** — Run [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
 2. **Fresh smoke** — Use a **new owner-generated invite link** on production and complete **test-state hygiene** first. Recurring owner smoke email: `rodney@thegreenhouse.sg` — see § MHP invite smoke-test hygiene below.

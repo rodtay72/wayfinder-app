@@ -8,22 +8,20 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-29
 
-**Last verified merge:** PR #133D — Clear stale MHP invite token from sessionStorage
+**Last verified merge:** PR #138 — Email-bound MHP invite acceptance flow
 
-**Next proposed PR:** PR #138 — Email-bound MHP invite acceptance flow (**design accepted — do not merge until owner SQL + fresh smoke pass**)
+**Next owner action:** Post-merge **production smoke** on `wayfinder-modular.vercel.app` after Vercel deploy — see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § PR #138 post-merge production smoke.
 
-**PR #138 review (2026-06-29):** Design direction **accepted**. Do **not** return to token/`sessionStorage` continuation. **Do not merge** until:
+**PR #138 (merged):** Email-bound MHP invite acceptance is on **main**. **Before merge**, production `/counsellor.html` showing access-denied or missing email-bound consume behaviour was **expected** — main did not yet contain PR #138 runtime. **Do not** add token/`sessionStorage` patches.
 
-1. Owner applies [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
-2. Fresh production smoke passes with a **new invite link** (production URL) and **test-state hygiene** complete — recurring owner test email: `rodney@thegreenhouse.sg` (see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § MHP invite smoke-test hygiene).
+**Owner prerequisites (confirm before smoke):**
 
-**Preview smoke note:** Vercel protected preview deployments may block external invitees at Vercel Login — **not a Wayfinder auth bug**. Test preview while logged into Vercel as owner, or merge after SQL review and smoke on production `wayfinder-modular.vercel.app`. Owner-generated colleague links use `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`.
+1. [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132) applied in Supabase SQL Editor.
+2. [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) (PR #138) applied **after** PR #132 contract.
 
-**Pre-merge smoke confirmations:** invite link shows invited email · signup uses locked invited email · confirmation redirects to `/counsellor.html?mhp_setup=profile` · sign-in consumes invite by verified email (not token) · tab-close recovery from `/counsellor.html` · wrong verified email cannot consume · `pending_review` MHP cannot broadly read parent journals · plain `/counsellor.html` remains official MHP sign-in when signed out.
+**Current owner blocker:** Post-merge production smoke from clean state — invitee `rodney@thegreenhouse.sg`, owner/admin `rodney@psytec.com.sg` — full checklist in runbook. Supabase Auth email delivery (Custom SMTP, redirect allow list for `counsellor.html**` including `?mhp_setup=profile`) still required for confirmation email. **Payment gateway remains paused** until post-merge production smoke passes.
 
-**Non-negotiables (PR #138):** No browser `profiles.insert`/`profiles.upsert`. No service-role keys in browser. Do not weaken email verification, RLS, MHP publication, licence privacy, or active-membership journal-read gate. **Payment gateway remains paused.**
-
-**Current owner blocker:** Apply PR #138 SQL + Supabase Auth email delivery (Custom SMTP, redirect allow list for `counsellor.html**` including `?mhp_setup=profile`) — see [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § PR #138 merge gates.
+**Non-negotiables:** No browser `profiles.insert`/`profiles.upsert`. No service-role keys in browser. Do not weaken Supabase auth, RLS, email verification, `ensure_profile`, Parent/Child IDs, journal save/read, privacy masking, MHP publication/licence rules, or active-membership journal-read gate.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -192,7 +190,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #133C MHP invite verification-pending screen | Post-signup “Check your email to continue” screen instead of error on create form | Complete (merged) |
 | PR #133D Clear stale MHP invite token | Plain `/counsellor.html` clears sessionStorage invite token; official sign-in only | Complete (merged) |
 | PR #137 Supabase Auth email delivery checklist | Docs-only owner checklist for Custom SMTP, redirect URLs, MHP invite confirmation email | Complete (merged) |
-| PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | **Design accepted — merge blocked** pending owner SQL apply + fresh smoke |
+| PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | Complete (merged) — post-deploy production smoke pending |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -201,11 +199,11 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite email-bound acceptance (PR #138)** — **design accepted; do not merge yet** — apply email-bound SQL after PR #132 contract; **test-state hygiene required before each fresh smoke** (`rodney@thegreenhouse.sg` — inspect Auth user, profiles, MHP tables, dyads, journal_entries, invite tokens; clean reset before clean signup tests) — see runbook § MHP invite smoke-test hygiene. **Payment gateway remains paused.**
+- **MHP invite email-bound acceptance (PR #138)** — **merged on main** — owner must confirm PR #132 + PR #138 SQL applied; **post-merge production smoke pending** from clean state (`rodney@thegreenhouse.sg` invitee, `rodney@psytec.com.sg` owner/admin) — see runbook § PR #138 post-merge production smoke. Pre-merge production access-denied was expected. **Payment gateway remains paused.**
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
-- **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A); **remains paused until MHP invitation onboarding is stable end-to-end**
+- **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A); **remains paused until post-merge MHP invite production smoke passes**
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128–#138)** — **PR #129–#137 merged**; **PR #138 in flight** — token opens invite page; verified email controls acceptance; owner must apply invite SQL through [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) for email-bound flow
+- **MHP invite request pipeline (PR #128–#138)** — **PR #129–#138 merged** — email-bound acceptance on production after Vercel deploy + owner SQL apply
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
@@ -235,7 +233,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 13. MHP invite request intake (after PR #129 + SQL apply): counsellor can submit pending colleague invite request from MHP modal; owner `/admin.html` shows pending request queue; email draft fallback still works; no auth/profile/token/publication created.
 14. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 15. MHP invite approval (after PR #131 + SQL apply): owner approves pending request; one-time invite link shown; request status `approved`; token row has hash only; no auth/profile/publication created.
-16. MHP invite acceptance (after PR #132 + #138 + SQL apply): invitee opens `/counsellor.html?mhp_invite=<token>`, creates account, confirms email → `/counsellor.html?mhp_setup=profile`, signs in with invited email, email-bound consume opens existing MHP profile/licence editor; recovery via plain `/counsellor.html` sign-in without original invite tab; wrong verified email cannot consume; pending-review MHP cannot read broad parent journals.
+16. MHP invite acceptance (after PR #138 merge + SQL apply + Vercel deploy): full post-merge checklist in [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md) § PR #138 post-merge production smoke — invitee `rodney@thegreenhouse.sg`, owner/admin `rodney@psytec.com.sg`, clean state, newest production invite link, email-bound consume, draft/hidden profile, `pending_review` membership, journal read gate.
 17. PWA install (after PR #121): fresh Android install from `/index.html` and `/counsellor.html` shows correct separate icons/names; no outdated-install warning on retest after removing old shortcuts — see [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md).
 
 - **Launch freeze active** — [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
