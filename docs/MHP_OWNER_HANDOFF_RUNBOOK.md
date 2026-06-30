@@ -102,24 +102,185 @@ If any item is unclear, pause enablement and resolve before granting access or s
 - Request status becomes **`approved`**; the row leaves the pending queue on refresh.
 - Admin UI shows a one-time link, **Copy invite link**, and **Open email draft to colleague** — no automatic email send.
 - Copy must state: *This link is for invitation only. It does not activate or publish MHP access automatically.*
-- Planned invite route: `/counsellor.html?mhp_invite=<token>&setup=profile` (**PR #133A** — route isolation + signup redirect; post-consumption opens existing `MentalHealthProfessionalProfileEditor`)
+- Planned invite route: `/counsellor.html?mhp_invite=<token>` on **public production** — `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>` (**PR #138** — token opens invitation page only; acceptance uses verified email after signup/sign-in). Owner-generated colleague links **always use production origin**, not Vercel preview domains.
 - **Does not** create Supabase auth users, profiles, counsellor roles, membership, or publication at approval time.
-- Payment gateway runtime remains paused until the MHP invitation pipeline is stable.
+- Payment gateway runtime remains paused until the MHP invitation pipeline is stable end-to-end.
 
-### Invitee token acceptance and onboarding entry (PR #132 + PR #133A)
+### Invitee email-bound acceptance and onboarding entry (PR #132 + PR #138)
 
-- Invitee opens `/counsellor.html?mhp_invite=<token>&setup=profile` (requires [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql)).
-- **PR #133A:** parent portal URLs with `mhp_invite` redirect to counsellor route immediately without creating a parent profile. Invite-bound sign-in/sign-up only; after token consumption, invitee lands in the existing MHP profile/licence editor (`CounsellorApp` → `editProfile`).
-- `/counsellor.html` without an invite token is **sign-in only** for existing MHP accounts; no public self-registration.
-- `get_mhp_invite_token_status` validates token possession before sign-in (anon-safe, minimal fields only).
-- Invitee signs up or signs in with the **invited email address** only (invite-bound signup within the setup flow).
-- Email verification redirects back to `/counsellor.html?mhp_invite=<token>&setup=profile`.
-- `consume_mhp_invite_token_for_current_user` marks token **consumed** (one-time), creates counsellor profile (`C-` Wayfinder ID), draft MHP profile, and `pending_review` membership — **not publication**.
-- Token consumption is **email-bound**; wrong signed-in email cannot consume and shows: *This invitation was issued for a different email address…*
-- Expired, revoked, or already-used tokens show safe errors without exposing private data.
-- Raw token is never stored in SQL; browser must not log the token.
-- After acceptance, invitee lands directly in the existing MHP profile/licence editor — publication and licence admin review still required separately.
-- **Journal read safety (PR #132 patch):** broad `journal_entries` counsellor read now requires `can_read_parent_journals_as_mhp()` — active membership only. Invited MHPs in `pending_review` can onboard but cannot read parent journals until owner/admin activates membership. Grant-scoped review reads remain separate.
+**Canonical flow (PR #138):**
+
+1. Invitee opens `/counsellor.html?mhp_invite=<token>` — token validates invited email only.
+2. Invitee creates account with locked invited email.
+3. Supabase sends confirmation email; redirect target is `/counsellor.html?mhp_setup=profile` (**not** a raw token URL).
+4. After email verification, invitee signs in at `/counsellor.html` (official MHP sign-in) or lands on setup route with verified session.
+5. App calls `consume_mhp_invite_for_current_user_by_email()` — **verified email match**, not URL token.
+6. Existing `MentalHealthProfessionalProfileEditor` opens via `CounsellorApp` → `editProfile`.
+
+**Recovery:** Invitees do **not** need to preserve the original invite tab. If the token tab or email redirect was lost, sign in at `/counsellor.html` with the invited verified email → **Continue Mental Health Professional profile setup**.
+
+**SQL (owner apply in order):**
+
+- [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) — token status + legacy token consume + journal read gate
+- [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) — **PR #138** email-bound status + consume RPCs
+
+**Runtime rules:**
+
+- `get_mhp_invite_token_status` — validates raw token for **initial invitation page only** (anon-safe).
+- `get_mhp_invite_status_for_current_user_email` — authenticated; minimal fields for active invite by verified email.
+- `consume_mhp_invite_for_current_user_by_email` — preferred post-verification path; requires `email_confirmed_at`; no raw token.
+- `consume_mhp_invite_token_for_current_user` — kept for backward compatibility with old links; **not** the preferred path after authentication.
+- Parent portal URLs with `mhp_invite` redirect to `/counsellor.html?mhp_invite=<token>` without creating a parent profile.
+- `/counsellor.html` without token is **official MHP sign-in only** when signed out; no public self-registration.
+- Browser does **not** persist invite tokens in `sessionStorage` for flow continuation (PR #138).
+- Consumption creates counsellor profile (`C-` Wayfinder ID), draft MHP profile (`profile_status = draft`, `profile_visible = false`), and `pending_review` membership — **not publication**.
+- Wrong verified email cannot consume — no active invite exists for that email.
+- **Journal read safety:** broad `journal_entries` counsellor read requires `can_read_parent_journals_as_mhp()` — active membership only.
+
+### PR #138 merge gates (owner — before merge)
+
+**Review status:** Design direction **accepted** (2026-06-29). Do **not** return to token/`sessionStorage` continuation for invite onboarding.
+
+**Do not merge PR #138 until all of the following are true:**
+
+1. **SQL applied** — Run [supabase-mhp-invite-email-bound-acceptance-contract.sql](../supabase-mhp-invite-email-bound-acceptance-contract.sql) in Supabase SQL Editor **after** [supabase-mhp-invite-token-acceptance-contract.sql](../supabase-mhp-invite-token-acceptance-contract.sql) (PR #132).
+2. **Fresh smoke** — Use a **new owner-generated invite link** on production and complete **test-state hygiene** first. Recurring owner smoke email: `rodney@thegreenhouse.sg` — see § MHP invite smoke-test hygiene below.
+
+**Vercel preview vs production (not a Wayfinder auth bug):**
+
+Owner/admin invite approval on a **Vercel protected preview deployment** previously built links from `window.location.origin`, which sent external invitees to **Vercel Login** before Wayfinder loaded. Runtime now always emits colleague-facing invite links on the **public production base URL**:
+
+`https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`
+
+For **smoke testing PR #138 before merge**, either:
+
+- Test the preview deployment while **logged into Vercel as owner** (preview protection bypass), or
+- **Merge after SQL review** and generate fresh invite links from **production** `/admin.html` on `wayfinder-modular.vercel.app`.
+
+Do **not** send preview-domain invite links to real external invitees. Do **not** treat Vercel preview login as a Wayfinder auth defect.
+
+3. **Smoke confirmations (all must pass):**
+   - [ ] Invite link shows invited email
+   - [ ] Signup uses locked invited email
+   - [ ] Confirmation email redirects to `/counsellor.html?mhp_setup=profile` (not a raw token URL)
+   - [ ] Sign-in consumes invite by **verified email** (`consume_mhp_invite_for_current_user_by_email`) — not URL token
+   - [ ] Closing the tab after signup still allows recovery from `/counsellor.html` (sign in → **Continue profile setup**)
+   - [ ] Wrong verified email cannot consume (no active invite for that email)
+   - [ ] `pending_review` MHP cannot broadly read parent `journal_entries` (`can_read_parent_journals_as_mhp()` requires active membership)
+   - [ ] Plain `/counsellor.html` remains official MHP sign-in when signed out (no public signup)
+
+**Non-negotiables:**
+
+- No browser-side `profiles.insert` or `profiles.upsert`
+- No service-role keys in browser code
+- Do not weaken email verification, RLS, MHP publication rules, licence privacy, or the active-membership journal-read gate
+- Do not bypass verification or auto-confirm production users
+- **Payment gateway remains paused** until this flow passes end-to-end
+
+Record Pass / Fail in operator notes only. Do not paste emails, UUIDs, tokens, or invite links into GitHub.
+
+### MHP invite smoke-test hygiene (recurring owner email)
+
+**Recurring owner smoke-test email:** `rodney@thegreenhouse.sg` — always treat this as Rodney’s default invited-email address for fresh MHP invite onboarding tests unless a different clean address is explicitly chosen.
+
+**Before every fresh MHP invite onboarding test**, run **test-state hygiene** in Supabase (SQL Editor + Authentication → Users). Do **not** start a “clean signup” test until inspection is complete.
+
+#### 1. Inspect current state (required)
+
+Run in Supabase SQL Editor:
+
+```sql
+-- Auth user
+select id, email, email_confirmed_at, created_at, last_sign_in_at
+from auth.users
+where lower(email) = lower('rodney@thegreenhouse.sg');
+
+-- App profile
+select user_id, parent_id, role, email_verified, created_at
+from public.profiles
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+-- MHP profile + membership
+select user_id, full_name, profile_status, profile_visible, updated_at
+from public.mental_health_professional_profiles
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+select user_id, membership_status, institutional_membership_expires_at, updated_at
+from public.mental_health_professional_memberships
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+-- Parent-side rows (should be zero for pure MHP invite tests)
+select count(*) as dyads
+from public.dyads
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+select count(*) as journal_entries
+from public.journal_entries
+where user_id in (select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg'));
+
+-- Invite tokens for this invited email (active / consumed / revoked)
+select id, token_status, expires_at, consumed_at, consumed_by, created_at, request_id
+from public.mental_health_professional_invite_tokens
+where lower(invited_email) = lower('rodney@thegreenhouse.sg')
+order by created_at desc;
+```
+
+Also check **Supabase Dashboard → Authentication → Users** for `rodney@thegreenhouse.sg` (confirmed vs unconfirmed, created_at).
+
+#### 2. Confirmation email diagnosis rule
+
+Do **not** interpret a missing confirmation email as an app or SMTP defect until you know whether an **Auth user already existed** for the invited email.
+
+- Existing unconfirmed user → resend may not behave like first signup; inspect Auth user + Logs first.
+- Leftover rows from a prior test → clean reset (below) before retrying.
+- Only after a **confirmed clean state** should missing email point to SMTP / redirect / template configuration.
+
+#### 3. Clean signup reset (when intent is fresh first-time onboarding)
+
+**Order matters.** Owner/manual only — do **not** add runtime cleanup in app code.
+
+1. **Delete app rows first** (only for the test user — replace nothing; email is fixed above):
+
+```sql
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.journal_entries j using target_user t where j.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.dyads d using target_user t where d.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.mental_health_professional_memberships m using target_user t where m.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.mental_health_professional_profiles p using target_user t where p.user_id = t.id;
+
+with target_user as (
+  select id from auth.users where lower(email) = lower('rodney@thegreenhouse.sg') limit 1
+)
+delete from public.profiles p using target_user t where p.user_id = t.id;
+```
+
+2. **Delete the Auth user** — Supabase Dashboard → **Authentication → Users** → delete `rodney@thegreenhouse.sg` (do not use service-role keys in browser; do not auto-confirm or bypass verification).
+
+3. **Generate a fresh invite** — new owner approval from `/admin.html` on production; use the new production link only:
+
+   `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`
+
+#### 4. Test discipline
+
+- Do **not** reuse old invite links.
+- Do **not** reuse old confirmation emails (request a new signup or resend only after clean state).
+- Do **not** reintroduce token/`sessionStorage` continuation workarounds.
+- Do **not** weaken Supabase auth, RLS, email verification, MHP licence/privacy rules, publication rules, or journal read gates.
+- **Payment gateway remains paused** until MHP invite onboarding passes end-to-end smoke.
 
 ### Repair mistaken parent profile created during MHP invite testing
 
@@ -175,23 +336,25 @@ returning p.user_id, p.parent_id, p.role;
 
 **After repair:**
 
-1. Open the corrected MHP invite link.
-2. Ensure it stays on `/counsellor.html?mhp_invite=<token>&setup=profile`.
-3. Sign in/sign up using the invited email.
-4. Confirm token consumption creates counsellor profile only.
+1. Open the corrected MHP invite link (`/counsellor.html?mhp_invite=<token>`).
+2. Create account / verify email; confirmation redirect should use `/counsellor.html?mhp_setup=profile`.
+3. Sign in at `/counsellor.html` with the invited verified email if needed.
+4. Confirm email-bound consumption creates counsellor profile only.
 5. Confirm profile opens in existing `MentalHealthProfessionalProfileEditor`.
 
 PR #133A route isolation prevents the same mistaken parent profile from being recreated when the invite link is used correctly.
 
 ### MHP invite signup — Supabase Auth email delivery
 
-**Status:** The in-app MHP invite onboarding flow is **complete** (PR #132–#133D):
+**Status:** Email-bound MHP invite acceptance (PR #138) replaces fragile token-continuation through browser tabs and redirects.
 
-`Invite link` → `Create account` → `Check your email to continue` → Supabase confirmation link → return to `/counsellor.html?mhp_invite=<token>&setup=profile` → token consume → existing `MentalHealthProfessionalProfileEditor`.
+**Canonical flow:**
 
-**Important:** Wayfinder frontend code does **not** send signup confirmation emails. **Supabase Auth** sends confirmation, invite, and reset-password emails. The app only sets `emailRedirectTo` for invite-bound signup/resend and waits for Supabase email confirmation before continuing.
+`Invite link (token)` → `Create account` → `Check your email to continue` → Supabase confirmation → `/counsellor.html?mhp_setup=profile` → sign in with invited email → `consume_mhp_invite_for_current_user_by_email()` → existing `MentalHealthProfessionalProfileEditor`.
 
-**Remaining blocker:** Supabase Dashboard **email delivery configuration** — not a frontend bug. Do **not** add browser workarounds, bypass verification, disable Confirm Email, auto-confirm production users, or send confirmation email from app code.
+**Important:** The raw invite token opens the invitation page only. After email verification, onboarding access is based on the **authenticated user's verified email** matching an active approved invite — not on carrying `mhp_invite=<token>` through redirects. Invitees can recover by signing in at `/counsellor.html` with the invited email.
+
+**Remaining owner blocker:** Supabase Dashboard **email delivery configuration** — Custom SMTP, redirect allow list (must include `counsellor.html**` for `?mhp_setup=profile`), branded sender. Do **not** bypass email verification.
 
 #### Required Supabase settings
 
@@ -219,8 +382,10 @@ PR #133A route isolation prevents the same mistaken parent profile from being re
    - **Redirect URLs must include:**
      - `https://wayfinder-modular.vercel.app/counsellor.html`
      - `https://wayfinder-modular.vercel.app/counsellor.html**` (wildcard — allows query parameters)
-   - **MHP invite flow uses:**
-     - `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>&setup=profile`
+   - **MHP invite flow uses post-verification redirect:**
+     - `https://wayfinder-modular.vercel.app/counsellor.html?mhp_setup=profile`
+   - **Initial invite link (token only):**
+     - `https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>`
    - If the wildcard entry is missing, confirmation links may be rejected even when email is delivered.
 
 #### Diagnose missing confirmation email
@@ -239,15 +404,15 @@ Supabase default mail may be rate-limited or unreliable for production; Custom S
 #### MHP invite email smoke test (after SMTP + redirect URLs configured)
 
 1. Owner generates invite link from `/admin.html`.
-2. Invitee opens invite link.
-3. Invitee creates account → app shows **Check your email to continue** (not an error).
+2. Invitee opens `/counsellor.html?mhp_invite=<token>` → invited email shown.
+3. Invitee creates account → app shows **Check your email to continue**.
 4. Confirmation email arrives from `Wayfinder by PsyTec <ask.anything@psytec.com.sg>`.
-5. Invitee clicks confirmation link.
-6. Browser returns to `/counsellor.html?mhp_invite=<token>&setup=profile`.
-7. Token consumes after verified sign-in with invited email.
+5. Invitee clicks confirmation link → browser returns to `/counsellor.html?mhp_setup=profile` (not token URL).
+6. Invitee signs in with invited verified email (if session not auto-established).
+7. App consumes invite by **verified email** (`consume_mhp_invite_for_current_user_by_email`) — not URL token.
 8. Existing `MentalHealthProfessionalProfileEditor` opens.
-
-Resend confirmation from the pending screen must also preserve the invite redirect URL.
+9. **Recovery test:** close tab after signup → go to `/counsellor.html` → sign in with invited email → **Continue profile setup** works without original invite tab.
+10. Wrong verified email cannot consume — no active invite for that email.
 
 #### Do not
 

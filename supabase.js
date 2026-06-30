@@ -1022,6 +1022,8 @@ const isMhpInviteAcceptanceUnavailable = (status, responseText) => {
   if (text.includes('pgrst205')) return true;
   if (text.includes('get_mhp_invite_token_status') && text.includes('does not exist')) return true;
   if (text.includes('consume_mhp_invite_token_for_current_user') && text.includes('does not exist')) return true;
+  if (text.includes('consume_mhp_invite_for_current_user_by_email') && text.includes('does not exist')) return true;
+  if (text.includes('get_mhp_invite_status_for_current_user_email') && text.includes('does not exist')) return true;
   if (text.includes('hash_mhp_invite_token') && text.includes('does not exist')) return true;
   return false;
 };
@@ -1075,6 +1077,17 @@ const normalizeMhpInviteConsumeRow = (row) => {
     role: row.role || '',
     invitedEmail: row.invited_email || row.invitedEmail || '',
     invitedName: row.invited_name || row.invitedName || '',
+    message: row.message || ''
+  };
+};
+
+const normalizeMhpInviteEmailStatusRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    hasActiveInvite: !!(row.has_active_invite ?? row.hasActiveInvite),
+    invitedEmail: row.invited_email || row.invitedEmail || '',
+    invitedName: row.invited_name || row.invitedName || '',
+    expiresAt: row.expires_at || row.expiresAt || null,
     message: row.message || ''
   };
 };
@@ -3701,6 +3714,61 @@ const DB = {
       authSession,
       context: 'consumeMhpInviteTokenForCurrentUser',
       body: { p_token: rawToken }
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, accepted: false, record: null };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, accepted: false, record: null };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    const record = normalizeMhpInviteConsumeRow(rows[0]);
+    if (!record) {
+      return { ok: false, unavailable: false, accepted: false, record: null };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      accepted: !!record.accepted,
+      record
+    };
+  },
+
+  getMhpInviteStatusForCurrentUserEmail: async (userId, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false, status: null };
+    }
+    const result = await callMhpInviteAcceptanceRpcSafe({
+      rpcName: 'get_mhp_invite_status_for_current_user_email',
+      userId,
+      authSession,
+      context: 'getMhpInviteStatusForCurrentUserEmail',
+      body: {}
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, status: null };
+    }
+    if (!result.ok) {
+      return { ok: false, unavailable: false, status: null };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    const status = normalizeMhpInviteEmailStatusRow(rows[0]);
+    if (!status) {
+      return { ok: false, unavailable: false, status: null };
+    }
+    return { ok: true, unavailable: false, status };
+  },
+
+  consumeMhpInviteForCurrentUserByEmail: async (userId, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false, accepted: false, record: null };
+    }
+    const result = await callMhpInviteAcceptanceRpcSafe({
+      rpcName: 'consume_mhp_invite_for_current_user_by_email',
+      userId,
+      authSession,
+      context: 'consumeMhpInviteForCurrentUserByEmail',
+      body: {}
     });
     if (result.unavailable) {
       return { ok: false, unavailable: true, accepted: false, record: null };

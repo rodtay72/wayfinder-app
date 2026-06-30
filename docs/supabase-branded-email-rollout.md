@@ -36,7 +36,7 @@ Use the Supabase Dashboard manually. Do not paste secrets into repo files, scree
    - `https://wayfinder-modular.vercel.app/`
    - `https://wayfinder-modular.vercel.app/index.html`
    - `https://wayfinder-modular.vercel.app/counsellor.html`
-   - `https://wayfinder-modular.vercel.app/counsellor.html**` — **required for MHP invite signup/resend** (`emailRedirectTo` includes `?mhp_invite=<token>&setup=profile`)
+   - `https://wayfinder-modular.vercel.app/counsellor.html**` — **required for MHP invite signup/resend** (`emailRedirectTo` uses `/counsellor.html?mhp_setup=profile` after PR #138)
    - Localhost URLs only when intentionally testing locally.
 9. Go to `Authentication > Email Templates`.
 10. Update the `Confirm signup` subject and body.
@@ -260,15 +260,17 @@ SMTP host and port: <obtain from provider>
 MHP invite-bound signup and resend verification set `emailRedirectTo` to:
 
 ```text
-https://wayfinder-modular.vercel.app/counsellor.html?mhp_invite=<token>&setup=profile
+https://wayfinder-modular.vercel.app/counsellor.html?mhp_setup=profile
 ```
+
+Initial owner-generated invite links still use `/counsellor.html?mhp_invite=<token>` to open the invitation page only. After email verification, acceptance uses verified email match — **not** the raw token in the redirect URL (PR #138).
 
 Supabase Auth confirmation links will only redirect to allowed URLs. In `Authentication > URL Configuration`:
 
 - **Site URL:** `https://wayfinder-modular.vercel.app`
 - **Redirect URLs must include:**
   - `https://wayfinder-modular.vercel.app/counsellor.html`
-  - `https://wayfinder-modular.vercel.app/counsellor.html**` — **wildcard required** so query parameters (`?mhp_invite=<token>&setup=profile`) are permitted
+  - `https://wayfinder-modular.vercel.app/counsellor.html**` — **wildcard required** so query parameters (`?mhp_setup=profile`, legacy token URLs) are permitted
 
 Without the wildcard entry, confirmation email may arrive but the redirect after click may be rejected.
 
@@ -279,17 +281,18 @@ Also keep parent portal redirect URLs as already listed in [Supabase Configurati
 Run after Custom SMTP, domain verification, and redirect allow list are configured. Requires a valid owner-generated MHP invite link (do not paste real tokens into GitHub).
 
 1. **Owner generates invite link** from `/admin.html`.
-2. **Invitee opens invite link** → lands on `/counsellor.html?mhp_invite=<token>&setup=profile`.
-3. **Invitee creates account** with the invited email → app shows **Check your email to continue** (not an error on the create form).
+2. **Invitee opens invite link** → lands on `/counsellor.html?mhp_invite=<token>` (invited email shown).
+3. **Invitee creates account** with the invited email → app shows **Check your email to continue**.
 4. **Confirmation email arrives** from `Wayfinder by PsyTec <ask.anything@psytec.com.sg>`.
 5. **Invitee clicks confirmation link** in the email.
-6. **Browser returns** to `/counsellor.html?mhp_invite=<token>&setup=profile`.
-7. **Token consumes** after verified sign-in with the invited email.
+6. **Browser returns** to `/counsellor.html?mhp_setup=profile` (not a raw token URL).
+7. **Invitee signs in** with invited verified email if needed → app consumes invite by **verified email** (`consume_mhp_invite_for_current_user_by_email`).
 8. **Existing MHP profile/licence editor opens** (`MentalHealthProfessionalProfileEditor`).
 
 Additional checks:
 
-- Resend confirmation from the pending screen preserves the invite redirect URL.
+- **Recovery:** invitee can go to `/counsellor.html`, sign in with invited email, and tap **Continue profile setup** without the original invite tab.
+- Resend confirmation from the pending screen uses `/counsellor.html?mhp_setup=profile` redirect (no token).
 - Diagnose missing email via Supabase Authentication → Users, Authentication → Logs, and SMTP provider delivery logs.
 - Do **not** disable email verification or auto-confirm production users as a workaround.
 
