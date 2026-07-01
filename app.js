@@ -1067,9 +1067,22 @@ function OwnerAdminMhpApprovedPortraitSection({mhpUserId,user,authSession,refres
     mimeType:uploadResult.mimeType,
     fileSizeBytes:uploadResult.fileSizeBytes
    },authSession);
-   if(insertResult.unavailable||!insertResult.ok){
+   if(insertResult.unavailable){
     setUploadState('error');
-    setStatusMessage('Portrait uploaded but metadata could not be saved. Please try again.');
+    setStatusMessage('Approved portrait metadata storage is not ready yet. Apply PR #113 SQL in Supabase.');
+    return;
+   }
+   if(!insertResult.ok){
+    AuthDebug.log('[owner-admin] approved portrait metadata insert failed:', {
+     validationError: !!insertResult.validationError,
+     errorMessage: String(insertResult.errorMessage||'').slice(0, 180)
+    });
+    setUploadState('error');
+    setStatusMessage(
+     insertResult.validationError
+      ? (insertResult.errorMessage||'Portrait metadata validation failed before save.')
+      : 'Portrait file uploaded, but Wayfinder could not save the review record. Please contact admin before retrying to avoid duplicate private files.'
+    );
     return;
    }
    const approvedImageId=ownerApprovedPortraitImageId(insertResult.record);

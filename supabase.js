@@ -410,6 +410,154 @@ const buildOwnerApprovedPortraitStoragePath = (mhpUserId, mimeType) => {
   return `mhp/${mhpUserId}/approved/${stamp}-${suffix}.${ext}`;
 };
 
+const MHP_AUTH_USER_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MHP_OWNER_APPROVED_PORTRAIT_PATH_RE = /^mhp\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/approved\/[^/]+\.(jpg|jpeg|png|webp)$/i;
+
+const parsePostgrestSafeErrorMessage = (responseText) => {
+  if (!responseText) return '';
+  try {
+    const parsed = JSON.parse(responseText);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return String(parsed.message || parsed.error || parsed.details || '').trim();
+    }
+  } catch (_) {}
+  return String(responseText).trim().slice(0, 240);
+};
+
+const isMhpProfileImageMetadataWriteUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('mental_health_professional_profile_images') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  return false;
+};
+
+const validateOwnerApprovedPortraitMetadataPayload = ({
+  ownerAuthUserId,
+  mhpUserId,
+  storagePath,
+  storageBucket,
+  mimeType,
+  fileSizeBytes,
+  approvedAt
+}) => {
+  const errors = [];
+  if (!MHP_AUTH_USER_ID_RE.test(String(ownerAuthUserId || ''))) {
+    errors.push('owner auth user id must match the signed-in admin session');
+  }
+  if (!MHP_AUTH_USER_ID_RE.test(String(mhpUserId || ''))) {
+    errors.push('target MHP user id must be a valid counsellor auth user id');
+  }
+  const path = String(storagePath || '').trim();
+  if (!path) {
+    errors.push('storage path is required');
+  } else if (!MHP_OWNER_APPROVED_PORTRAIT_PATH_RE.test(path)) {
+    errors.push('storage path must follow mhp/{mhp_user_id}/approved/{filename}');
+  } else if (mhpUserId && !path.startsWith(`mhp/${mhpUserId}/approved/`)) {
+    errors.push('storage path must belong to the selected MHP user');
+  }
+  if (String(storageBucket || '') !== MHP_APPROVED_PORTRAIT_BUCKET) {
+    errors.push('storage bucket must be professional-profile-portraits');
+  }
+  if (mimeType && !MHP_SOURCE_PHOTO_ALLOWED_MIME.has(String(mimeType).toLowerCase())) {
+    errors.push('mime type must be JPG, PNG, or WebP');
+  }
+  if (fileSizeBytes != null && (!Number.isFinite(Number(fileSizeBytes)) || Number(fileSizeBytes) < 0)) {
+    errors.push('file size must be zero or greater');
+  }
+  if (!approvedAt) {
+    errors.push('approved_at timestamp is required');
+  }
+  return { ok: errors.length === 0, errors };
+};
+
+const insertOwnerApprovedPortraitMetadataSafe = async ({ session, body, context }) => {
+  try {
+    if (!session?.access_token) {
+      return { ok: false, unavailable: false, errorMessage: 'Authenticated owner session is required.' };
+    }
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/mental_health_professional_profile_images`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify(body)
+    });
+    const responseText = await response.text();
+    const safeMessage = parsePostgrestSafeErrorMessage(responseText);
+    if (!response.ok) {
+      if (isMhpProfileImageMetadataWriteUnavailable(response.status, responseText)) {
+        AuthDebug.log('[db] owner approved portrait metadata unavailable:', {
+          context,
+          status: response.status,
+          safeMessage
+        });
+        return { ok: false, unavailable: true, errorMessage: safeMessage };
+      }
+      AuthDebug.log('[db] owner approved portrait metadata insert failed:', {
+        context,
+        status: response.status,
+        safeMessage,
+        responseShape: Array.isArray(responseText) ? 'array' : (responseText ? 'text' : 'empty')
+      });
+      return { ok: false, unavailable: false, errorMessage: safeMessage };
+    }
+    AuthDebug.log('[db] owner approved portrait metadata insert accepted:', {
+      context,
+      status: response.status,
+      storagePath: String(body?.storage_path || '').slice(0, 120)
+    });
+    return { ok: true, unavailable: false, errorMessage: '' };
+  } catch (err) {
+    const message = String(err?.message || err);
+    if (isMhpProfileImageMetadataWriteUnavailable(0, message)) {
+      return { ok: false, unavailable: true, errorMessage: message };
+    }
+    AuthDebug.log('[db] owner approved portrait metadata insert exception:', { context, message });
+    return { ok: false, unavailable: false, errorMessage: message };
+  }
+};
+
+const resolveOwnerApprovedPortraitRecordFromList = async (ownerUserId, mhpUserId, storagePath, authSession) => {
+  const listResult = await callOwnerAdminRpcSafe({
+    rpcName: 'owner_list_mhp_profile_images',
+    userId: ownerUserId,
+    authSession,
+    context: 'resolveOwnerApprovedPortraitRecordFromList',
+    body: { p_mhp_user_id: mhpUserId }
+  });
+  if (listResult.unavailable || !listResult.ok) {
+    return { ok: false, record: null };
+  }
+  const rows = (Array.isArray(listResult.data) ? listResult.data : [])
+    .map(normalizeOwnerMhpProfileImageRow)
+    .filter(Boolean);
+  const matched = rows.find((row) =>
+    row.storagePath === storagePath &&
+    row.imageKind === 'approved_portrait' &&
+    String(row.imageStatus || '').toLowerCase() === 'approved'
+  );
+  if (!matched?.imageId) {
+    return { ok: false, record: null };
+  }
+  return {
+    ok: true,
+    record: {
+      ...matched,
+      id: matched.imageId,
+      userId: matched.mhpUserId
+    }
+  };
+};
+
 const normalizeMhpProfileImageRow = (row) => {
   if (!row || typeof row !== 'object') return null;
   return {
@@ -4060,39 +4208,118 @@ const DB = {
     const targetMhpId = String(mhpUserId || '').trim();
     const storagePath = String(metadata?.storagePath || '').trim();
     if (!ownerUserId || !targetMhpId || !storagePath) {
-      return { ok: false, unavailable: false, record: null };
+      return {
+        ok: false,
+        unavailable: false,
+        validationError: true,
+        record: null,
+        errorMessage: 'Missing approved portrait metadata.'
+      };
     }
-    const now = new Date().toISOString();
-    const result = await reviewGrantWriteSafe({
-      method: 'POST',
-      userId: ownerUserId,
-      authSession,
-      context: 'insertOwnerApprovedMhpPortraitMetadata',
-      table: 'mental_health_professional_profile_images',
-      unavailableCheck: isMhpProfileImageStorageUnavailable,
-      body: {
-        user_id: targetMhpId,
-        image_kind: 'approved_portrait',
-        storage_bucket: MHP_APPROVED_PORTRAIT_BUCKET,
-        storage_path: storagePath,
-        mime_type: metadata?.mimeType || null,
-        file_size_bytes: metadata?.fileSizeBytes ?? null,
-        portrait_style: 'wayfinder_manual',
-        image_status: 'approved',
-        approved_by: ownerUserId,
-        approved_at: now
-      }
+    let session;
+    try {
+      session = await getAuthenticatedReadSession(ownerUserId, 'insertOwnerApprovedMhpPortraitMetadata', authSession);
+    } catch (err) {
+      const errorMessage = String(err?.message || err);
+      AuthDebug.log('[db] owner approved portrait metadata session failed:', { errorMessage });
+      return { ok: false, unavailable: false, validationError: false, record: null, errorMessage };
+    }
+    const ownerAuthUserId = String(session.user?.id || '').trim();
+    const approvedAt = new Date().toISOString();
+    const payload = {
+      user_id: targetMhpId,
+      image_kind: 'approved_portrait',
+      storage_bucket: MHP_APPROVED_PORTRAIT_BUCKET,
+      storage_path: storagePath,
+      mime_type: metadata?.mimeType || null,
+      file_size_bytes: metadata?.fileSizeBytes ?? null,
+      portrait_style: 'wayfinder_manual',
+      image_status: 'approved',
+      approved_by: ownerAuthUserId,
+      approved_at: approvedAt
+    };
+    const validation = validateOwnerApprovedPortraitMetadataPayload({
+      ownerAuthUserId,
+      mhpUserId: targetMhpId,
+      storagePath,
+      storageBucket: MHP_APPROVED_PORTRAIT_BUCKET,
+      mimeType: payload.mime_type,
+      fileSizeBytes: payload.file_size_bytes,
+      approvedAt
     });
-    if (result.unavailable) {
-      return { ok: false, unavailable: true, record: null };
+    if (!validation.ok) {
+      AuthDebug.log('[db] owner approved portrait metadata validation failed:', {
+        errors: validation.errors
+      });
+      return {
+        ok: false,
+        unavailable: false,
+        validationError: true,
+        record: null,
+        errorMessage: `Approved portrait metadata validation failed: ${validation.errors.join('; ')}.`
+      };
     }
-    if (!result.ok || !(result.rows || []).length) {
-      return { ok: false, unavailable: false, record: null };
+    const insertResult = await insertOwnerApprovedPortraitMetadataSafe({
+      session,
+      body: payload,
+      context: 'insertOwnerApprovedMhpPortraitMetadata'
+    });
+    if (insertResult.unavailable) {
+      return {
+        ok: false,
+        unavailable: true,
+        validationError: false,
+        record: null,
+        errorMessage: insertResult.errorMessage || ''
+      };
+    }
+    if (!insertResult.ok) {
+      return {
+        ok: false,
+        unavailable: false,
+        validationError: false,
+        record: null,
+        errorMessage: insertResult.errorMessage || ''
+      };
+    }
+    const resolved = await resolveOwnerApprovedPortraitRecordFromList(
+      ownerUserId,
+      targetMhpId,
+      storagePath,
+      session
+    );
+    if (!resolved.ok || !resolved.record) {
+      AuthDebug.log('[db] owner approved portrait metadata saved but RPC lookup missed row:', {
+        storagePath: storagePath.slice(0, 120)
+      });
+      return {
+        ok: false,
+        unavailable: false,
+        validationError: false,
+        record: null,
+        errorMessage: 'Portrait review record could not be confirmed after save.'
+      };
     }
     return {
       ok: true,
       unavailable: false,
-      record: normalizeMhpProfileImageRow(result.rows[0])
+      validationError: false,
+      record: normalizeMhpProfileImageRow({
+        id: resolved.record.id,
+        user_id: resolved.record.userId,
+        image_kind: resolved.record.imageKind,
+        storage_bucket: resolved.record.storageBucket,
+        storage_path: resolved.record.storagePath,
+        mime_type: resolved.record.mimeType,
+        file_size_bytes: resolved.record.fileSizeBytes,
+        portrait_style: resolved.record.portraitStyle,
+        image_status: resolved.record.imageStatus,
+        created_at: resolved.record.createdAt,
+        selected_at: resolved.record.selectedAt,
+        approved_at: resolved.record.approvedAt,
+        approved_by: ownerAuthUserId
+      }),
+      errorMessage: ''
     };
   },
 
