@@ -131,7 +131,7 @@ Wayfinder should launch with three client-facing plan names:
 
 1. Wayfinder
 2. Wayfinder Plus
-3. Wayfinder Connected
+3. Wayfinder Connect
 
 For internal planning, `Wayfinder` corresponds to the free Explorer-style trial entitlement.
 
@@ -140,14 +140,14 @@ For internal planning, `Wayfinder` corresponds to the free Explorer-style trial 
 | Plan | Client-facing role | Suggested price | Payment requirement |
 | --- | --- | --- | --- |
 | Wayfinder | Safe entry point to try the ALIGN pathway | Free for 30 days | No credit card required |
-| Wayfinder Plus | Main parent development subscription | S$9.90/month or S$89/year | Card required at upgrade |
-| Wayfinder Connected | Parent-controlled MHP support layer | S$19.90/month or S$199/year | Card required at upgrade |
+| Wayfinder Plus | Main parent development subscription | S$7.90/month or S$69/year | Card required at upgrade |
+| Wayfinder Connect | Parent-controlled MHP support layer | S$29.90/month or S$299/year | Card required at upgrade |
 
 ### Client-facing feature entitlement table
 
 This table is intended for client-facing pricing pages and sales decks. Each row describes the parent benefit first, then shows whether the feature is locked, limited, or unlocked.
 
-| Features | Wayfinder | Wayfinder Plus | Wayfinder Connected |
+| Features | Wayfinder | Wayfinder Plus | Wayfinder Connect |
 | --- | --- | --- | --- |
 | Decode a Moment: understand what a difficult child moment may be signalling, what happened in the parent's CAB, and what next action may restore alignment | Unlocked during trial | Unlocked | Unlocked |
 | 30-day guided start: try the core Wayfinder pathway without payment pressure | Unlocked | Unlocked | Unlocked |
@@ -200,8 +200,8 @@ The pricing should communicate that Wayfinder is:
 
 Recommended first price:
 
-- S$9.90/month
-- S$89/year
+- S$7.90/month
+- S$69/year
 
 Annual value:
 
@@ -212,12 +212,12 @@ Rationale:
 
 Plus is the main subscription. The price should be accessible enough for parents to use Wayfinder as an ongoing growth companion, while still reflecting the structured ALIGN/CAB pathway, saved reflection history, Journal Trail, Relationship Garden, and 52 Parent Growth Practices.
 
-### Wayfinder Connected
+### Wayfinder Connect
 
 Recommended first price:
 
-- S$19.90/month
-- S$199/year
+- S$29.90/month
+- S$299/year
 
 Annual value:
 
@@ -226,7 +226,7 @@ Annual value:
 
 Rationale:
 
-Connected adds a higher-trust, higher-support layer, not a therapy marketplace. The price reflects extra product complexity around parent-controlled sharing, published + active MHP selection, review support, privacy expectations, and MHP presentation rules. It must not imply unlimited therapist messaging, clinical care, diagnosis, emergency support, or automatic sharing.
+Connect adds a higher-trust, higher-support layer, not a therapy marketplace. The price reflects extra product complexity around parent-controlled sharing, published + active MHP selection, review support, privacy expectations, and MHP presentation rules. It must not imply unlimited therapist messaging, clinical care, diagnosis, emergency support, or automatic sharing.
 
 ---
 
@@ -292,7 +292,7 @@ Reasons:
 - billing records are not created before a parent chooses to pay;
 - the product limits are clear: 30 days and 3 saved Decode moments.
 
-Stripe should begin only when a parent actively chooses Plus or Connected.
+Stripe should begin only when a parent actively chooses Plus or Connect.
 
 ### Trial start rule
 
@@ -345,7 +345,7 @@ Wayfinder:
 - can preview the value of structured parent growth;
 - should not promise full practice history, progression, or saved practice tracking.
 
-Plus and Connected:
+Plus and Connect:
 
 - unlock full 52 Parent Growth Practices;
 - include save/history/progression;
@@ -374,19 +374,12 @@ The browser should never decide paid access from localStorage or client-only fla
 
 | Field | Purpose |
 | --- | --- |
-| `plan_code` | `wayfinder`, `plus`, or `connected` |
-| `entitlement_status` | `trialing`, `active`, `past_due`, `canceled`, `expired`, `readonly` |
-| `trial_started_at` | Trial start timestamp, likely first verified app access |
-| `trial_ends_at` | Trial end timestamp |
-| `decode_save_limit` | `3` for Wayfinder trial; unlimited for Plus/Connected |
-| `decode_saves_used` | Count of successful saved Decode moments during trial |
-| `journal_read_allowed` | Preserve read access to existing saved entries |
-| `journal_write_allowed` | Controls new Decode saves / future journal writes |
-| `growth_practices_access` | `preview`, `full`, or `full_with_history` |
-| `relationship_garden_access` | `none` or `full` |
-| `align_pattern_access` | `none`, `basic`, or `full` |
-| `mhp_selector_enabled` | Connected only |
-| `mhp_sharing_enabled` | Connected only and parent-controlled |
+| `plan_key` | `wayfinder`, `wayfinder_plus`, or `wayfinder_connect` (implemented PR #143) |
+| `subscription_status` | `free`, `trialing`, `active`, `past_due`, `canceled`, `expired` |
+| `monthly_save_limit` | `3` for Wayfinder; `NULL` = unlimited for Plus/Connect |
+| `progress_tracker_enabled` | Plus and Connect |
+| `mhp_review_enabled` | Connect only |
+| `included_mhp_reviews_per_month` | `0` for Wayfinder/Plus; `1` for Connect |
 | `research_participation_status` | Future consent state such as `not_asked`, `declined`, or `opted_in`; not a payment entitlement |
 | `preferred_language` | Future UI language preference such as `en` or `zh-Hans`; not a payment entitlement |
 | `stripe_customer_id` | Future server-owned billing mapping |
@@ -394,7 +387,7 @@ The browser should never decide paid access from localStorage or client-only fla
 | `current_period_end` | Paid billing period reference from Stripe |
 | `last_entitlement_sync_at` | Last successful webhook/API reconciliation |
 
-This is not a SQL proposal for PR #120A. It is a product/technical contract for later implementation.
+This is not a SQL proposal for PR #120A. **PR #143** implements the foundation persistence layer in [`supabase-pricing-entitlement-foundation.sql`](../supabase-pricing-entitlement-foundation.sql): `user_entitlements`, `usage_counters`, read-only RLS, `ensure_parent_entitlement()`, and `get_current_user_entitlement()`. Stripe Checkout, webhooks, and feature gates remain future PRs.
 
 ---
 
@@ -407,7 +400,7 @@ Use Stripe Checkout + Stripe Billing + Stripe Customer Portal for the first paym
 Recommended future architecture:
 
 ```text
-Parent chooses Plus or Connected
+Parent chooses Plus or Connect
 -> Wayfinder authenticated serverless endpoint creates Stripe Checkout Session
 -> Parent completes Stripe-hosted Checkout
 -> Stripe sends webhook events to Wayfinder webhook endpoint
@@ -431,10 +424,10 @@ Parent opens Manage Billing
 
 | Stripe Product | Price | Interval | Wayfinder plan |
 | --- | --- | --- | --- |
-| Wayfinder Plus | S$9.90 | monthly | `plus` |
-| Wayfinder Plus | S$89 | yearly | `plus` |
-| Wayfinder Connected | S$19.90 | monthly | `connected` |
-| Wayfinder Connected | S$199 | yearly | `connected` |
+| Wayfinder Plus | S$7.90 | monthly | `wayfinder_plus` |
+| Wayfinder Plus | S$69 | yearly | `wayfinder_plus` |
+| Wayfinder Connect | S$29.90 | monthly | `wayfinder_connect` |
+| Wayfinder Connect | S$299 | yearly | `wayfinder_connect` |
 
 Wayfinder free trial should not be a paid Stripe product for first launch.
 
@@ -725,11 +718,11 @@ Recommended future sequence:
 4. **PR #123** — Payment entitlement copy and constants spec.
 5. **PR #124** — Wayfinder trial and read-only gating design.
 6. **PR #125** — Stripe product setup runbook.
-7. **PR #126** — Payment data model / entitlement persistence, only after schema review.
+7. **PR #126** — Payment data model / entitlement persistence, only after schema review. *(Superseded in part by PR #143 foundation — see SQL file above.)*
 8. **PR #127** — Stripe Checkout and webhook implementation.
 9. **PR #128** — Stripe Customer Portal integration.
 10. **PR #129** — Upgrade UX and entitlement gates.
-11. **PR #130** — Connected MHP sharing gates.
+11. **PR #130** — Connect MHP sharing gates.
 12. **PR #131** — Personal profiling revamp strategy spec.
 13. **PR #132** — Research consent capability spec.
 14. **PR #133** — Self-read informative bytes content model and first relationship theme set.

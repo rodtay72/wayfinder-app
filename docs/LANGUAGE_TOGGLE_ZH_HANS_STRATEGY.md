@@ -230,7 +230,7 @@ When payment UI is localised:
 
 - **privacy remains baseline in every plan** — not a paid feature;
 - translate plan **descriptions**, not Stripe legal invoices unless counsel approves;
-- preserve Wayfinder / Wayfinder Plus / Wayfinder Connected product names unless marketing approves localized display names;
+- preserve Wayfinder / Wayfinder Plus / Wayfinder Connect product names unless marketing approves localized display names;
 - do not imply therapy, diagnosis, or automatic MHP sharing in zh-Hans upgrade copy;
 - `preferred_language` is not a billing entitlement field.
 
