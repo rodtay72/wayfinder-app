@@ -495,6 +495,64 @@ const APP_VERSION_PAGE = {
   workflowNote: "Wayfinder updates this page when parent-facing improvements are released. Future research or data use will always be explained with clear notice, consent, and privacy safeguards."
 };
 
+const WAYFINDER_PLANS_PAGE = {
+  title: "Plans",
+  subtitle: "Every Wayfinder plan is privacy-first. The difference between plans is how much you can save, revisit, track your parent growth, and — only if you choose — share for Mental Health Professional review support.",
+  privacyBaseline: "No ads. No data-selling. Consent-led research only. Your reflections stay private unless you choose to share.",
+  readAccessReassurance: "Reflections you have already saved remain readable even if paid access lapses or you reach the free save limit.",
+  connectDisclaimer: "Wayfinder Connect adds optional, parent-controlled Mental Health Professional review support. It is not therapy, diagnosis, emergency care, or crisis support. Payment does not improve your child — it may help you reflect and grow as a parent.",
+  billingComingSoonNote: "Upgrade and billing are not available in the app yet. When payment is enabled, you will manage upgrades through a secure checkout flow.",
+  currentPlanLabel: "Your current plan",
+  unavailableNote: "Plan details are not ready yet. You can keep using Wayfinder while this is being set up.",
+  catalogHeading: "Wayfinder plans",
+  monthlyLabel: "Monthly",
+  yearlyLabel: "Yearly",
+  freePriceLabel: "Free",
+  noCardRequired: "No card required",
+  currentPlanBadge: "Current plan",
+  catalog: [
+    {
+      planKey: "wayfinder",
+      name: "Wayfinder",
+      tagline: "Start reflecting, no card required.",
+      positioning: "Start reflecting",
+      priceMonthly: null,
+      priceYearly: null,
+      highlights: [
+        "Core parent reflection pathway",
+        "Up to 3 saved reflections per month",
+        "Privacy-first — no ads, no data-selling"
+      ]
+    },
+    {
+      planKey: "wayfinder_plus",
+      name: "Wayfinder Plus",
+      tagline: "Unlock unlimited saving and your parent-growth progress tracker.",
+      positioning: "Track your growth",
+      priceMonthly: "S$7.90/month",
+      priceYearly: "S$69/year",
+      highlights: [
+        "Unlimited reflection saves",
+        "Parent-growth progress tracker",
+        "Full Journal Trail and practice history"
+      ]
+    },
+    {
+      planKey: "wayfinder_connect",
+      name: "Wayfinder Connect",
+      tagline: "Add parent-controlled MHP review support.",
+      positioning: "Add parent-controlled MHP review",
+      priceMonthly: "S$29.90/month",
+      priceYearly: "S$299/year",
+      highlights: [
+        "Everything in Wayfinder Plus",
+        "Parent-controlled sharing only — nothing automatic",
+        "Includes 1 MHP review request per month when enabled"
+      ]
+    }
+  ]
+};
+
 const WAYFINDER_APP_VERSIONS = [
   {
     id: "v0-4-5-parent-mhp-portrait-display",
@@ -852,6 +910,7 @@ const WAYFINDER_I18N = {
     "nav.events": "Events",
     "nav.signOut": "Sign out",
     "nav.appVersion": "App Version",
+    "nav.plans": "Plans",
     "dashboard.welcomeBack": "Welcome back",
     "dashboard.loading": "Loading your space...",
     "dashboard.pastActivities": "Past activities",
@@ -936,6 +995,7 @@ const WAYFINDER_I18N = {
     "nav.events": "活动",
     "nav.signOut": "退出登录",
     "nav.appVersion": "版本更新",
+    "nav.plans": "方案",
     "dashboard.welcomeBack": "欢迎回来",
     "dashboard.loading": "正在加载您的空间…",
     "dashboard.pastActivities": "过往活动",
@@ -1051,6 +1111,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CULTURE,
     UI_TEXT,
     APP_VERSION_PAGE,
+    WAYFINDER_PLANS_PAGE,
     WAYFINDER_APP_VERSIONS,
     PDPA_SIGNUP_NOTICE,
     SIGNUP_PRIVACY_ACKNOWLEDGEMENT,

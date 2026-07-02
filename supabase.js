@@ -1148,6 +1148,62 @@ const isConsentRecordsUnavailable = (status, responseText) => {
   return false;
 };
 
+const isEntitlementsUnavailable = (status, responseText) => {
+  const text = String(responseText || '').toLowerCase();
+  if (status === 404) return true;
+  if (text.includes('pgrst202')) return true;
+  if (text.includes('pgrst205')) return true;
+  if (text.includes('42p01')) return true;
+  if (text.includes('user_entitlements') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  if (text.includes('usage_counters') && (
+    text.includes('does not exist') ||
+    text.includes('could not find') ||
+    text.includes('not found') ||
+    text.includes('schema cache')
+  )) return true;
+  if (text.includes('ensure_parent_entitlement') && text.includes('does not exist')) return true;
+  if (text.includes('get_current_user_entitlement') && text.includes('does not exist')) return true;
+  return false;
+};
+
+const normalizeUserEntitlementRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    userId: row.user_id || row.userId || null,
+    planKey: row.plan_key || row.planKey || 'wayfinder',
+    subscriptionStatus: row.subscription_status || row.subscriptionStatus || 'free',
+    coreParentAppAccess: row.core_parent_app_access ?? row.coreParentAppAccess ?? true,
+    monthlySaveLimit: row.monthly_save_limit ?? row.monthlySaveLimit ?? null,
+    progressTrackerEnabled: !!(row.progress_tracker_enabled ?? row.progressTrackerEnabled),
+    mhpReviewEnabled: !!(row.mhp_review_enabled ?? row.mhpReviewEnabled),
+    includedMhpReviewsPerMonth: row.included_mhp_reviews_per_month ?? row.includedMhpReviewsPerMonth ?? 0,
+    currentPeriodStart: row.current_period_start || row.currentPeriodStart || null,
+    currentPeriodEnd: row.current_period_end || row.currentPeriodEnd || null,
+    createdAt: row.created_at || row.createdAt || null,
+    updatedAt: row.updated_at || row.updatedAt || null
+  };
+};
+
+const normalizeUserUsageCounterRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    periodStart: row.usage_period_start || row.periodStart || null,
+    periodEnd: row.usage_period_end || row.periodEnd || null,
+    savedReflectionCount: row.saved_reflection_count ?? row.savedReflectionCount ?? 0,
+    mhpReviewRequestCount: row.mhp_review_request_count ?? row.mhpReviewRequestCount ?? 0
+  };
+};
+
+const callEntitlementRpcSafe = (args) => callReviewResponseRpcSafe({
+  ...args,
+  unavailableCheck: isEntitlementsUnavailable
+});
+
 const isMhpInviteRequestsUnavailable = (status, responseText) => {
   const text = String(responseText || '').toLowerCase();
   if (status === 404) return true;
@@ -2082,7 +2138,39 @@ const Profile = {
       role: profile?.role || null
     });
     if (!profile) throw new Error('ensure_profile returned no row.');
+    if (profileRole === 'parent') {
+      try {
+        await Profile.ensureParentEntitlement(userId, authSession);
+      } catch (err) {
+        AuthDebug.log('[profile] ensure_parent_entitlement exception:', {
+          message: err?.message || String(err)
+        });
+      }
+    }
     return profile;
+  },
+  ensureParentEntitlement: async (userId, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false };
+    }
+    const result = await callEntitlementRpcSafe({
+      rpcName: 'ensure_parent_entitlement',
+      userId,
+      authSession,
+      context: 'ensureParentEntitlement',
+      body: {}
+    });
+    if (result.unavailable) {
+      AuthDebug.log('[profile] ensure_parent_entitlement unavailable');
+      return { ok: false, unavailable: true };
+    }
+    if (!result.ok) {
+      AuthDebug.log('[profile] ensure_parent_entitlement failed:', {
+        responseText: String(result.responseText || '').slice(0, 180)
+      });
+      return { ok: false, unavailable: false };
+    }
+    return { ok: true, unavailable: false };
   },
   saveDiscBars: async (userId, bars) => {
     const { error } = await sb.from('profiles')
@@ -3759,6 +3847,39 @@ const DB = {
       ok: true,
       unavailable: false,
       accepted: (result.rows || []).length > 0
+    };
+  },
+
+  getCurrentUserEntitlement: async (userId, authSession = null) => {
+    if (!userId) {
+      return { ok: false, unavailable: false, entitlement: null, usage: null };
+    }
+    const result = await callEntitlementRpcSafe({
+      rpcName: 'get_current_user_entitlement',
+      userId,
+      authSession,
+      context: 'getCurrentUserEntitlement',
+      body: {}
+    });
+    if (result.unavailable) {
+      return { ok: false, unavailable: true, entitlement: null, usage: null };
+    }
+    if (!result.ok) {
+      AuthDebug.log('[db] get_current_user_entitlement failed:', {
+        responseText: String(result.responseText || '').slice(0, 180)
+      });
+      return { ok: false, unavailable: false, entitlement: null, usage: null };
+    }
+    const rows = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
+    const row = rows[0];
+    if (!row) {
+      return { ok: true, unavailable: false, entitlement: null, usage: null };
+    }
+    return {
+      ok: true,
+      unavailable: false,
+      entitlement: normalizeUserEntitlementRow(row),
+      usage: normalizeUserUsageCounterRow(row)
     };
   },
 

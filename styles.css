@@ -245,6 +245,32 @@
   .app-version-entry-body{font-size:14px;line-height:1.65;color:#5d6c66;margin:0;}
   .app-version-entry-action{font-size:13px;line-height:1.6;color:var(--sage-deep);margin:12px 0 0;padding-top:10px;border-top:1px solid rgba(232,224,212,.85);font-style:italic;}
   .app-version-empty{text-align:center;padding:28px 24px;}
+  .plans-page-intro{background:#FBF8F3;border-color:#E8E0D4;}
+  .plans-page-subtitle{margin-top:0;max-width:62ch;}
+  .plans-page-privacy{font-size:13px;line-height:1.65;color:#5d6c66;margin:12px 0 0;}
+  .plans-page-reassurance{font-size:13px;line-height:1.65;color:#6A6258;font-style:italic;margin:10px 0 0;}
+  .plans-page-section{background:#fff;}
+  .plans-page-section-title{margin:0 0 14px;font-size:18px;color:#40514b;}
+  .plans-page-current{background:#F3F7F4;border-color:#D8E4DC;}
+  .plans-page-current-name{font-size:20px;font-weight:800;color:var(--sage-deep);margin:0 0 6px;}
+  .plans-page-current-detail{margin:0;}
+  .plans-page-unavailable{background:#F8F6F2;border-color:#E8E0D4;}
+  .plans-tier-list{display:grid;gap:12px;}
+  .plan-tier-card{background:#fff;border:1px solid #E8E0D4;border-radius:10px;padding:16px 18px;}
+  .plan-tier-card--current{border-color:var(--sage-deep);box-shadow:0 0 0 1px rgba(64,81,75,.12);}
+  .plan-tier-card-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:8px;}
+  .plan-tier-card-title{margin:0;font-size:17px;color:#40514b;}
+  .plan-tier-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:#E8F0E8;color:var(--sage-deep);}
+  .plan-tier-tagline{font-size:14px;line-height:1.6;color:#5d6c66;margin:0 0 10px;}
+  .plan-tier-prices{margin:0 0 10px;}
+  .plan-tier-price{font-size:14px;color:#40514b;margin:0 0 4px;}
+  .plan-tier-price--free{font-weight:700;}
+  .plan-tier-price-label{font-weight:700;}
+  .plan-tier-highlights{margin:0;padding-left:18px;color:#5d6c66;font-size:13px;line-height:1.65;}
+  .plan-tier-highlights li+li{margin-top:4px;}
+  .plans-page-disclaimer{background:#F8F6F2;border-color:#E8E0D4;}
+  .plans-page-disclaimer-text,.plans-page-billing-text{font-size:13px;line-height:1.65;color:#6A6258;margin:0;}
+  .plans-page-billing-note{background:#FCFAF7;border-color:#E8E0D4;}
   .pdpa-notice-block{max-width:100%;overflow:hidden;box-sizing:border-box;background:#FBF8F3;border:1px solid #E8E0D4;border-radius:10px;padding:16px 18px;margin-bottom:16px;}
   .pdpa-notice-title{font-size:15px;font-weight:800;color:#40514b;margin:0 0 10px;line-height:1.35;text-transform:none;letter-spacing:normal;}
   .pdpa-notice-body{font-size:13px;line-height:1.65;color:#5d6c66;margin:0 0 14px;overflow-wrap:anywhere;word-wrap:break-word;}

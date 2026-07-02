@@ -8,17 +8,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-06-19
 
-**Last verified merge:** PR #139 — MHP invite verification handoff loop fix
+**Last verified merge:** PR #142 — Owner approved portrait metadata save fix
 
-**Next proposed PR:** PR #140 — MHP invite auto-accept + consume RPC parsing fix (hotfix)
+**Next proposed PR:** PR #143 — Wayfinder pricing and entitlement foundation
 
-**PR #140 (hotfix — in flight):** Removes manual **Continue profile setup** when verified signed-in email has active invite; auto-calls `consume_mhp_invite_for_current_user_by_email()` with robust RPC response parsing; surfaces actual safe RPC error messages. **No token/`sessionStorage` changes.** **Do not re-test manually until hotfix deploys** — run test-state hygiene for `rodney@thegreenhouse.sg` first (see runbook § PR #140).
+**PR #143 (in flight):** Entitlement SQL + read-only parent Plans page; default `wayfinder` free tier for new parents. **No Stripe, no feature gates, no journal read blocking.**
 
-**PR #139 (merged):** Fixes post-verification sign-out loop and pending-signup UX on MHP invite flow.
-
-**PR #138 (merged):** Email-bound invite acceptance on main.
-
-**Current owner blocker:** Deploy PR #140 → production smoke from clean state after hygiene. **Payment gateway remains paused.**
+**Current owner blocker:** Apply PR #143 SQL after merge; payment gateway may resume. MHP onboarding smoke complete per owner.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -109,27 +105,29 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Strategy + do-not-regress:** [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) — § Production checkpoint principles; § Do not regress.
 
-## Payment & entitlement strategy (PR #120A)
+## Payment & entitlement strategy
 
-**Status:** Docs-only spec **merged on main** (PR #120A) — **no payment runtime yet**.
+**Status:** PR #143 foundation **in flight** — entitlement SQL + read-only parent Plans page. **Payment gateway may resume** after owner applies SQL. **No Stripe in PR #143.**
 
 **Primary doc:** [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
 
-**Key product rule (PR #120A revision):** Privacy is **baseline across every plan** — not a paid or limited feature. Monetisation focuses on reflection depth, Journal Trail, Relationship Garden, practice progression, ALIGN/CAB pattern visibility, and optional parent-controlled MHP review support (Connected).
+**SQL (owner apply after PR #143 merge):** [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql)
 
-**Plans (spec only):**
+**Key product rule:** Privacy is **baseline across every plan** — not a paid or limited feature. Monetisation focuses on reflection depth, Journal Trail, Relationship Garden, practice progression, ALIGN/CAB pattern visibility, and optional parent-controlled MHP review support (Connect).
 
-| Plan | Role | Suggested price |
-|------|------|-----------------|
-| Wayfinder | 30-day no-card trial; 3 saved Decode moments | Free |
-| Wayfinder Plus | Main parent development subscription | S$9.90/mo or S$89/yr |
-| Wayfinder Connected | Parent-controlled MHP review layer | S$19.90/mo or S$199/yr |
+**Plans:**
 
-**Stripe direction (future runtime only):** Checkout + Billing + Customer Portal; internal no-card trial until parent chooses Plus/Connected.
+| Plan | Role | Price |
+|------|------|-------|
+| Wayfinder | Free tier; 3 saved reflections per month; no card | Free |
+| Wayfinder Plus | Unlimited saves + progress tracker | S$7.90/mo or S$69/yr |
+| Wayfinder Connect | Plus + parent-controlled MHP review | S$29.90/mo or S$299/yr |
 
-**Also documented in PR #120A roadmap (spec only, no runtime):** Simplified Chinese UI toggle (`en` / `zh-Hans`); personal profiling revamp; research consent; corporate/workshop support; facilitator module; self-read relationship learning bytes.
+**PR #143 runtime (no Stripe):** Default parent entitlement on profile create; parent Plans page; read RPC only — no feature gates, no journal read blocking.
 
-**Explicit non-goals for PR #120A:** Stripe code, webhooks, entitlement gates, SQL, App Version entry, auth/journal/MHP portrait changes.
+**Stripe direction (future):** Checkout + Billing + Customer Portal; paid plan changes server-side via webhook only.
+
+**Explicit non-goals for PR #143:** Stripe code, webhooks, entitlement gates on save/read, changes to journal/MHP/auth RLS.
 
 ## Simplified Chinese language toggle
 
@@ -170,7 +168,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #117 current approved portrait selection | Explicit `selected_at` current approved portrait via owner RPC; no parent/client display | Complete (merged) |
 | PR #118 parent MHP portrait display | Parent review-sharing selector shows selected approved portrait via server-signed URL API | Complete (merged) |
 | PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | Complete (merged) |
-| PR #120A payment/pricing strategy revision | Privacy-baseline plan table + Stripe/entitlement spec + future roadmap; docs only | Complete (merged) |
+| PR #143 pricing entitlement foundation | `user_entitlements` + `usage_counters` SQL; read RPCs; parent Plans page; no Stripe/gates | In flight |
 | PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
 | PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
 | PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | Complete (merged) |
@@ -200,7 +198,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
 - **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#139 merged** — PR #140 hotfix addresses consume failure / manual Continue UX; **do not re-test until PR #140 deploys**; hygiene for `rodney@thegreenhouse.sg` required — see runbook § PR #140. **Payment gateway remains paused.**
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
-- **Payment / entitlement runtime** — **not started** — strategy spec merged in [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) (PR #120A); **remains paused until MHP invitation onboarding is stable end-to-end**
+- **Payment / entitlement foundation (PR #143)** — **in flight** — apply [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql) after merge; Stripe Checkout/webhooks deferred
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 - **MHP invite request pipeline (PR #128–#140)** — **PR #129–#139 merged**; **PR #140 hotfix in flight**
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled

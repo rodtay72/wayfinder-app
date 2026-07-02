@@ -3426,6 +3426,107 @@ function AppVersionPage({back,onSignOut}){
  </div>;
 }
 
+function planCatalogLabel(planKey,pageMeta){
+ const tier=(pageMeta.catalog||[]).find(item=>item.planKey===planKey);
+ return tier?.name||planKey||'Wayfinder';
+}
+
+function PlansPage({back,onSignOut,user,authSession}){
+ const pageMeta=typeof WAYFINDER_PLANS_PAGE!=='undefined'?WAYFINDER_PLANS_PAGE:{};
+ const [loading,setLoading]=useState(true);
+ const [unavailable,setUnavailable]=useState(false);
+ const [entitlement,setEntitlement]=useState(null);
+ const [usage,setUsage]=useState(null);
+ const pageTitle=String(pageMeta.title||'Plans').trim()||'Plans';
+ const subtitle=String(pageMeta.subtitle||'').trim();
+ const privacyBaseline=String(pageMeta.privacyBaseline||'').trim();
+ const readAccessReassurance=String(pageMeta.readAccessReassurance||'').trim();
+ const connectDisclaimer=String(pageMeta.connectDisclaimer||'').trim();
+ const billingComingSoonNote=String(pageMeta.billingComingSoonNote||'').trim();
+ const catalogHeading=String(pageMeta.catalogHeading||'Wayfinder plans').trim();
+ const currentPlanLabel=String(pageMeta.currentPlanLabel||'Your current plan').trim();
+ const unavailableNote=String(pageMeta.unavailableNote||'Plan details are not ready yet.').trim();
+ const catalog=Array.isArray(pageMeta.catalog)?pageMeta.catalog:[];
+ const currentPlanKey=String(entitlement?.planKey||'wayfinder').trim()||'wayfinder';
+
+ useEffect(()=>{
+  let cancelled=false;
+  const loadEntitlement=async()=>{
+   if(!user?.id||!authSession?.access_token){
+    setLoading(false);
+    setEntitlement(null);
+    setUsage(null);
+    return;
+   }
+   setLoading(true);
+   try{
+    const result=await DB.getCurrentUserEntitlement(user.id,authSession);
+    if(cancelled) return;
+    if(result.unavailable){
+     setUnavailable(true);
+     setEntitlement(null);
+     setUsage(null);
+     return;
+    }
+    setUnavailable(false);
+    setEntitlement(result.entitlement);
+    setUsage(result.usage);
+   }catch(err){
+    if(cancelled) return;
+    AuthDebug.log('[plans] entitlement load failed:', { message: err?.message || String(err) });
+    setUnavailable(true);
+    setEntitlement(null);
+    setUsage(null);
+   }finally{
+    if(!cancelled) setLoading(false);
+   }
+  };
+  loadEntitlement();
+  return ()=>{cancelled=true;};
+ },[user?.id,authSession?.access_token]);
+
+ return <div className="wrap">
+  <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
+  <div className="card dashboard-section plans-page-intro">
+   {subtitle ? <p className="dashboard-helper plans-page-subtitle">{subtitle}</p> : null}
+   {privacyBaseline ? <p className="plans-page-privacy">{privacyBaseline}</p> : null}
+   {readAccessReassurance ? <p className="plans-page-reassurance">{readAccessReassurance}</p> : null}
+  </div>
+  {!loading&&!unavailable&&entitlement ? <div className="card dashboard-section plans-page-current">
+   <h2 className="plans-page-section-title">{currentPlanLabel}</h2>
+   <p className="plans-page-current-name">{planCatalogLabel(currentPlanKey,pageMeta)}</p>
+   {entitlement.monthlySaveLimit==null ? <p className="sub plans-page-current-detail">Unlimited reflection saves this month</p> : <p className="sub plans-page-current-detail">Up to {entitlement.monthlySaveLimit} saved reflections per month{usage?.savedReflectionCount!=null?` · ${usage.savedReflectionCount} saved this month`:''}</p>}
+  </div> : null}
+  {loading ? <div className="card dashboard-section"><p className="sub">Loading plan details…</p></div> : null}
+  {!loading&&unavailable ? <div className="card dashboard-section plans-page-unavailable"><p className="sub">{unavailableNote}</p></div> : null}
+  <div className="card dashboard-section plans-page-section">
+   <h2 className="plans-page-section-title">{catalogHeading}</h2>
+   <div className="plans-tier-list">
+    {catalog.map(tier=>{
+     const isCurrent=!unavailable&&tier.planKey===currentPlanKey;
+     return <article key={tier.planKey} className={'plan-tier-card'+(isCurrent?' plan-tier-card--current':'')}>
+      <div className="plan-tier-card-head">
+       <h3 className="plan-tier-card-title">{tier.name}</h3>
+       {isCurrent ? <span className="plan-tier-badge">{pageMeta.currentPlanBadge||'Current plan'}</span> : null}
+      </div>
+      {tier.tagline ? <p className="plan-tier-tagline">{tier.tagline}</p> : null}
+      <div className="plan-tier-prices">
+       {tier.priceMonthly ? <p className="plan-tier-price"><span className="plan-tier-price-label">{pageMeta.monthlyLabel||'Monthly'}: </span>{tier.priceMonthly}</p> : null}
+       {tier.priceYearly ? <p className="plan-tier-price"><span className="plan-tier-price-label">{pageMeta.yearlyLabel||'Yearly'}: </span>{tier.priceYearly}</p> : null}
+       {!tier.priceMonthly&&!tier.priceYearly ? <p className="plan-tier-price plan-tier-price--free">{pageMeta.freePriceLabel||'Free'}{pageMeta.noCardRequired?` · ${pageMeta.noCardRequired}`:''}</p> : null}
+      </div>
+      {Array.isArray(tier.highlights)&&tier.highlights.length ? <ul className="plan-tier-highlights">
+       {tier.highlights.map(item=><li key={item}>{item}</li>)}
+      </ul> : null}
+     </article>;
+    })}
+   </div>
+  </div>
+  {connectDisclaimer ? <div className="card dashboard-section plans-page-disclaimer"><p className="plans-page-disclaimer-text">{connectDisclaimer}</p></div> : null}
+  {billingComingSoonNote ? <div className="card dashboard-section plans-page-billing-note"><p className="plans-page-billing-text">{billingComingSoonNote}</p></div> : null}
+ </div>;
+}
+
 function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,onShareForReview,onSaved,onSignOut}){
  usePreferredLanguage();
  const [step,setStep]=useState(0);
@@ -4652,6 +4753,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch switch-trail" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardActionLabel||'Share for counsellor review'}</button>
      <button type="button" className="switch switch-trail" title={inviteShareMeta.parentButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={()=>setInviteShareOpen(true)}>{inviteShareMeta.parentButtonLabel||t('nav.inviteParent','Invite another parent')}</button>
      <button className="switch switch-trail" onClick={()=>setStage('events')}>{t('nav.events','Events')}</button>
+     <button className="switch switch-muted" onClick={()=>setStage('plans')}>{t('nav.plans','Plans')}</button>
      <button className="switch switch-muted" onClick={()=>setStage('appVersion')}>{t('nav.appVersion','App Version')}</button>
      <button className="switch switch-muted" onClick={onSignOut}>{t('nav.signOut','Sign out')}</button>
    </div>
@@ -4822,6 +4924,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  </div>;
 
  if(stage==='appVersion') return <AppVersionPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
+
+ if(stage==='plans') return <PlansPage back={()=>setStage('dashboard')} onSignOut={onSignOut} user={user} authSession={authSession}/>;
 
  if(stage==='events') return <ActivityEventsPage back={()=>setStage('dashboard')} onSignOut={onSignOut} authSession={authSession}/>;
 
