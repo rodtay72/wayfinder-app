@@ -387,7 +387,7 @@ The browser should never decide paid access from localStorage or client-only fla
 | `current_period_end` | Paid billing period reference from Stripe |
 | `last_entitlement_sync_at` | Last successful webhook/API reconciliation |
 
-This is not a SQL proposal for PR #120A. **PR #143** implements the foundation persistence layer in [`supabase-pricing-entitlement-foundation.sql`](../supabase-pricing-entitlement-foundation.sql): `user_entitlements`, `usage_counters`, read-only RLS, `ensure_parent_entitlement()`, and `get_current_user_entitlement()`. Stripe Checkout, webhooks, and feature gates remain future PRs.
+This is not a SQL proposal for PR #120A. **PR #143** implements the foundation persistence layer in [`supabase-pricing-entitlement-foundation.sql`](../supabase-pricing-entitlement-foundation.sql). **PR #144** documents Stripe Checkout/Portal/webhook planning in [`STRIPE_FOUNDATION_SETUP_PLAN.md`](./STRIPE_FOUNDATION_SETUP_PLAN.md) (docs only). Stripe runtime and feature gates remain future PRs.
 
 ---
 
