@@ -1,7 +1,7 @@
 # Stripe Foundation Setup Plan
 
-**Status:** Planning spec for PR #144 — docs only  
-**Scope:** Prepare Wayfinder for future Stripe integration without activating payment runtime or entitlement enforcement  
+**Status:** Planning spec for PR #144 — docs only
+**Scope:** Prepare Wayfinder for future Stripe integration without activating payment runtime or entitlement enforcement
 **Last updated:** 2026-07-04
 
 Read first:
@@ -106,7 +106,7 @@ Implement only in a dedicated runtime PR after owner review of this plan and Str
 
 ### 6.1 `api/create-checkout-session.js`
 
-**Method:** POST  
+**Method:** POST
 **Auth:** `Authorization: Bearer <supabase_access_token>` — verify session server-side before creating Checkout.
 
 **Request body (conceptual):**
@@ -131,7 +131,7 @@ Implement only in a dedicated runtime PR after owner review of this plan and Str
 
 ### 6.2 `api/create-billing-portal-session.js`
 
-**Method:** POST  
+**Method:** POST
 **Auth:** Bearer token required.
 
 **Behaviour:**
@@ -142,7 +142,7 @@ Implement only in a dedicated runtime PR after owner review of this plan and Str
 
 ### 6.3 `api/stripe-webhook.js`
 
-**Method:** POST  
+**Method:** POST
 **Auth:** Stripe signature verification via `STRIPE_WEBHOOK_SECRET` — **no** Bearer token; raw body required for signature check.
 
 **Behaviour:**

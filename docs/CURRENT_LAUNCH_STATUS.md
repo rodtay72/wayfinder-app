@@ -191,7 +191,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #137 Supabase Auth email delivery checklist | Docs-only owner checklist for Custom SMTP, redirect URLs, MHP invite confirmation email | Complete (merged) |
 | PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | Complete (merged) |
 | PR #139 MHP invite verification handoff loop fix | Continue setup only with verified session; clean sign-out to /counsellor.html; no token/sessionStorage | Complete (merged) |
-| PR #140 MHP invite auto-accept + consume parsing | Auto-consume on verified active invite; robust RPC response parsing; safe error messages | In flight |
+| PR #140 MHP invite auto-accept + consume parsing | Auto-consume on verified active invite; robust RPC response parsing; safe error messages | Complete (merged) |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -200,12 +200,12 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#139 merged** — PR #140 hotfix addresses consume failure / manual Continue UX; **do not re-test until PR #140 deploys**; hygiene for `rodney@thegreenhouse.sg` required — see runbook § PR #140. **Payment gateway remains paused.**
+- **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#140 merged** — auto-consume on verified active invite; robust RPC response parsing; safe error messages. Account hygiene for affected owner test account may still be required — see runbook § PR #140. **Stripe Checkout/runtime remains paused; entitlement foundation PR #143 is merged/applied.**
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
 - **Payment / entitlement foundation (PR #143)** — **merged and applied** — 7 parents backfilled to Wayfinder Free; feature gating not active
 - **Stripe foundation planning (PR #144)** — **in flight** — [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md); no Checkout/webhook runtime yet
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128–#140)** — **PR #129–#139 merged**; **PR #140 hotfix in flight**
+- **MHP invite request pipeline (PR #128–#140)** — **PR #129–#140 merged**
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
