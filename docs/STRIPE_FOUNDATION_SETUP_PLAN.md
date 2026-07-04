@@ -100,11 +100,11 @@ Never import Stripe secret key into `app.js`, `supabase.js`, or static browser b
 
 ---
 
-## 6. Proposed future API endpoints (not implemented in PR #144)
-
-Implement only in a dedicated runtime PR after owner review of this plan and Stripe Dashboard product setup.
+## 6. Proposed future API endpoints
 
 ### 6.1 `api/create-checkout-session.js`
+
+**PR #145 checkpoint (in flight):** Test-mode Checkout Session creation is implemented server-side only. Requires `sk_test_...` and test Price IDs. Returns `{ url }` for Stripe-hosted Checkout. **No entitlement writes, no webhook, no UI checkout buttons, no gating.**
 
 **Method:** POST
 **Auth:** `Authorization: Bearer <supabase_access_token>` — verify session server-side before creating Checkout.
