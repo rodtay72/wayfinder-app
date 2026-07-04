@@ -6,15 +6,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-06-19
+**Last updated:** 2026-07-04
 
-**Last verified merge:** PR #142 — Owner approved portrait metadata save fix
+**Last verified merge:** PR #143 — Wayfinder pricing and entitlement foundation
 
-**Next proposed PR:** PR #143 — Wayfinder pricing and entitlement foundation
+**Next proposed PR:** PR #144 — Stripe foundation planning (docs only)
 
-**PR #143 (in flight):** Entitlement SQL + read-only parent Plans page; default `wayfinder` free tier for new parents. **No Stripe, no feature gates, no journal read blocking.**
+**PR #144 (in flight):** Stripe integration planning doc — Checkout/Portal/webhook shape, env vars, entitlement mapping. **No Stripe runtime, no gating, no deployment changes.**
 
-**Current owner blocker:** Apply PR #143 SQL after merge; payment gateway may resume. MHP onboarding smoke complete per owner.
+**Current owner blocker:** Review/merge PR #144; then Stripe Dashboard product setup before runtime PR. Entitlement SQL (PR #143) applied and smoke-tested.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -107,13 +107,16 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 ## Payment & entitlement strategy
 
-**Status:** PR #143 foundation **in flight** — entitlement SQL + read-only parent Plans page. **Payment gateway may resume** after owner applies SQL. **No Stripe in PR #143.**
+**Status:** PR #143 foundation **merged and applied** — 7 existing parents backfilled to Wayfinder Free. **PR #144 Stripe planning in flight** (docs only — not active).
 
-**Primary doc:** [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
+**Primary docs:**
 
-**SQL (owner apply after PR #143 merge):** [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql)
+- [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
+- [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) (PR #144 — planning only)
 
-**Key product rule:** Privacy is **baseline across every plan** — not a paid or limited feature. Monetisation focuses on reflection depth, Journal Trail, Relationship Garden, practice progression, ALIGN/CAB pattern visibility, and optional parent-controlled MHP review support (Connect).
+**SQL (applied):** [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql)
+
+**Key product rule:** Privacy is **baseline across every plan** — not a paid or limited feature.
 
 **Plans:**
 
@@ -123,11 +126,11 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Wayfinder Plus | Unlimited saves + progress tracker | S$7.90/mo or S$69/yr |
 | Wayfinder Connect | Plus + parent-controlled MHP review | S$29.90/mo or S$299/yr |
 
-**PR #143 runtime (no Stripe):** Default parent entitlement on profile create; parent Plans page; read RPC only — no feature gates, no journal read blocking.
+**PR #143 runtime:** Default parent entitlement; Plans page (display-only); read RPC only — **no feature gates**.
 
-**Stripe direction (future):** Checkout + Billing + Customer Portal; paid plan changes server-side via webhook only.
+**Stripe (PR #144+):** Documented Checkout + Customer Portal + webhook path; **no runtime until later PR**. Feature gating/save-limit enforcement **not active**.
 
-**Explicit non-goals for PR #143:** Stripe code, webhooks, entitlement gates on save/read, changes to journal/MHP/auth RLS.
+**Explicit non-goals for PR #144:** Stripe code, webhooks, checkout buttons, entitlement enforcement, auth/journal/MHP RLS changes.
 
 ## Simplified Chinese language toggle
 
@@ -168,7 +171,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #117 current approved portrait selection | Explicit `selected_at` current approved portrait via owner RPC; no parent/client display | Complete (merged) |
 | PR #118 parent MHP portrait display | Parent review-sharing selector shows selected approved portrait via server-signed URL API | Complete (merged) |
 | PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | Complete (merged) |
-| PR #143 pricing entitlement foundation | `user_entitlements` + `usage_counters` SQL; read RPCs; parent Plans page; no Stripe/gates | In flight |
+| PR #143 pricing entitlement foundation | `user_entitlements` + `usage_counters` SQL; read RPCs; parent Plans page; no Stripe/gates | Complete (merged) |
+| PR #144 Stripe foundation planning | Docs-only Checkout/Portal/webhook plan; env vars; entitlement mapping; no runtime | In flight |
 | PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
 | PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
 | PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | Complete (merged) |
@@ -187,7 +191,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #137 Supabase Auth email delivery checklist | Docs-only owner checklist for Custom SMTP, redirect URLs, MHP invite confirmation email | Complete (merged) |
 | PR #138 Email-bound MHP invite acceptance | Token opens invite page only; verified email controls post-signup acceptance; email-bound consume RPC | Complete (merged) |
 | PR #139 MHP invite verification handoff loop fix | Continue setup only with verified session; clean sign-out to /counsellor.html; no token/sessionStorage | Complete (merged) |
-| PR #140 MHP invite auto-accept + consume parsing | Auto-consume on verified active invite; robust RPC response parsing; safe error messages | In flight |
+| PR #140 MHP invite auto-accept + consume parsing | Auto-consume on verified active invite; robust RPC response parsing; safe error messages | Complete (merged) |
 | `feature/facilitator-hosted-events` | Issue #45: DB-backed facilitator-hosted events + graceful degradation until SQL applied | Merged to main |
 
 ## Deferred / not started
@@ -196,11 +200,12 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#139 merged** — PR #140 hotfix addresses consume failure / manual Continue UX; **do not re-test until PR #140 deploys**; hygiene for `rodney@thegreenhouse.sg` required — see runbook § PR #140. **Payment gateway remains paused.**
+- **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#140 merged** — auto-consume on verified active invite; robust RPC response parsing; safe error messages. Account hygiene for affected owner test account may still be required — see runbook § PR #140. **Stripe Checkout/runtime remains paused; entitlement foundation PR #143 is merged/applied.**
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
-- **Payment / entitlement foundation (PR #143)** — **in flight** — apply [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql) after merge; Stripe Checkout/webhooks deferred
+- **Payment / entitlement foundation (PR #143)** — **merged and applied** — 7 parents backfilled to Wayfinder Free; feature gating not active
+- **Stripe foundation planning (PR #144)** — **in flight** — [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md); no Checkout/webhook runtime yet
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
-- **MHP invite request pipeline (PR #128–#140)** — **PR #129–#139 merged**; **PR #140 hotfix in flight**
+- **MHP invite request pipeline (PR #128–#140)** — **PR #129–#140 merged**
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
 - **MHP public profile directory UI** — not implemented (review-sharing selector portrait only; no public directory browse)
 - **Research consent** — not implemented
