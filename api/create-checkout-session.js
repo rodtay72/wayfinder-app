@@ -53,6 +53,8 @@ const isPreviewDiagnosticEnabled = () => process.env.VERCEL_ENV !== 'production'
 
 const envVarPresent = (name) => Boolean(String(process.env[name] ?? '').trim());
 
+const envVarStartsWith = (name, prefix) => String(process.env[name] ?? '').trim().startsWith(prefix);
+
 const buildRuntimeEnvDiagnostic = () => {
   const sha = String(process.env.VERCEL_GIT_COMMIT_SHA || '').trim();
   const envPresence = {};
@@ -61,11 +63,11 @@ const buildRuntimeEnvDiagnostic = () => {
   }
 
   const envFormat = {
-    STRIPE_SECRET_KEYStartsWithSkTest: String(process.env.STRIPE_SECRET_KEY || '').trim().startsWith('sk_test_'),
+    STRIPE_SECRET_KEYStartsWithSkTest: envVarStartsWith('STRIPE_SECRET_KEY', 'sk_test_'),
     APP_BASE_URLLooksHttps: /^https:\/\/.+/i.test(String(process.env.APP_BASE_URL || '').trim())
   };
   for (const name of PRICE_ENV_VAR_NAMES) {
-    envFormat[`${name}StartsWithPrice`] = String(process.env[name] || '').trim().startsWith('price_');
+    envFormat[`${name}StartsWithPrice`] = envVarStartsWith(name, 'price_');
   }
 
   return {
@@ -77,13 +79,13 @@ const buildRuntimeEnvDiagnostic = () => {
   };
 };
 
-const buildConfigDiagnostic = ({ stripeSecretKey, appBaseUrl, priceEnvKey, priceId }) => ({
-  stripeSecretKeyLooksTest: String(stripeSecretKey || '').startsWith('sk_test_'),
-  appBaseUrlPresent: Boolean(String(appBaseUrl || '').trim()),
-  appBaseUrlLooksHttps: /^https:\/\/.+/i.test(String(appBaseUrl || '')),
+const buildConfigDiagnostic = ({ priceEnvKey = null } = {}) => ({
+  stripeSecretKeyLooksTest: envVarStartsWith('STRIPE_SECRET_KEY', 'sk_test_'),
+  appBaseUrlPresent: envVarPresent('APP_BASE_URL'),
+  appBaseUrlLooksHttps: /^https:\/\/.+/i.test(String(process.env.APP_BASE_URL || '').trim()),
   selectedPriceEnvKey: priceEnvKey || null,
-  selectedPriceEnvPresent: Boolean(String(priceId || '').trim()),
-  selectedPriceLooksLikePriceId: String(priceId || '').startsWith('price_')
+  selectedPriceEnvPresent: priceEnvKey ? envVarPresent(priceEnvKey) : false,
+  selectedPriceLooksLikePriceId: priceEnvKey ? envVarStartsWith(priceEnvKey, 'price_') : false
 });
 
 const buildPreviewDiagnostic = ({
@@ -102,14 +104,7 @@ const buildPreviewDiagnostic = ({
     stripeErrorParam: stripeErrorParam || null
   } : {}),
   runtime: buildRuntimeEnvDiagnostic(),
-  config: config || {
-    stripeSecretKeyLooksTest: false,
-    appBaseUrlPresent: false,
-    appBaseUrlLooksHttps: false,
-    selectedPriceEnvKey: null,
-    selectedPriceEnvPresent: false,
-    selectedPriceLooksLikePriceId: false
-  }
+  config: config || buildConfigDiagnostic()
 });
 
 const respondCheckoutFailure = (res, status, options = {}) => {
@@ -126,6 +121,15 @@ const respondNotConfigured = (res) => {
     body.diagnostic = buildPreviewDiagnostic({
       validationIssue: 'base checkout config missing'
     });
+  }
+  return res.status(500).json(body);
+};
+
+const respondUnhandledFailure = (res, validationIssue = 'unhandled server exception') => {
+  logCheckoutFailure('unhandled checkout handler failure', { validationIssue });
+  const body = { error: 'Checkout could not be started.' };
+  if (isPreviewDiagnosticEnabled()) {
+    body.diagnostic = buildPreviewDiagnostic({ validationIssue });
   }
   return res.status(500).json(body);
 };
@@ -229,98 +233,126 @@ async function createStripeCheckoutSession({ stripeSecretKey, params, planKey, i
   }
 
   return data;
-}
+};
 
 async function requireVerifiedParent(req, res) {
   const accessToken = bearerToken(req);
   const user = await getAuthUserFromAccessToken(accessToken);
   if (!user?.id) {
     res.status(401).json({ error: 'Sign in required.' });
-    return null;
+    return { ok: false };
   }
 
-  const profile = await getProfileByUserId(user.id);
+  let profile;
+  try {
+    profile = await getProfileByUserId(user.id);
+  } catch (err) {
+    const message = String(err?.message || '');
+    if (message.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+      res.status(503).json({ error: 'Profile lookup is not configured.' });
+      return { ok: false };
+    }
+    throw err;
+  }
+
   if (!profile) {
     res.status(403).json({ error: 'Parent profile required.' });
-    return null;
+    return { ok: false };
   }
 
   if (String(profile.role || '').toLowerCase() !== 'parent') {
     res.status(403).json({ error: 'Parent account required.' });
-    return null;
+    return { ok: false };
   }
 
   if (!isTruthy(profile.email_verified)) {
     res.status(403).json({ error: 'Verified email required.' });
-    return null;
+    return { ok: false };
   }
 
-  return { user, profile };
+  return { ok: true, user, profile };
 }
 
-export default async function handler(req, res) {
-  setCors(res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed.' });
+async function handleDiagnosticOnly(req, res, body) {
+  if (!isPreviewDiagnosticEnabled()) {
+    return res.status(404).json({ error: 'Not found.' });
   }
 
-  const body = parseBody(req);
-  const diagnosticOnly = body?.diagnosticOnly === true;
-
-  if (diagnosticOnly) {
-    if (!isPreviewDiagnosticEnabled()) {
-      return res.status(404).json({ error: 'Not found.' });
+  try {
+    const accessToken = bearerToken(req);
+    const user = await getAuthUserFromAccessToken(accessToken);
+    if (!user?.id) {
+      return res.status(401).json({
+        error: 'Sign in required.',
+        diagnostic: buildPreviewDiagnostic({ validationIssue: 'sign in required' })
+      });
     }
 
-    const auth = await requireVerifiedParent(req, res);
-    if (!auth) return null;
+    let validationIssue = null;
+    try {
+      const profile = await getProfileByUserId(user.id);
+      if (!profile) {
+        validationIssue = 'parent profile required';
+      } else if (String(profile.role || '').toLowerCase() !== 'parent') {
+        validationIssue = 'parent account required';
+      } else if (!isTruthy(profile.email_verified)) {
+        validationIssue = 'verified email required';
+      }
+    } catch (err) {
+      const message = String(err?.message || '');
+      validationIssue = message.includes('SUPABASE_SERVICE_ROLE_KEY')
+        ? 'profile lookup unavailable'
+        : 'profile lookup failed';
+    }
 
     const planKey = String(body?.planKey || '').trim();
     const interval = String(body?.interval || '').trim();
-    const config = getBaseCheckoutConfig();
-    let configDiagnostic = buildConfigDiagnostic({
-      stripeSecretKey: config?.stripeSecretKey || process.env.STRIPE_SECRET_KEY || '',
-      appBaseUrl: config?.appBaseUrl || process.env.APP_BASE_URL || '',
-      priceEnvKey: null,
-      priceId: null
-    });
-
+    let priceEnvKey = null;
     if (planKey && interval && PRICE_ENV_KEYS[planKey]?.[interval]) {
-      const priceEnvKey = PRICE_ENV_KEYS[planKey][interval];
-      const priceId = String(process.env[priceEnvKey] || '').trim();
-      configDiagnostic = buildConfigDiagnostic({
-        stripeSecretKey: config?.stripeSecretKey || process.env.STRIPE_SECRET_KEY || '',
-        appBaseUrl: config?.appBaseUrl || process.env.APP_BASE_URL || '',
-        priceEnvKey,
-        priceId
-      });
+      priceEnvKey = PRICE_ENV_KEYS[planKey][interval];
     }
 
     return res.status(200).json({
       ok: true,
       mode: 'preview_runtime_env',
-      diagnostic: buildPreviewDiagnostic({ config: configDiagnostic })
+      diagnostic: buildPreviewDiagnostic({
+        validationIssue,
+        config: buildConfigDiagnostic({ priceEnvKey })
+      })
+    });
+  } catch (err) {
+    logCheckoutFailure('diagnosticOnly handler failure', { errorName: err?.name || 'Error' });
+    return res.status(500).json({
+      error: 'Checkout could not be started.',
+      diagnostic: buildPreviewDiagnostic({ validationIssue: 'diagnostic handler exception' })
     });
   }
+}
 
-  const config = getBaseCheckoutConfig();
-  if (!config) {
-    return respondNotConfigured(res);
-  }
-
-  let diagnosticContext = {
-    stripeSecretKey: config.stripeSecretKey,
-    appBaseUrl: config.appBaseUrl,
-    priceEnvKey: null,
-    priceId: null
-  };
+export default async function handler(req, res) {
+  setCors(res);
+  let diagnosticContext = { priceEnvKey: null };
 
   try {
-    const auth = await requireVerifiedParent(req, res);
-    if (!auth) return null;
-    const { user } = auth;
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed.' });
+    }
 
+    const body = parseBody(req);
+    if (body?.diagnosticOnly === true) {
+      return await handleDiagnosticOnly(req, res, body);
+    }
+
+    const config = getBaseCheckoutConfig();
+    if (!config) {
+      return respondNotConfigured(res);
+    }
+
+    const auth = await requireVerifiedParent(req, res);
+    if (!auth.ok) return undefined;
+
+    const { user } = auth;
     const planKey = String(body?.planKey || '').trim();
     const interval = String(body?.interval || '').trim();
 
@@ -342,8 +374,8 @@ export default async function handler(req, res) {
 
     const priceEnvKey = PRICE_ENV_KEYS[planKey][interval];
     const priceId = String(process.env[priceEnvKey] || '').trim();
-    diagnosticContext = { ...config, priceEnvKey, priceId };
-    const configDiagnostic = buildConfigDiagnostic(diagnosticContext);
+    diagnosticContext = { priceEnvKey };
+    const configDiagnostic = buildConfigDiagnostic({ priceEnvKey });
 
     if (!/^https:\/\/.+/i.test(config.appBaseUrl)) {
       logCheckoutFailure('invalid APP_BASE_URL before Stripe API call', { priceEnvKey });
@@ -424,12 +456,16 @@ export default async function handler(req, res) {
       });
     }
 
-    return respondCheckoutFailure(res, 500, {
-      stripeStatus: err?.status || null,
-      stripeErrorType: err?.stripeType || null,
-      stripeErrorCode: err?.stripeCode || null,
-      stripeErrorParam: err?.stripeParam || null,
-      config: buildConfigDiagnostic(diagnosticContext)
-    });
+    if (err?.stripeType || err?.stripeCode || err?.status) {
+      return respondCheckoutFailure(res, 500, {
+        stripeStatus: err?.status || null,
+        stripeErrorType: err?.stripeType || null,
+        stripeErrorCode: err?.stripeCode || null,
+        stripeErrorParam: err?.stripeParam || null,
+        config: buildConfigDiagnostic(diagnosticContext)
+      });
+    }
+
+    return respondUnhandledFailure(res, 'unhandled server exception');
   }
 }
