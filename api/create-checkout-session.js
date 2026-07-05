@@ -62,6 +62,32 @@ const getCheckoutConfig = () => {
 
 const resolvePriceId = (config, planKey, interval) => config.priceIds[`${planKey}:${interval}`] || null;
 
+const describeIdFormat = (value) => {
+  const id = String(value || '').trim();
+  if (!id) return 'missing';
+  if (id.startsWith('price_')) return 'price_***present';
+  if (id.startsWith('prod_')) return 'prod_***wrong_type';
+  if (id.startsWith('plan_')) return 'plan_***wrong_type';
+  return 'invalid_prefix';
+};
+
+const logStripeCheckoutFailure = ({ httpStatus, stripeError = {}, planKey, interval, priceEnvKey, priceFormat }) => {
+  console.error('[checkout] Stripe session create failed', {
+    httpStatus: httpStatus || null,
+    stripeType: stripeError.type || null,
+    stripeCode: stripeError.code || null,
+    stripeParam: stripeError.param || null,
+    planKey: planKey || null,
+    interval: interval || null,
+    priceEnvKey: priceEnvKey || null,
+    priceFormat: priceFormat || null
+  });
+};
+
+const logCheckoutFailure = (reason, details = {}) => {
+  console.error(`[checkout] ${reason}`, details);
+};
+
 const buildStripeCheckoutParams = ({
   priceId,
   appBaseUrl,
@@ -90,7 +116,7 @@ const buildStripeCheckoutParams = ({
   return params;
 };
 
-async function createStripeCheckoutSession({ stripeSecretKey, params }) {
+async function createStripeCheckoutSession({ stripeSecretKey, params, planKey, interval, priceEnvKey, priceFormat }) {
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
     headers: {
@@ -102,9 +128,19 @@ async function createStripeCheckoutSession({ stripeSecretKey, params }) {
 
   const data = await readJson(response);
   if (!response.ok) {
+    const stripeError = data?.error || {};
+    logStripeCheckoutFailure({
+      httpStatus: response.status,
+      stripeError,
+      planKey,
+      interval,
+      priceEnvKey,
+      priceFormat
+    });
     const error = new Error('Stripe checkout session could not be created.');
     error.status = response.status;
-    error.stripeType = data?.error?.type || null;
+    error.stripeType = stripeError.type || null;
+    error.stripeCode = stripeError.code || null;
     throw error;
   }
 
@@ -168,6 +204,18 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Checkout is not configured.' });
     }
 
+    const priceEnvKey = PRICE_ENV_KEYS[planKey][interval];
+    const priceFormat = describeIdFormat(priceId);
+    if (!priceId.startsWith('price_')) {
+      logCheckoutFailure('invalid Stripe price env format before Stripe API call', {
+        priceEnvKey,
+        priceFormat,
+        planKey,
+        interval
+      });
+      return res.status(500).json({ error: 'Checkout could not be started.' });
+    }
+
     const customerEmail = String(user.email || '').trim() || null;
     const params = buildStripeCheckoutParams({
       priceId,
@@ -179,16 +227,34 @@ export default async function handler(req, res) {
 
     const session = await createStripeCheckoutSession({
       stripeSecretKey: config.stripeSecretKey,
-      params
+      params,
+      planKey,
+      interval,
+      priceEnvKey,
+      priceFormat
     });
 
     const url = String(session?.url || '').trim();
     if (!url) {
+      logCheckoutFailure('Stripe session created without checkout url', {
+        planKey,
+        interval,
+        priceEnvKey,
+        priceFormat
+      });
       return res.status(500).json({ error: 'Checkout could not be started.' });
     }
 
     return res.status(200).json({ url });
-  } catch {
+  } catch (err) {
+    const message = String(err?.message || '');
+    if (message.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+      logCheckoutFailure('profile lookup unavailable: service role not configured');
+    } else if (!err?.stripeType && !err?.stripeCode) {
+      logCheckoutFailure('unexpected checkout failure', {
+        errorName: err?.name || 'Error'
+      });
+    }
     return res.status(500).json({ error: 'Checkout could not be started.' });
   }
 }
