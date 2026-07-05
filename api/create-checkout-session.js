@@ -8,6 +8,22 @@ import {
 const ALLOWED_PLAN_KEYS = new Set(['wayfinder_plus', 'wayfinder_connect']);
 const ALLOWED_INTERVALS = new Set(['monthly', 'yearly']);
 
+const CHECKOUT_ENV_NAMES = [
+  'STRIPE_SECRET_KEY',
+  'STRIPE_PRICE_PLUS_MONTHLY',
+  'STRIPE_PRICE_PLUS_YEARLY',
+  'STRIPE_PRICE_CONNECT_MONTHLY',
+  'STRIPE_PRICE_CONNECT_YEARLY',
+  'APP_BASE_URL'
+];
+
+const PRICE_ENV_VAR_NAMES = [
+  'STRIPE_PRICE_PLUS_MONTHLY',
+  'STRIPE_PRICE_PLUS_YEARLY',
+  'STRIPE_PRICE_CONNECT_MONTHLY',
+  'STRIPE_PRICE_CONNECT_YEARLY'
+];
+
 const PRICE_ENV_KEYS = {
   wayfinder_plus: {
     monthly: 'STRIPE_PRICE_PLUS_MONTHLY',
@@ -35,6 +51,32 @@ const isTruthy = (value) => value === true || value === 'true' || value === 1 ||
 
 const isPreviewDiagnosticEnabled = () => process.env.VERCEL_ENV !== 'production';
 
+const envVarPresent = (name) => Boolean(String(process.env[name] ?? '').trim());
+
+const buildRuntimeEnvDiagnostic = () => {
+  const sha = String(process.env.VERCEL_GIT_COMMIT_SHA || '').trim();
+  const envPresence = {};
+  for (const name of CHECKOUT_ENV_NAMES) {
+    envPresence[name] = envVarPresent(name);
+  }
+
+  const envFormat = {
+    STRIPE_SECRET_KEYStartsWithSkTest: String(process.env.STRIPE_SECRET_KEY || '').trim().startsWith('sk_test_'),
+    APP_BASE_URLLooksHttps: /^https:\/\/.+/i.test(String(process.env.APP_BASE_URL || '').trim())
+  };
+  for (const name of PRICE_ENV_VAR_NAMES) {
+    envFormat[`${name}StartsWithPrice`] = String(process.env[name] || '').trim().startsWith('price_');
+  }
+
+  return {
+    vercelEnv: process.env.VERCEL_ENV || null,
+    vercelGitCommitRef: process.env.VERCEL_GIT_COMMIT_REF || null,
+    vercelGitCommitShaPrefix: sha ? sha.slice(0, 7) : null,
+    envPresence,
+    envFormat
+  };
+};
+
 const buildConfigDiagnostic = ({ stripeSecretKey, appBaseUrl, priceEnvKey, priceId }) => ({
   stripeSecretKeyLooksTest: String(stripeSecretKey || '').startsWith('sk_test_'),
   appBaseUrlPresent: Boolean(String(appBaseUrl || '').trim()),
@@ -44,35 +86,48 @@ const buildConfigDiagnostic = ({ stripeSecretKey, appBaseUrl, priceEnvKey, price
   selectedPriceLooksLikePriceId: String(priceId || '').startsWith('price_')
 });
 
-const respondCheckoutFailure = (res, status, {
+const buildPreviewDiagnostic = ({
   validationIssue = null,
   stripeStatus = null,
   stripeErrorType = null,
   stripeErrorCode = null,
   stripeErrorParam = null,
   config = null
-}) => {
+}) => ({
+  ...(validationIssue ? { validationIssue } : {}),
+  ...(stripeStatus !== null ? {
+    stripeStatus,
+    stripeErrorType: stripeErrorType || null,
+    stripeErrorCode: stripeErrorCode || null,
+    stripeErrorParam: stripeErrorParam || null
+  } : {}),
+  runtime: buildRuntimeEnvDiagnostic(),
+  config: config || {
+    stripeSecretKeyLooksTest: false,
+    appBaseUrlPresent: false,
+    appBaseUrlLooksHttps: false,
+    selectedPriceEnvKey: null,
+    selectedPriceEnvPresent: false,
+    selectedPriceLooksLikePriceId: false
+  }
+});
+
+const respondCheckoutFailure = (res, status, options = {}) => {
   const body = { error: 'Checkout could not be started.' };
   if (isPreviewDiagnosticEnabled()) {
-    body.diagnostic = {
-      ...(validationIssue ? { validationIssue } : {}),
-      ...(stripeStatus !== null ? {
-        stripeStatus,
-        stripeErrorType: stripeErrorType || null,
-        stripeErrorCode: stripeErrorCode || null,
-        stripeErrorParam: stripeErrorParam || null
-      } : {}),
-      config: config || {
-        stripeSecretKeyLooksTest: false,
-        appBaseUrlPresent: false,
-        appBaseUrlLooksHttps: false,
-        selectedPriceEnvKey: null,
-        selectedPriceEnvPresent: false,
-        selectedPriceLooksLikePriceId: false
-      }
-    };
+    body.diagnostic = buildPreviewDiagnostic(options);
   }
   return res.status(status).json(body);
+};
+
+const respondNotConfigured = (res) => {
+  const body = { error: 'Checkout is not configured.' };
+  if (isPreviewDiagnosticEnabled()) {
+    body.diagnostic = buildPreviewDiagnostic({
+      validationIssue: 'base checkout config missing'
+    });
+  }
+  return res.status(500).json(body);
 };
 
 const getBaseCheckoutConfig = () => {
@@ -176,6 +231,33 @@ async function createStripeCheckoutSession({ stripeSecretKey, params, planKey, i
   return data;
 }
 
+async function requireVerifiedParent(req, res) {
+  const accessToken = bearerToken(req);
+  const user = await getAuthUserFromAccessToken(accessToken);
+  if (!user?.id) {
+    res.status(401).json({ error: 'Sign in required.' });
+    return null;
+  }
+
+  const profile = await getProfileByUserId(user.id);
+  if (!profile) {
+    res.status(403).json({ error: 'Parent profile required.' });
+    return null;
+  }
+
+  if (String(profile.role || '').toLowerCase() !== 'parent') {
+    res.status(403).json({ error: 'Parent account required.' });
+    return null;
+  }
+
+  if (!isTruthy(profile.email_verified)) {
+    res.status(403).json({ error: 'Verified email required.' });
+    return null;
+  }
+
+  return { user, profile };
+}
+
 export default async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -183,9 +265,48 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
+  const body = parseBody(req);
+  const diagnosticOnly = body?.diagnosticOnly === true;
+
+  if (diagnosticOnly) {
+    if (!isPreviewDiagnosticEnabled()) {
+      return res.status(404).json({ error: 'Not found.' });
+    }
+
+    const auth = await requireVerifiedParent(req, res);
+    if (!auth) return null;
+
+    const planKey = String(body?.planKey || '').trim();
+    const interval = String(body?.interval || '').trim();
+    const config = getBaseCheckoutConfig();
+    let configDiagnostic = buildConfigDiagnostic({
+      stripeSecretKey: config?.stripeSecretKey || process.env.STRIPE_SECRET_KEY || '',
+      appBaseUrl: config?.appBaseUrl || process.env.APP_BASE_URL || '',
+      priceEnvKey: null,
+      priceId: null
+    });
+
+    if (planKey && interval && PRICE_ENV_KEYS[planKey]?.[interval]) {
+      const priceEnvKey = PRICE_ENV_KEYS[planKey][interval];
+      const priceId = String(process.env[priceEnvKey] || '').trim();
+      configDiagnostic = buildConfigDiagnostic({
+        stripeSecretKey: config?.stripeSecretKey || process.env.STRIPE_SECRET_KEY || '',
+        appBaseUrl: config?.appBaseUrl || process.env.APP_BASE_URL || '',
+        priceEnvKey,
+        priceId
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      mode: 'preview_runtime_env',
+      diagnostic: buildPreviewDiagnostic({ config: configDiagnostic })
+    });
+  }
+
   const config = getBaseCheckoutConfig();
   if (!config) {
-    return res.status(500).json({ error: 'Checkout is not configured.' });
+    return respondNotConfigured(res);
   }
 
   let diagnosticContext = {
@@ -196,26 +317,10 @@ export default async function handler(req, res) {
   };
 
   try {
-    const accessToken = bearerToken(req);
-    const user = await getAuthUserFromAccessToken(accessToken);
-    if (!user?.id) {
-      return res.status(401).json({ error: 'Sign in required.' });
-    }
+    const auth = await requireVerifiedParent(req, res);
+    if (!auth) return null;
+    const { user } = auth;
 
-    const profile = await getProfileByUserId(user.id);
-    if (!profile) {
-      return res.status(403).json({ error: 'Parent profile required.' });
-    }
-
-    if (String(profile.role || '').toLowerCase() !== 'parent') {
-      return res.status(403).json({ error: 'Parent account required.' });
-    }
-
-    if (!isTruthy(profile.email_verified)) {
-      return res.status(403).json({ error: 'Verified email required.' });
-    }
-
-    const body = parseBody(req);
     const planKey = String(body?.planKey || '').trim();
     const interval = String(body?.interval || '').trim();
 
