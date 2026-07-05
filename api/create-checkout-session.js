@@ -33,7 +33,49 @@ const bearerToken = (req) => {
 
 const isTruthy = (value) => value === true || value === 'true' || value === 1 || value === '1';
 
-const getCheckoutConfig = () => {
+const isPreviewDiagnosticEnabled = () => process.env.VERCEL_ENV !== 'production';
+
+const buildConfigDiagnostic = ({ stripeSecretKey, appBaseUrl, priceEnvKey, priceId }) => ({
+  stripeSecretKeyLooksTest: String(stripeSecretKey || '').startsWith('sk_test_'),
+  appBaseUrlPresent: Boolean(String(appBaseUrl || '').trim()),
+  appBaseUrlLooksHttps: /^https:\/\/.+/i.test(String(appBaseUrl || '')),
+  selectedPriceEnvKey: priceEnvKey || null,
+  selectedPriceEnvPresent: Boolean(String(priceId || '').trim()),
+  selectedPriceLooksLikePriceId: String(priceId || '').startsWith('price_')
+});
+
+const respondCheckoutFailure = (res, status, {
+  validationIssue = null,
+  stripeStatus = null,
+  stripeErrorType = null,
+  stripeErrorCode = null,
+  stripeErrorParam = null,
+  config = null
+}) => {
+  const body = { error: 'Checkout could not be started.' };
+  if (isPreviewDiagnosticEnabled()) {
+    body.diagnostic = {
+      ...(validationIssue ? { validationIssue } : {}),
+      ...(stripeStatus !== null ? {
+        stripeStatus,
+        stripeErrorType: stripeErrorType || null,
+        stripeErrorCode: stripeErrorCode || null,
+        stripeErrorParam: stripeErrorParam || null
+      } : {}),
+      config: config || {
+        stripeSecretKeyLooksTest: false,
+        appBaseUrlPresent: false,
+        appBaseUrlLooksHttps: false,
+        selectedPriceEnvKey: null,
+        selectedPriceEnvPresent: false,
+        selectedPriceLooksLikePriceId: false
+      }
+    };
+  }
+  return res.status(status).json(body);
+};
+
+const getBaseCheckoutConfig = () => {
   const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY || '').trim();
   const appBaseUrl = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
 
@@ -45,22 +87,8 @@ const getCheckoutConfig = () => {
     return null;
   }
 
-  const priceIds = {};
-  for (const planKey of ALLOWED_PLAN_KEYS) {
-    for (const interval of ALLOWED_INTERVALS) {
-      const envKey = PRICE_ENV_KEYS[planKey][interval];
-      const priceId = String(process.env[envKey] || '').trim();
-      if (!priceId) {
-        return null;
-      }
-      priceIds[`${planKey}:${interval}`] = priceId;
-    }
-  }
-
-  return { stripeSecretKey, appBaseUrl, priceIds };
+  return { stripeSecretKey, appBaseUrl };
 };
-
-const resolvePriceId = (config, planKey, interval) => config.priceIds[`${planKey}:${interval}`] || null;
 
 const describeIdFormat = (value) => {
   const id = String(value || '').trim();
@@ -141,6 +169,7 @@ async function createStripeCheckoutSession({ stripeSecretKey, params, planKey, i
     error.status = response.status;
     error.stripeType = stripeError.type || null;
     error.stripeCode = stripeError.code || null;
+    error.stripeParam = stripeError.param || null;
     throw error;
   }
 
@@ -154,10 +183,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  const config = getCheckoutConfig();
+  const config = getBaseCheckoutConfig();
   if (!config) {
     return res.status(500).json({ error: 'Checkout is not configured.' });
   }
+
+  let diagnosticContext = {
+    stripeSecretKey: config.stripeSecretKey,
+    appBaseUrl: config.appBaseUrl,
+    priceEnvKey: null,
+    priceId: null
+  };
 
   try {
     const accessToken = bearerToken(req);
@@ -199,12 +235,27 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid interval.' });
     }
 
-    const priceId = resolvePriceId(config, planKey, interval);
-    if (!priceId) {
-      return res.status(500).json({ error: 'Checkout is not configured.' });
+    const priceEnvKey = PRICE_ENV_KEYS[planKey][interval];
+    const priceId = String(process.env[priceEnvKey] || '').trim();
+    diagnosticContext = { ...config, priceEnvKey, priceId };
+    const configDiagnostic = buildConfigDiagnostic(diagnosticContext);
+
+    if (!/^https:\/\/.+/i.test(config.appBaseUrl)) {
+      logCheckoutFailure('invalid APP_BASE_URL before Stripe API call', { priceEnvKey });
+      return respondCheckoutFailure(res, 500, {
+        validationIssue: 'invalid APP_BASE_URL',
+        config: configDiagnostic
+      });
     }
 
-    const priceEnvKey = PRICE_ENV_KEYS[planKey][interval];
+    if (!priceId) {
+      logCheckoutFailure('selected Stripe price env var missing before Stripe API call', { priceEnvKey });
+      return respondCheckoutFailure(res, 500, {
+        validationIssue: 'selected price env var missing',
+        config: configDiagnostic
+      });
+    }
+
     const priceFormat = describeIdFormat(priceId);
     if (!priceId.startsWith('price_')) {
       logCheckoutFailure('invalid Stripe price env format before Stripe API call', {
@@ -213,7 +264,10 @@ export default async function handler(req, res) {
         planKey,
         interval
       });
-      return res.status(500).json({ error: 'Checkout could not be started.' });
+      return respondCheckoutFailure(res, 500, {
+        validationIssue: 'selected price is not a Price ID',
+        config: configDiagnostic
+      });
     }
 
     const customerEmail = String(user.email || '').trim() || null;
@@ -242,7 +296,10 @@ export default async function handler(req, res) {
         priceEnvKey,
         priceFormat
       });
-      return res.status(500).json({ error: 'Checkout could not be started.' });
+      return respondCheckoutFailure(res, 500, {
+        validationIssue: 'stripe session missing checkout url',
+        config: configDiagnostic
+      });
     }
 
     return res.status(200).json({ url });
@@ -250,11 +307,24 @@ export default async function handler(req, res) {
     const message = String(err?.message || '');
     if (message.includes('SUPABASE_SERVICE_ROLE_KEY')) {
       logCheckoutFailure('profile lookup unavailable: service role not configured');
-    } else if (!err?.stripeType && !err?.stripeCode) {
+      return respondCheckoutFailure(res, 500, {
+        validationIssue: 'profile lookup unavailable',
+        config: buildConfigDiagnostic(diagnosticContext)
+      });
+    }
+
+    if (!err?.stripeType && !err?.stripeCode) {
       logCheckoutFailure('unexpected checkout failure', {
         errorName: err?.name || 'Error'
       });
     }
-    return res.status(500).json({ error: 'Checkout could not be started.' });
+
+    return respondCheckoutFailure(res, 500, {
+      stripeStatus: err?.status || null,
+      stripeErrorType: err?.stripeType || null,
+      stripeErrorCode: err?.stripeCode || null,
+      stripeErrorParam: err?.stripeParam || null,
+      config: buildConfigDiagnostic(diagnosticContext)
+    });
   }
 }
