@@ -248,7 +248,10 @@ No raw Stripe JSON, email, metadata blobs, journal/CAB/child data.
 **RPCs (service_role EXECUTE only):**
 
 - `claim_stripe_webhook_event(text, text, boolean)` → boolean
+- `mark_stripe_webhook_event_outcome(text, text)` → void (`processed`, `skipped`, `failed`)
 - `sync_parent_entitlement_from_stripe(uuid, text, text, text, text, timestamptz, timestamptz, boolean)` → entitlement row
+
+`sync_parent_entitlement_from_stripe` allowed plan/status pairs: `wayfinder_plus`/`wayfinder_connect` + `trialing`|`active`|`past_due`|`canceled`; `wayfinder` + `expired` only (post-paid lapse). Rejects `free` and invalid combinations.
 
 Browser remains **SELECT-only** on `user_entitlements` via existing RLS; no browser EXECUTE on sync RPCs.
 

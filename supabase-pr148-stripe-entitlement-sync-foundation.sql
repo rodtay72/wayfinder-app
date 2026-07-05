@@ -91,6 +91,10 @@ begin
 end;
 $$;
 
+revoke all on function public.set_stripe_billing_references_updated_at() from public;
+revoke all on function public.set_stripe_billing_references_updated_at() from anon;
+revoke all on function public.set_stripe_billing_references_updated_at() from authenticated;
+
 drop trigger if exists stripe_billing_references_set_updated_at on public.stripe_billing_references;
 create trigger stripe_billing_references_set_updated_at
   before update on public.stripe_billing_references
@@ -181,6 +185,54 @@ revoke all on function public.claim_stripe_webhook_event(text, text, boolean) fr
 grant execute on function public.claim_stripe_webhook_event(text, text, boolean) to service_role;
 
 -- ---------------------------------------------------------------------------
+-- 4b. mark_stripe_webhook_event_outcome — finalize claim (service_role only)
+-- ---------------------------------------------------------------------------
+
+create or replace function public.mark_stripe_webhook_event_outcome(
+  p_stripe_event_id text,
+  p_outcome text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_event_id text := nullif(trim(p_stripe_event_id), '');
+  v_outcome text := nullif(trim(p_outcome), '');
+  v_updated integer;
+begin
+  if v_event_id is null then
+    raise exception 'stripe_event_id is required'
+      using errcode = '22023';
+  end if;
+
+  if v_outcome is null or v_outcome not in ('processed', 'skipped', 'failed') then
+    raise exception 'Invalid webhook event outcome'
+      using errcode = '22023';
+  end if;
+
+  update public.stripe_webhook_events
+  set
+    outcome = v_outcome,
+    processed_at = now()
+  where stripe_event_id = v_event_id;
+
+  get diagnostics v_updated = row_count;
+
+  if v_updated = 0 then
+    raise exception 'Webhook event not found'
+      using errcode = '22023';
+  end if;
+end;
+$$;
+
+revoke all on function public.mark_stripe_webhook_event_outcome(text, text) from public;
+revoke all on function public.mark_stripe_webhook_event_outcome(text, text) from anon;
+revoke all on function public.mark_stripe_webhook_event_outcome(text, text) from authenticated;
+grant execute on function public.mark_stripe_webhook_event_outcome(text, text) to service_role;
+
+-- ---------------------------------------------------------------------------
 -- 5. sync_parent_entitlement_from_stripe — entitlement sync (service_role only)
 -- ---------------------------------------------------------------------------
 
@@ -235,14 +287,26 @@ begin
       using errcode = '22023';
   end if;
 
-  if v_plan_key = 'wayfinder' and v_status = 'free' then
-    raise exception 'Stripe sync cannot grant Wayfinder free trial'
+  if v_status = 'free' then
+    raise exception 'Stripe sync cannot use subscription_status free'
       using errcode = '22023';
   end if;
 
-  if v_status = 'expired' and v_plan_key <> 'wayfinder' then
-    raise exception 'Expired lapse must use plan_key wayfinder'
-      using errcode = '22023';
+  if v_plan_key = 'wayfinder' then
+    if v_status <> 'expired' then
+      raise exception 'Wayfinder Stripe sync allows expired lapse only'
+        using errcode = '22023';
+    end if;
+  elsif v_plan_key = 'wayfinder_plus' then
+    if v_status not in ('trialing', 'active', 'past_due', 'canceled') then
+      raise exception 'Invalid subscription_status for wayfinder_plus'
+        using errcode = '22023';
+    end if;
+  elsif v_plan_key = 'wayfinder_connect' then
+    if v_status not in ('trialing', 'active', 'past_due', 'canceled') then
+      raise exception 'Invalid subscription_status for wayfinder_connect'
+        using errcode = '22023';
+    end if;
   end if;
 
   if not exists (select 1 from auth.users u where u.id = v_user_id) then
@@ -385,9 +449,11 @@ grant execute on function public.sync_parent_entitlement_from_stripe(
 -- authenticated policies — browser cannot SELECT Stripe billing identifiers.
 -- user_entitlements: existing parent read policy unchanged; only adds
 -- last_entitlement_sync_at (non-identifying sync timestamp).
--- Future webhook PR calls claim_stripe_webhook_event + sync_parent_entitlement_from_stripe
+-- Future webhook PR calls claim_stripe_webhook_event,
+-- mark_stripe_webhook_event_outcome, and sync_parent_entitlement_from_stripe
 -- via service role only. Existing saved journal_entries remain readable.
 -- Paid lapse: plan_key=wayfinder, subscription_status=expired, no fresh trial.
+-- Allowed sync pairs: wayfinder+expired; wayfinder_plus/connect+trialing|active|past_due|canceled.
 
 -- ============================================================
 -- End of PR #148 Stripe entitlement sync SQL foundation
