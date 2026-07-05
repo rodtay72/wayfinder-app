@@ -11,6 +11,7 @@ Read first:
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
 - [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql) (PR #143 — applied)
 - [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (PR #146 — applied)
+- [supabase-pr148-stripe-entitlement-sync-foundation.sql](../supabase-pr148-stripe-entitlement-sync-foundation.sql) (PR #148 — owner apply after merge)
 
 ---
 
@@ -36,7 +37,8 @@ Wayfinder is ALIGN/CAB parent-development support — not child diagnosis, behav
 | Feature gating / trial-expiry enforcement | **Not active** |
 | Journal read access | Unchanged — existing saved reflections remain readable |
 | Stripe runtime | **Test-mode only** — PR #145 `/api/create-checkout-session` (`sk_test_...`); **no live Stripe activation** |
-| Stripe webhook / Customer Portal / entitlement sync / billing UI | **Not active** |
+| Stripe webhook / Customer Portal / billing UI | **Not active** — PR #148 SQL foundation in flight; webhook runtime deferred |
+| Stripe billing ID storage | **PR #148** — `stripe_billing_references` (server-only; not on parent-readable `user_entitlements`) |
 
 ---
 
@@ -211,19 +213,53 @@ Stripe Customer **email** may exist for Stripe billing communications — that i
 
 ---
 
-## 9. Future schema additions (not PR #144)
+## 9. Schema additions (PR #148 — SQL foundation)
 
-PR #143 `user_entitlements` does not yet include Stripe IDs. A **future SQL PR** (before webhook runtime) should add server-writable columns, for example:
+PR #148 adds server-only Stripe sync persistence. **Owner apply required** after merge.
 
-- `stripe_customer_id text`
-- `stripe_subscription_id text`
-- `last_entitlement_sync_at timestamptz`
+**Parent-readable `user_entitlements` (PR #143 + PR #146 unchanged except):**
 
-With RLS unchanged: browser remains **SELECT-only**; updates via service role or SECURITY DEFINER webhook RPC only.
+- `last_entitlement_sync_at timestamptz` — non-identifying sync timestamp only
+- **No** `stripe_customer_id` or `stripe_subscription_id` on this table (privacy: authenticated SELECT must not expose Stripe billing IDs)
+
+**Server-only `stripe_billing_references`:**
+
+| Column | Purpose |
+| --- | --- |
+| `user_id` | PK → `auth.users.id` |
+| `stripe_customer_id` | Stripe Customer for Portal / re-subscribe |
+| `stripe_subscription_id` | Active subscription ID (cleared on lapse) |
+| `created_at` / `updated_at` | Audit |
+
+RLS enabled; **no** grants to `anon` or `authenticated`.
+
+**Server-only `stripe_webhook_events`:**
+
+| Column | Purpose |
+| --- | --- |
+| `stripe_event_id` | PK — idempotency |
+| `event_type` | Stripe event type |
+| `livemode` | Reject live events in test-mode phase |
+| `outcome` | `claimed`, `processed`, `duplicate`, `skipped`, `failed` |
+| `processed_at` | Timestamp |
+
+No raw Stripe JSON, email, metadata blobs, journal/CAB/child data.
+
+**RPCs (service_role EXECUTE only):**
+
+- `claim_stripe_webhook_event(text, text, boolean)` → boolean
+- `mark_stripe_webhook_event_outcome(text, text)` → void (`processed`, `skipped`, `failed`)
+- `sync_parent_entitlement_from_stripe(uuid, text, text, text, text, timestamptz, timestamptz, boolean)` → entitlement row
+
+`sync_parent_entitlement_from_stripe` allowed plan/status pairs: `wayfinder_plus`/`wayfinder_connect` + `trialing`|`active`|`past_due`|`canceled`; `wayfinder` + `expired` only (post-paid lapse). Rejects `free` and invalid combinations.
+
+Browser remains **SELECT-only** on `user_entitlements` via existing RLS; no browser EXECUTE on sync RPCs.
+
+**Webhook runtime (`api/stripe-webhook.js`)** — deferred to post–PR #148 PR after owner SQL apply.
 
 ---
 
-## 10. Webhook event handling (future implementation PR)
+## 10. Webhook event handling (deferred — post–PR #148 runtime PR)
 
 All handlers must be **idempotent** and **signature-verified**.
 
@@ -333,10 +369,11 @@ PR #144 explicitly does **not**:
 ## 14. Recommended future build sequence (after PR #144)
 
 1. **Owner:** Create Stripe Products + Prices (Plus/Connect monthly/yearly); store Price IDs in Vercel env.
-2. **SQL PR:** Add `stripe_customer_id`, `stripe_subscription_id`, webhook-safe update RPC or service-role policy.
-3. **Runtime PR:** `create-checkout-session`, `create-billing-portal-session`, `stripe-webhook` + idempotency table.
-4. **UX PR:** Plans page upgrade CTAs + success/cancel routes (still no client-side secrets).
-5. **Enforcement PR:** Trial-expiry save blocking, progress tracker, MHP review gates — with read-access preservation for existing entries.
+2. **SQL PR #148:** `stripe_billing_references`, `stripe_webhook_events`, sync RPC — **in flight**; owner apply after merge.
+3. **Runtime PR (post–#148):** `api/stripe-webhook.js` + idempotency; test-mode only.
+4. **Runtime PR:** `create-billing-portal-session` (future).
+5. **UX PR:** Plans page upgrade CTAs + success/cancel routes (still no client-side secrets).
+6. **Enforcement PR:** Trial-expiry save blocking, progress tracker, MHP review gates — with read-access preservation for existing entries.
 
 ---
 
