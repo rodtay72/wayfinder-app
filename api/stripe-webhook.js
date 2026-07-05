@@ -217,7 +217,8 @@ async function releaseWebhookClaim(eventId) {
   const id = String(eventId || '').trim();
   if (!id) return;
   await supabaseAdminFetch(`/rest/v1/stripe_webhook_events?stripe_event_id=eq.${encodeURIComponent(id)}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { Prefer: 'return=minimal' }
   });
 }
 
@@ -494,13 +495,11 @@ async function handleInvoiceEvent(event, config, targetStatus) {
 
   const subscription = await fetchSubscription(subscriptionId, config);
 
-  let subscriptionStatus = targetStatus;
-  if (targetStatus === 'active') {
-    const mapped = mapSubscriptionStatus(subscription?.status);
-    subscriptionStatus = mapped === 'trialing' ? 'trialing' : 'active';
+  if (targetStatus) {
+    return syncFromSubscription(subscription, config, { subscriptionStatus: targetStatus });
   }
 
-  return syncFromSubscription(subscription, config, { subscriptionStatus });
+  return syncFromSubscription(subscription, config);
 }
 
 async function processEvent(event, config) {
@@ -519,7 +518,7 @@ async function processEvent(event, config) {
     case 'customer.subscription.deleted':
       return handleSubscriptionDeleted(event, config);
     case 'invoice.payment_succeeded':
-      return handleInvoiceEvent(event, config, 'active');
+      return handleInvoiceEvent(event, config);
     case 'invoice.payment_failed':
       return handleInvoiceEvent(event, config, 'past_due');
     default:
