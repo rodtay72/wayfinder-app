@@ -1,4 +1,5 @@
 import {
+  SUPABASE_URL,
   getAuthUserFromAccessToken,
   getProfileByUserId,
   parseBody,
@@ -55,6 +56,62 @@ const envVarPresent = (name) => Boolean(String(process.env[name] ?? '').trim());
 
 const envVarStartsWith = (name, prefix) => String(process.env[name] ?? '').trim().startsWith(prefix);
 
+const sanitizeSupabaseMessage = (message) => {
+  let text = String(message || '').trim();
+  if (!text) return null;
+  text = text.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[redacted]');
+  text = text.replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, '[redacted]');
+  text = text.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[redacted]');
+  return text.slice(0, 120) || null;
+};
+
+const supabaseUrlHostHint = () => {
+  const url = String(process.env.SUPABASE_URL || SUPABASE_URL || '').trim();
+  try {
+    const host = new URL(url).hostname;
+    if (host.endsWith('.supabase.co')) {
+      const ref = host.replace('.supabase.co', '');
+      return ref ? `${ref.slice(0, 4)}***.supabase.co` : 'supabase.co';
+    }
+    return 'non-supabase-host';
+  } catch {
+    return 'invalid-url';
+  }
+};
+
+const buildSupabaseEnvDiagnostic = () => {
+  const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const trimmedServiceKey = String(rawServiceKey ?? '').trim();
+
+  return {
+    supabaseUrlConfigured: envVarPresent('SUPABASE_URL'),
+    supabaseUrlHostHint: supabaseUrlHostHint(),
+    supabaseAnonKeyPresent: envVarPresent('SUPABASE_ANON_KEY'),
+    serviceRoleKeyPresent: Boolean(trimmedServiceKey),
+    serviceRoleKeyLooksJwtLike: trimmedServiceKey.split('.').length === 3,
+    serviceRoleKeyHasLeadingOrTrailingWhitespace: rawServiceKey != null && String(rawServiceKey) !== trimmedServiceKey
+  };
+};
+
+const buildProfileLookupDiagnostic = ({
+  authUserLookupSucceeded = false,
+  authUserIdPresent = false,
+  profileLookupSucceeded = null,
+  profileRowPresent = null,
+  profileLookupHttpStatus = null,
+  profileLookupErrorCode = null,
+  profileLookupErrorMessage = null
+} = {}) => ({
+  authUserLookupSucceeded,
+  authUserIdPresent,
+  profileLookupSucceeded,
+  profileRowPresent,
+  ...buildSupabaseEnvDiagnostic(),
+  profileLookupHttpStatus,
+  profileLookupErrorCode,
+  profileLookupErrorMessage
+});
+
 const buildRuntimeEnvDiagnostic = () => {
   const sha = String(process.env.VERCEL_GIT_COMMIT_SHA || '').trim();
   const envPresence = {};
@@ -94,7 +151,8 @@ const buildPreviewDiagnostic = ({
   stripeErrorType = null,
   stripeErrorCode = null,
   stripeErrorParam = null,
-  config = null
+  config = null,
+  profileLookup = null
 }) => ({
   ...(validationIssue ? { validationIssue } : {}),
   ...(stripeStatus !== null ? {
@@ -103,6 +161,7 @@ const buildPreviewDiagnostic = ({
     stripeErrorCode: stripeErrorCode || null,
     stripeErrorParam: stripeErrorParam || null
   } : {}),
+  ...(profileLookup ? { profileLookup } : {}),
   runtime: buildRuntimeEnvDiagnostic(),
   config: config || buildConfigDiagnostic()
 });
@@ -273,6 +332,60 @@ async function requireVerifiedParent(req, res) {
   return { ok: true, user, profile };
 }
 
+async function inspectProfileLookup(accessToken) {
+  const user = await getAuthUserFromAccessToken(accessToken);
+  const authUserIdPresent = Boolean(user?.id);
+  let profileLookup = buildProfileLookupDiagnostic({
+    authUserLookupSucceeded: authUserIdPresent,
+    authUserIdPresent
+  });
+
+  if (!authUserIdPresent) {
+    return { profile: null, profileLookup, validationIssue: 'sign in required' };
+  }
+
+  try {
+    const profile = await getProfileByUserId(user.id);
+    profileLookup = buildProfileLookupDiagnostic({
+      authUserLookupSucceeded: true,
+      authUserIdPresent: true,
+      profileLookupSucceeded: true,
+      profileRowPresent: Boolean(profile)
+    });
+
+    if (!profile) {
+      return { profile: null, profileLookup, validationIssue: 'parent profile required' };
+    }
+
+    if (String(profile.role || '').toLowerCase() !== 'parent') {
+      return { profile, profileLookup, validationIssue: 'parent account required' };
+    }
+
+    if (!isTruthy(profile.email_verified)) {
+      return { profile, profileLookup, validationIssue: 'verified email required' };
+    }
+
+    return { profile, profileLookup, validationIssue: null };
+  } catch (err) {
+    const message = String(err?.message || '');
+    profileLookup = buildProfileLookupDiagnostic({
+      authUserLookupSucceeded: true,
+      authUserIdPresent: true,
+      profileLookupSucceeded: false,
+      profileRowPresent: false,
+      profileLookupHttpStatus: err?.status || null,
+      profileLookupErrorCode: err?.data?.code || null,
+      profileLookupErrorMessage: sanitizeSupabaseMessage(message)
+    });
+
+    const validationIssue = message.includes('SUPABASE_SERVICE_ROLE_KEY')
+      ? 'profile lookup unavailable'
+      : 'profile lookup failed';
+
+    return { profile: null, profileLookup, validationIssue };
+  }
+}
+
 async function handleDiagnosticOnly(req, res, body) {
   if (!isPreviewDiagnosticEnabled()) {
     return res.status(404).json({ error: 'Not found.' });
@@ -280,29 +393,16 @@ async function handleDiagnosticOnly(req, res, body) {
 
   try {
     const accessToken = bearerToken(req);
-    const user = await getAuthUserFromAccessToken(accessToken);
-    if (!user?.id) {
+    const { profileLookup, validationIssue } = await inspectProfileLookup(accessToken);
+
+    if (!profileLookup.authUserIdPresent) {
       return res.status(401).json({
         error: 'Sign in required.',
-        diagnostic: buildPreviewDiagnostic({ validationIssue: 'sign in required' })
+        diagnostic: buildPreviewDiagnostic({
+          validationIssue,
+          profileLookup
+        })
       });
-    }
-
-    let validationIssue = null;
-    try {
-      const profile = await getProfileByUserId(user.id);
-      if (!profile) {
-        validationIssue = 'parent profile required';
-      } else if (String(profile.role || '').toLowerCase() !== 'parent') {
-        validationIssue = 'parent account required';
-      } else if (!isTruthy(profile.email_verified)) {
-        validationIssue = 'verified email required';
-      }
-    } catch (err) {
-      const message = String(err?.message || '');
-      validationIssue = message.includes('SUPABASE_SERVICE_ROLE_KEY')
-        ? 'profile lookup unavailable'
-        : 'profile lookup failed';
     }
 
     const planKey = String(body?.planKey || '').trim();
@@ -317,6 +417,7 @@ async function handleDiagnosticOnly(req, res, body) {
       mode: 'preview_runtime_env',
       diagnostic: buildPreviewDiagnostic({
         validationIssue,
+        profileLookup,
         config: buildConfigDiagnostic({ priceEnvKey })
       })
     });
@@ -324,7 +425,10 @@ async function handleDiagnosticOnly(req, res, body) {
     logCheckoutFailure('diagnosticOnly handler failure', { errorName: err?.name || 'Error' });
     return res.status(500).json({
       error: 'Checkout could not be started.',
-      diagnostic: buildPreviewDiagnostic({ validationIssue: 'diagnostic handler exception' })
+      diagnostic: buildPreviewDiagnostic({
+        validationIssue: 'diagnostic handler exception',
+        profileLookup: buildProfileLookupDiagnostic()
+      })
     });
   }
 }
