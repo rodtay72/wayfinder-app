@@ -20,6 +20,7 @@ const HANDLED_EVENT_TYPES = new Set([
 ]);
 
 const ALLOWED_LOG_PLAN_KEYS = new Set(['wayfinder', 'wayfinder_plus', 'wayfinder_connect']);
+const SIGNATURE_TOLERANCE_SECONDS = 300;
 
 class PermanentWebhookError extends Error {
   constructor(message) {
@@ -111,10 +112,15 @@ const verifyStripeSignature = (rawBody, signatureHeader, webhookSecret) => {
     const [key, value] = part.split('=');
     if (!key || value == null) continue;
     if (key === 't') timestamp = value;
-    if (key.startsWith('v')) signatures.push(value);
+    if (key === 'v1') signatures.push(value);
   }
 
   if (!timestamp || signatures.length === 0) return false;
+
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds) || timestampSeconds <= 0) return false;
+  const ageSeconds = Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds);
+  if (ageSeconds > SIGNATURE_TOLERANCE_SECONDS) return false;
 
   const signedPayload = `${timestamp}.${rawBody.toString('utf8')}`;
   const expected = crypto.createHmac('sha256', webhookSecret).update(signedPayload, 'utf8').digest('hex');
@@ -290,8 +296,11 @@ async function fetchSubscription(subscriptionId, config) {
   }
 
   if (!response.ok) {
-    if (response.status >= 500 || response.status === 429 || response.status === 404) {
+    if (response.status >= 500 || response.status === 429) {
       throw new RetryableWebhookError('Stripe subscription fetch failed');
+    }
+    if (response.status === 404) {
+      throw new PermanentWebhookError('Stripe subscription fetch failed');
     }
     throw new PermanentWebhookError('Stripe subscription fetch failed');
   }
@@ -554,7 +563,26 @@ async function finalizeClaimedEvent(event, config) {
     }
 
     if (err instanceof PermanentWebhookError) {
-      await markWebhookOutcome(eventId, 'failed');
+      try {
+        await markWebhookOutcome(eventId, 'failed');
+      } catch (markErr) {
+        if (markErr instanceof RetryableWebhookError || isRetryableSupabaseError(markErr)) {
+          try {
+            await releaseWebhookClaim(eventId);
+          } catch {
+            throw markErr;
+          }
+          logWebhook({
+            eventType,
+            eventIdSuffix: idSuffix,
+            livemode,
+            outcome: 'retryable_error',
+            httpStatus: 500
+          });
+          return { status: 500, body: { error: 'Webhook processing failed.' } };
+        }
+        throw markErr;
+      }
       logWebhook({
         eventType,
         eventIdSuffix: idSuffix,
