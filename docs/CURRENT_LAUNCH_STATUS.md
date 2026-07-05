@@ -8,13 +8,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-05
 
-**Last verified merge:** PR #145 — Stripe Checkout Session API (test mode)
+**Last verified merge:** PR #146 — Free trial entitlement contract correction (30-day, time-only)
 
-**Next proposed PR:** PR #146 — Free trial entitlement contract correction (30-day, time-only) — **in flight**
+**Next proposed PR:** Pending owner scope approval — do not start PR #147 until approved (see [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) §14).
 
-**PR #146 (in flight):** Correct Wayfinder Free to 30-day no-card trial (time-only; unlimited saves during trial). Docs + owner-applied SQL + display-only Plans copy. No save gating, webhook, or checkout UI.
+**PR #146 (merged):** 30-day no-card Free trial (time-only; unlimited saves during trial). Owner SQL applied (Backfill Policy B). Display-only Plans copy on main. No save gating.
 
-**Current owner blocker:** Apply [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) in Supabase after PR #146 merge (Backfill Policy B).
+**Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
+
+**Stripe:** Test-mode only (`sk_test_...` on `/api/create-checkout-session`). **No live Stripe activation.** No webhook, Customer Portal, checkout buttons, entitlement sync, billing UI, or save gating active.
+
+**Current owner blocker:** Approve next payment/Stripe PR scope before implementation (PR #147 not started).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -107,16 +111,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 ## Payment & entitlement strategy
 
-**Status:** PR #143 foundation **merged and applied**. **PR #146 in flight** — corrects Free trial to 30-day time-only (no save cap). **PR #144 Stripe planning merged.** **PR #145 Checkout Session API merged** — test-mode server endpoint only; owner production smoke **PASS** (no webhook, entitlement updates, checkout buttons, or gating).
+**Status:** PR #143 foundation **merged and applied**. **PR #146 merged and SQL applied** (Backfill Policy B). **PR #144 Stripe planning merged.** **PR #145 Checkout Session API merged** — test-mode server endpoint only; **no live Stripe activation**. Supabase **Pro** and Vercel **Pro** active. No webhook, Customer Portal, checkout buttons, entitlement sync, billing UI, or save gating.
 
 **Primary docs:**
 
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
 - [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md)
 
-**SQL (applied):** [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql)
+**SQL (applied):**
 
-**SQL (PR #146 — owner apply after merge):** [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) — Backfill Policy B
+- [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql) (PR #143)
+- [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (PR #146 — Policy B applied)
 
 **Key product rule:** Privacy is **baseline across every plan** — not a paid or limited feature.
 
@@ -130,9 +135,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **PR #143 runtime:** Default parent entitlement; Plans page (display-only); read RPC only — **no feature gates**.
 
-**Stripe (PR #145 merged):** Test-mode Checkout Session API live on main (`POST /api/create-checkout-session`); Customer Portal + webhook + entitlement sync remain future PRs. **Trial-expiry save gating not active** (future enforcement PR).
+**Stripe (PR #145 merged):** Test-mode Checkout Session API on main (`POST /api/create-checkout-session`; requires `sk_test_...`). **Live Stripe not activated.** Customer Portal + webhook + entitlement sync remain future PRs. **Trial-expiry save gating not active.**
 
-**Explicit non-goals retained after PR #146:** Save gating in Decode/Journal, webhooks, Customer Portal, checkout buttons, entitlement sync, billing UI, usage counter writes, progress-tracker gates, MHP review gates.
+**Explicit non-goals (unchanged):** Save gating in Decode/Journal, live Stripe keys, webhooks, Customer Portal, checkout buttons, entitlement sync, billing UI, usage counter writes, progress-tracker gates, MHP review gates.
 
 ## Simplified Chinese language toggle
 
@@ -176,7 +181,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #143 pricing entitlement foundation | `user_entitlements` + `usage_counters` SQL; read RPCs; parent Plans page; no Stripe/gates | Complete (merged) |
 | PR #144 Stripe foundation planning | Docs-only Checkout/Portal/webhook plan; env vars; entitlement mapping; no runtime | Complete (merged) |
 | PR #145 Stripe Checkout Session API | Test-mode `/api/create-checkout-session`; preview + production owner smoke PASS; no webhook, Portal, entitlement writes, checkout buttons, or gating | Complete (merged) |
-| PR #146 Free trial entitlement correction | 30-day time-only Free trial contract; owner-applied SQL (Policy B); display-only Plans copy; no save gating | In flight |
+| PR #146 Free trial entitlement correction | 30-day time-only Free trial contract; owner SQL applied (Policy B); display-only Plans copy; no save gating | Complete (merged + SQL applied) |
 | PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
 | PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
 | PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | Complete (merged) |
@@ -209,8 +214,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **Payment / entitlement foundation (PR #143)** — **merged and applied** — 7 parents backfilled to Wayfinder Free; feature gating not active
 - **Stripe foundation planning (PR #144)** — **merged** — [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md)
 - **Stripe Checkout Session API (PR #145)** — **merged** — test-mode `/api/create-checkout-session`; owner preview + production smoke **PASS**; no webhook, Customer Portal, entitlement updates, checkout buttons, or gating
-- **Free trial entitlement correction (PR #146)** — **in flight** — 30-day time-only contract; [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) owner apply after merge (Policy B)
-- **Next Stripe/payment PR** — **pending owner scope approval** after PR #146 — webhook / Customer Portal / enforcement sequence per [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) §14
+- **Free trial entitlement correction (PR #146)** — **merged and SQL applied** — 30-day time-only contract; [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (Policy B)
+- **Next Stripe/payment PR (PR #147+)** — **pending owner scope approval** — do not start until approved; webhook / Customer Portal / enforcement sequence per [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) §14
+- **Live Stripe activation** — **not started** — test-mode Checkout API only; no webhook, Customer Portal, checkout buttons, entitlement sync, or billing UI
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 - **MHP invite request pipeline (PR #128–#140)** — **PR #129–#140 merged**
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled
