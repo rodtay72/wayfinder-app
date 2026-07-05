@@ -154,10 +154,10 @@ This table is intended for client-facing pricing pages and sales decks. Each row
 | Privacy-first reflection space: private parent reflections, no child-labelling, no parent diagnosis, and no normal UI exposure of sensitive technical identifiers | Unlocked | Unlocked | Unlocked |
 | No ads, no data-selling, no gimmicks: Wayfinder does not monetise attention or sell parent/child data | Unlocked | Unlocked | Unlocked |
 | Parent consent for research, sharing, or review support: research participation and any sharing pathway require parent choice | Unlocked | Unlocked | Unlocked |
-| Save Decode reflections: preserve insights from difficult moments instead of losing them after the day passes | Limited: 3 saved Decode moments within 30 days | Unlocked: unlimited saves | Unlocked: unlimited saves |
+| Save Decode reflections: preserve insights from difficult moments instead of losing them after the day passes | Unlocked: unlimited saves during 30-day trial | Unlocked: unlimited saves | Unlocked: unlimited saves |
 | Read existing saved entries: keep access to reflections already saved, even after the free trial ends | Unlocked | Unlocked | Unlocked |
-| Full Journal Trail: revisit reflections over time to notice recurring needs, CAB patterns, growth edges, and repair intentions | Locked or limited to trial/saved allowance | Unlocked | Unlocked |
-| Reflection history depth: return to more saved parent reflections and develop them over time | Limited to trial/saved allowance | Unlocked | Unlocked |
+| Full Journal Trail: revisit reflections over time to notice recurring needs, CAB patterns, growth edges, and repair intentions | Unlocked during trial; read-only after trial expiry (future enforcement) | Unlocked | Unlocked |
+| Reflection history depth: return to more saved parent reflections and develop them over time | Unlocked during trial; new saves blocked after trial expiry (future enforcement) | Unlocked | Unlocked |
 | Relationship Garden: view the parent-child relationship as a living growth pattern rather than isolated incidents | Locked | Unlocked | Unlocked |
 | 52 Parent Growth Practices / 52 ALIGN Practices interface: practise small parent capacities such as pausing, staying curious, connecting before correcting, or repairing after rupture | Unlocked during trial as guided access | Unlocked | Unlocked |
 | Practice save/history/progression: track which practices have been tried and how parent capacity is developing | Locked | Unlocked | Unlocked |
@@ -290,7 +290,7 @@ Reasons:
 - there is no automatic conversion into paid billing;
 - parents can experience the product without feeling trapped by payment setup;
 - billing records are not created before a parent chooses to pay;
-- the product limits are clear: 30 days and 3 saved Decode moments.
+- the product limit is clear: **30 days of no-card trial access** (time-limited only; unlimited saves during the trial window).
 
 Stripe should begin only when a parent actively chooses Plus or Connect.
 
@@ -300,11 +300,19 @@ The 30-day trial should start at first verified parent app access, after email v
 
 Do not start the trial merely on unverified sign-up. This avoids burning trial time before the parent can safely access the app.
 
-### Trial limit
+### Trial duration (time-only)
 
-Wayfinder allows 3 saved Decode moments during the trial.
+Wayfinder Free is limited by **time only** — not by a saved-reflection count.
 
-The limit should count only successfully saved Decode moments, not:
+During the active 30-day trial:
+
+- parents may save Decode reflections without a numeric cap;
+- existing saved entries remain readable;
+- privacy baseline applies across all plans.
+
+The trial window is stored server-side as `current_period_start` / `current_period_end` on `user_entitlements` (PR #146). A future enforcement PR may block **new** saves after `current_period_end`; it must not delete or hide existing journal rows.
+
+Do not count toward any future usage analytics gate:
 
 - drafts;
 - abandoned Decode flows;
@@ -376,18 +384,18 @@ The browser should never decide paid access from localStorage or client-only fla
 | --- | --- |
 | `plan_key` | `wayfinder`, `wayfinder_plus`, or `wayfinder_connect` (implemented PR #143) |
 | `subscription_status` | `free`, `trialing`, `active`, `past_due`, `canceled`, `expired` |
-| `monthly_save_limit` | `3` for Wayfinder; `NULL` = unlimited for Plus/Connect |
+| `monthly_save_limit` | `NULL` for all tiers at launch — Free tier uses **time-only** trial window, not a save count; Plus/Connect remain unlimited saves |
 | `progress_tracker_enabled` | Plus and Connect |
 | `mhp_review_enabled` | Connect only |
 | `included_mhp_reviews_per_month` | `0` for Wayfinder/Plus; `1` for Connect |
+| `current_period_start` / `current_period_end` | **Wayfinder Free:** 30-day trial window (starts at first verified parent entitlement bootstrap). **Paid plans:** Stripe billing period from webhook sync |
 | `research_participation_status` | Future consent state such as `not_asked`, `declined`, or `opted_in`; not a payment entitlement |
 | `preferred_language` | Future UI language preference such as `en` or `zh-Hans`; not a payment entitlement |
 | `stripe_customer_id` | Future server-owned billing mapping |
 | `stripe_subscription_id` | Future server-owned subscription mapping |
-| `current_period_end` | Paid billing period reference from Stripe |
 | `last_entitlement_sync_at` | Last successful webhook/API reconciliation |
 
-This is not a SQL proposal for PR #120A. **PR #143** implements the foundation persistence layer in [`supabase-pricing-entitlement-foundation.sql`](../supabase-pricing-entitlement-foundation.sql). **PR #144** documents Stripe Checkout/Portal/webhook planning in [`STRIPE_FOUNDATION_SETUP_PLAN.md`](./STRIPE_FOUNDATION_SETUP_PLAN.md) (docs only). Stripe runtime and feature gates remain future PRs.
+This is not a SQL proposal for PR #120A. **PR #143** implements the foundation persistence layer in [`supabase-pricing-entitlement-foundation.sql`](../supabase-pricing-entitlement-foundation.sql). **PR #146** corrects the Free trial contract to time-only (see [`supabase-pr146-free-trial-entitlement-correction.sql`](../supabase-pr146-free-trial-entitlement-correction.sql)). **PR #144** documents Stripe Checkout/Portal/webhook planning in [`STRIPE_FOUNDATION_SETUP_PLAN.md`](./STRIPE_FOUNDATION_SETUP_PLAN.md) (docs only). Stripe runtime and feature gates remain future PRs.
 
 ---
 
@@ -588,8 +596,8 @@ Upgrade and plan copy must not say or imply:
 ### Wayfinder trial active
 
 ```text
-You are exploring Wayfinder with 3 saved Decode moments during your 30-day trial.
-Use this space to notice what your child's behaviour may have been signalling, what happened in your CAB, and what you might try next.
+You are exploring Wayfinder during your 30-day trial — no card required.
+Save as many Decode reflections as you need while you explore what your child's behaviour may have been signalling, what happened in your CAB, and what you might try next.
 ```
 
 ### Privacy reassurance near pricing
@@ -597,17 +605,6 @@ Use this space to notice what your child's behaviour may have been signalling, w
 ```text
 Privacy is included in every Wayfinder plan. We do not sell parent data, we do not run ads, and we do not use gimmicks to keep parents scrolling. Parent reflections stay private by default. Research, professional review, or sharing pathways require parent consent.
 ```
-
-### Save limit reached
-
-```text
-You have used your 3 Wayfinder saves.
-Your saved reflections remain readable. To keep saving Decode moments and build your Journal Trail, upgrade to Wayfinder Plus.
-```
-
-Primary CTA: `Upgrade to Plus`
-
-Secondary CTA: `Review my saved reflections`
 
 ### Trial expired
 

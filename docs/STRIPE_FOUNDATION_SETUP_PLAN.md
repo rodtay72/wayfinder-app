@@ -2,7 +2,7 @@
 
 **Status:** Planning spec for PR #144 — docs only
 **Scope:** Prepare Wayfinder for future Stripe integration without activating payment runtime or entitlement enforcement
-**Last updated:** 2026-07-04
+**Last updated:** 2026-07-05
 
 Read first:
 
@@ -10,6 +10,7 @@ Read first:
 - [WAYFINDER_ALIGN_PRODUCT_CANON.md](./WAYFINDER_ALIGN_PRODUCT_CANON.md)
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
 - [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql) (PR #143 — applied)
+- [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (PR #146 — owner apply after merge)
 
 ---
 
@@ -26,11 +27,11 @@ Wayfinder is ALIGN/CAB parent-development support — not child diagnosis, behav
 | Area | Status |
 | --- | --- |
 | `user_entitlements` + `usage_counters` | Applied in Supabase |
-| Parent default tier | `plan_key = wayfinder`, `subscription_status = free`, `monthly_save_limit = 3` |
-| Existing parents | Backfilled to Wayfinder Free (7 users migrated safely) |
+| Parent default tier | `plan_key = wayfinder`, `subscription_status = free`, `monthly_save_limit = NULL`, 30-day trial via `current_period_start` / `current_period_end` |
+| Existing parents | PR #146 Backfill Policy B resets active Free trial window on owner SQL apply |
 | Browser entitlement access | Read-only via RLS + `get_current_user_entitlement()` |
 | Plans page | Display-only; no checkout buttons |
-| Feature gating / save-limit enforcement | **Not active** |
+| Feature gating / trial-expiry enforcement | **Not active** |
 | Journal read access | Unchanged — existing saved reflections remain readable |
 | Stripe runtime | **Not started** |
 
@@ -40,7 +41,7 @@ Wayfinder is ALIGN/CAB parent-development support — not child diagnosis, behav
 
 | Plan | Price | Saves | Progress tracker | MHP review |
 | --- | --- | --- | --- | --- |
-| **Wayfinder** | Free, no card | 3/month | No | No |
+| **Wayfinder** | Free, no card — 30-day trial | Unlimited during trial; new saves blocked after trial expiry (future enforcement PR) | No | No |
 | **Wayfinder Plus** | S$7.90/mo or S$69/yr | Unlimited | Yes | No |
 | **Wayfinder Connect** | S$29.90/mo or S$299/yr | Unlimited | Yes | Yes — parent-controlled only; 1 included review request/month |
 
@@ -104,7 +105,7 @@ Never import Stripe secret key into `app.js`, `supabase.js`, or static browser b
 
 ### 6.1 `api/create-checkout-session.js`
 
-**PR #145 checkpoint (in flight):** Test-mode Checkout Session creation is implemented server-side only. Requires `sk_test_...` and test Price IDs. Returns `{ url }` for Stripe-hosted Checkout. **No entitlement writes, no webhook, no UI checkout buttons, no gating.**
+**PR #145 complete (merged):** Test-mode Checkout Session creation is implemented server-side on main. Requires `sk_test_...` and test Price IDs on preview/test deployments. Returns `{ url }` for Stripe-hosted Checkout. Owner preview + production smoke **PASS**. **No entitlement writes, no webhook, no UI checkout buttons, no gating.**
 
 **Method:** POST
 **Auth:** `Authorization: Bearer <supabase_access_token>` — verify session server-side before creating Checkout.
@@ -273,18 +274,21 @@ On unknown or duplicate events: log safely, return 200 after idempotent no-op wh
 | Incomplete checkout | (no change) | No entitlement upgrade until `checkout.session.completed` + subscription active | — |
 | Unpaid / expired | `expired` | Revert to Wayfinder Free (§11.4) | **Do not delete rows** |
 
-**Write/gating behaviour** when lapsed (e.g. block *new* saves after free limit) is deferred to a **separate enforcement PR** — not decided in PR #144.
+**Write/gating behaviour** when lapsed (e.g. block *new* saves after trial expiry or paid lapse) is deferred to a **separate enforcement PR** — not PR #144 or PR #146.
 
-### 11.4 Revert to Wayfinder Free (downgrade sync)
+### 11.4 Revert to Wayfinder read-only (post-paid lapse)
+
+When a paid subscription ends, revert to read-only Wayfinder — **do not grant a fresh 30-day trial**.
 
 | Field | Value |
 | --- | --- |
 | `plan_key` | `wayfinder` |
-| `subscription_status` | `free` |
-| `monthly_save_limit` | `3` |
+| `subscription_status` | `expired` |
+| `monthly_save_limit` | `NULL` |
 | `progress_tracker_enabled` | `false` |
 | `mhp_review_enabled` | `false` |
 | `included_mhp_reviews_per_month` | `0` |
+| `current_period_start` / `current_period_end` | Clear or leave ended; do not start a new Free trial window |
 
 Clear or null `stripe_subscription_id` as appropriate; retain `stripe_customer_id` for Portal re-subscribe.
 
@@ -314,7 +318,7 @@ PR #144 explicitly does **not**:
 
 - Implement Stripe Checkout, Customer Portal, or webhook endpoints
 - Add live checkout or “Manage billing” buttons
-- Activate entitlement enforcement or monthly save limits
+- Activate entitlement enforcement or trial-expiry save blocking
 - Change journal save/read, dashboard loading, or existing reflection visibility
 - Modify Supabase auth, RLS, `ensure_profile`, email verification, Parent/Child IDs
 - Change MHP licence privacy, MHP publication rules, or active-membership journal-read gates
@@ -329,7 +333,7 @@ PR #144 explicitly does **not**:
 2. **SQL PR:** Add `stripe_customer_id`, `stripe_subscription_id`, webhook-safe update RPC or service-role policy.
 3. **Runtime PR:** `create-checkout-session`, `create-billing-portal-session`, `stripe-webhook` + idempotency table.
 4. **UX PR:** Plans page upgrade CTAs + success/cancel routes (still no client-side secrets).
-5. **Enforcement PR:** Save limits, progress tracker, MHP review gates — with read-access preservation for existing entries.
+5. **Enforcement PR:** Trial-expiry save blocking, progress tracker, MHP review gates — with read-access preservation for existing entries.
 
 ---
 

@@ -499,7 +499,10 @@ const WAYFINDER_PLANS_PAGE = {
   title: "Plans",
   subtitle: "Every Wayfinder plan is privacy-first. The difference between plans is how much you can save, revisit, track your parent growth, and — only if you choose — share for Mental Health Professional review support.",
   privacyBaseline: "No ads. No data-selling. Consent-led research only. Your reflections stay private unless you choose to share.",
-  readAccessReassurance: "Reflections you have already saved remain readable even if paid access lapses or you reach the free save limit.",
+  readAccessReassurance: "Reflections you have already saved remain readable even if your trial ends or paid access lapses.",
+  trialActiveDetail: "30-day trial · unlimited saves · {daysLeft} {dayWord} remaining (ends {endDate})",
+  trialActiveNoDateDetail: "30-day trial · unlimited reflection saves · no card required",
+  trialEndedDetail: "Your 30-day trial has ended. Saved reflections remain readable.",
   connectDisclaimer: "Wayfinder Connect adds optional, parent-controlled Mental Health Professional review support. It is not therapy, diagnosis, emergency care, or crisis support. Payment does not improve your child — it may help you reflect and grow as a parent.",
   billingComingSoonNote: "Upgrade and billing are not available in the app yet. When payment is enabled, you will manage upgrades through a secure checkout flow.",
   currentPlanLabel: "Your current plan",
@@ -514,13 +517,14 @@ const WAYFINDER_PLANS_PAGE = {
     {
       planKey: "wayfinder",
       name: "Wayfinder",
-      tagline: "Start reflecting, no card required.",
+      tagline: "30-day trial — start reflecting, no card required.",
       positioning: "Start reflecting",
       priceMonthly: null,
       priceYearly: null,
       highlights: [
         "Core parent reflection pathway",
-        "Up to 3 saved reflections per month",
+        "30-day no-card trial",
+        "Unlimited reflection saves during your trial",
         "Privacy-first — no ads, no data-selling"
       ]
     },
