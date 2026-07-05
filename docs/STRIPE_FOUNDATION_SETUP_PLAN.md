@@ -10,7 +10,7 @@ Read first:
 - [WAYFINDER_ALIGN_PRODUCT_CANON.md](./WAYFINDER_ALIGN_PRODUCT_CANON.md)
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
 - [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql) (PR #143 — applied)
-- [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (PR #146 — owner apply after merge)
+- [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (PR #146 — applied)
 
 ---
 
@@ -22,18 +22,21 @@ Wayfinder is ALIGN/CAB parent-development support — not child diagnosis, behav
 
 ---
 
-## 2. Current state (post–PR #143)
+## 2. Current state (post–PR #146)
 
 | Area | Status |
 | --- | --- |
+| Supabase plan | **Pro** (owner upgraded) |
+| Vercel plan | **Pro** (owner upgraded) |
 | `user_entitlements` + `usage_counters` | Applied in Supabase |
+| PR #146 free-trial SQL | **Applied** — Backfill Policy B |
 | Parent default tier | `plan_key = wayfinder`, `subscription_status = free`, `monthly_save_limit = NULL`, 30-day trial via `current_period_start` / `current_period_end` |
-| Existing parents | PR #146 Backfill Policy B resets active Free trial window on owner SQL apply |
 | Browser entitlement access | Read-only via RLS + `get_current_user_entitlement()` |
 | Plans page | Display-only; no checkout buttons |
 | Feature gating / trial-expiry enforcement | **Not active** |
 | Journal read access | Unchanged — existing saved reflections remain readable |
-| Stripe runtime | **Not started** |
+| Stripe runtime | **Test-mode only** — PR #145 `/api/create-checkout-session` (`sk_test_...`); **no live Stripe activation** |
+| Stripe webhook / Customer Portal / entitlement sync / billing UI | **Not active** |
 
 ---
 
