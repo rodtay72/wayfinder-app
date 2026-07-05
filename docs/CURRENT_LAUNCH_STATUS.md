@@ -8,13 +8,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-05
 
-**Last verified merge:** PR #144 — Stripe foundation planning (docs only)
+**Last verified merge:** PR #145 — Stripe Checkout Session API (test mode)
 
-**Next proposed PR:** PR #145 — Stripe Checkout Session API (test mode only)
+**Next proposed PR:** PR #146 — Free trial entitlement contract correction (30-day, time-only) — **in flight**
 
-**PR #145 (in flight):** Stripe Checkout Session API — test mode only; no webhook, no Customer Portal, no entitlement updates, no gating.
+**PR #146 (in flight):** Correct Wayfinder Free to 30-day no-card trial (time-only; unlimited saves during trial). Docs + owner-applied SQL + display-only Plans copy. No save gating, webhook, or checkout UI.
 
-**Current owner blocker:** Configure Stripe test-mode env vars on preview; smoke-test `/api/create-checkout-session` before merge. Entitlement SQL (PR #143) applied; PR #144 planning doc merged.
+**Current owner blocker:** Apply [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) in Supabase after PR #146 merge (Backfill Policy B).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -107,14 +107,16 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 ## Payment & entitlement strategy
 
-**Status:** PR #143 foundation **merged and applied** — 7 existing parents backfilled to Wayfinder Free. **PR #144 Stripe planning merged.** **PR #145 Checkout Session API in flight** (test mode only — no webhook, entitlement updates, or gating).
+**Status:** PR #143 foundation **merged and applied**. **PR #146 in flight** — corrects Free trial to 30-day time-only (no save cap). **PR #144 Stripe planning merged.** **PR #145 Checkout Session API merged** — test-mode server endpoint only; owner production smoke **PASS** (no webhook, entitlement updates, checkout buttons, or gating).
 
 **Primary docs:**
 
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
-- [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) (PR #144 — planning only)
+- [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md)
 
 **SQL (applied):** [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql)
+
+**SQL (PR #146 — owner apply after merge):** [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) — Backfill Policy B
 
 **Key product rule:** Privacy is **baseline across every plan** — not a paid or limited feature.
 
@@ -122,15 +124,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 | Plan | Role | Price |
 |------|------|-------|
-| Wayfinder | Free tier; 3 saved reflections per month; no card | Free |
+| Wayfinder | 30-day no-card trial; unlimited saves during trial; time-limited only | Free |
 | Wayfinder Plus | Unlimited saves + progress tracker | S$7.90/mo or S$69/yr |
 | Wayfinder Connect | Plus + parent-controlled MHP review | S$29.90/mo or S$299/yr |
 
 **PR #143 runtime:** Default parent entitlement; Plans page (display-only); read RPC only — **no feature gates**.
 
-**Stripe (PR #145+):** Test-mode Checkout Session API in flight; Customer Portal + webhook path documented for later PRs. Feature gating/save-limit enforcement **not active**.
+**Stripe (PR #145 merged):** Test-mode Checkout Session API live on main (`POST /api/create-checkout-session`); Customer Portal + webhook + entitlement sync remain future PRs. **Trial-expiry save gating not active** (future enforcement PR).
 
-**Explicit non-goals for PR #145:** Webhooks, Customer Portal, checkout buttons, entitlement writes, auth/journal/MHP RLS changes, save-limit or MHP review gating.
+**Explicit non-goals retained after PR #146:** Save gating in Decode/Journal, webhooks, Customer Portal, checkout buttons, entitlement sync, billing UI, usage counter writes, progress-tracker gates, MHP review gates.
 
 ## Simplified Chinese language toggle
 
@@ -173,7 +175,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #119 MHP portrait pipeline checkpoint | Docs-only production checkpoint so agents do not weaken portrait/privacy model | Complete (merged) |
 | PR #143 pricing entitlement foundation | `user_entitlements` + `usage_counters` SQL; read RPCs; parent Plans page; no Stripe/gates | Complete (merged) |
 | PR #144 Stripe foundation planning | Docs-only Checkout/Portal/webhook plan; env vars; entitlement mapping; no runtime | Complete (merged) |
-| PR #145 Stripe Checkout Session API | Test-mode `/api/create-checkout-session` only; no webhook, Portal, entitlement writes, or gating | In flight |
+| PR #145 Stripe Checkout Session API | Test-mode `/api/create-checkout-session`; preview + production owner smoke PASS; no webhook, Portal, entitlement writes, checkout buttons, or gating | Complete (merged) |
+| PR #146 Free trial entitlement correction | 30-day time-only Free trial contract; owner-applied SQL (Policy B); display-only Plans copy; no save gating | In flight |
 | PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
 | PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
 | PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | Complete (merged) |
@@ -201,11 +204,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **MHP owner admin SQL apply (PR #104 + PR #105)** — owner must apply publication contract and review-list RPC before `/admin.html` works in production
 - **MHP profile image SQL apply (PR #106 + PR #107)** — owner must apply image table + upload storage policies before source upload works in production
 - **MHP portrait pipeline (PR #106–PR #118)** — **complete on main** — see **MHP Portrait Pipeline — Production Checkpoint** above; owner must still apply required SQL in Supabase where not yet applied
-- **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#140 merged** — auto-consume on verified active invite; robust RPC response parsing; safe error messages. Account hygiene for affected owner test account may still be required — see runbook § PR #140. **Stripe Checkout/runtime remains paused; entitlement foundation PR #143 is merged/applied.**
+- **MHP invite email-bound acceptance (PR #138 + #139 + #140)** — **PR #138–#140 merged** — auto-consume on verified active invite; robust RPC response parsing; safe error messages. Account hygiene for affected owner test account may still be required — see runbook § PR #140.
 - **MHP invite signup email delivery (PR #137)** — docs merged; owner configures Custom SMTP + redirect allow list for `/counsellor.html?mhp_setup=profile`
 - **Payment / entitlement foundation (PR #143)** — **merged and applied** — 7 parents backfilled to Wayfinder Free; feature gating not active
 - **Stripe foundation planning (PR #144)** — **merged** — [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md)
-- **Stripe Checkout Session API (PR #145)** — **in flight** — test-mode `/api/create-checkout-session` only; no webhook, Customer Portal, entitlement updates, or gating
+- **Stripe Checkout Session API (PR #145)** — **merged** — test-mode `/api/create-checkout-session`; owner preview + production smoke **PASS**; no webhook, Customer Portal, entitlement updates, checkout buttons, or gating
+- **Free trial entitlement correction (PR #146)** — **in flight** — 30-day time-only contract; [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) owner apply after merge (Policy B)
+- **Next Stripe/payment PR** — **pending owner scope approval** after PR #146 — webhook / Customer Portal / enforcement sequence per [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) §14
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 - **MHP invite request pipeline (PR #128–#140)** — **PR #129–#140 merged**
 - **Android Play Protect / outdated PWA install warning** — **deferred** — PR #121 merged; further Android install investigation not scheduled

@@ -53,7 +53,7 @@ create table if not exists public.user_entitlements (
   plan_key text not null default 'wayfinder',
   subscription_status text not null default 'free',
   core_parent_app_access boolean not null default true,
-  monthly_save_limit integer default 3,
+  monthly_save_limit integer default null,
   progress_tracker_enabled boolean not null default false,
   mhp_review_enabled boolean not null default false,
   included_mhp_reviews_per_month integer not null default 0,
@@ -189,17 +189,21 @@ begin
     monthly_save_limit,
     progress_tracker_enabled,
     mhp_review_enabled,
-    included_mhp_reviews_per_month
+    included_mhp_reviews_per_month,
+    current_period_start,
+    current_period_end
   )
   values (
     v_user_id,
     'wayfinder',
     'free',
     true,
-    3,
+    null,
     false,
     false,
-    0
+    0,
+    now(),
+    now() + interval '30 days'
   )
   on conflict (user_id) do nothing;
 end;
@@ -291,7 +295,10 @@ grant execute on function public.get_current_user_entitlement() to authenticated
 -- 6. Verification notes
 -- ---------------------------------------------------------------------------
 -- Default parent entitlement: plan_key=wayfinder, subscription_status=free,
--- monthly_save_limit=3, progress_tracker_enabled=false, mhp_review_enabled=false.
+-- monthly_save_limit=NULL (time-only 30-day trial; no save cap),
+-- current_period_start/end = trial window, progress_tracker_enabled=false,
+-- mhp_review_enabled=false.
+-- PR #146 correction SQL: supabase-pr146-free-trial-entitlement-correction.sql
 -- Plus seed (future webhook): monthly_save_limit NULL, progress_tracker_enabled true.
 -- Connect seed (future webhook): monthly_save_limit NULL, progress_tracker_enabled true,
 --   mhp_review_enabled true, included_mhp_reviews_per_month=1.

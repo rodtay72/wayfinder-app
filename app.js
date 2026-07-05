@@ -3431,6 +3431,31 @@ function planCatalogLabel(planKey,pageMeta){
  return tier?.name||planKey||'Wayfinder';
 }
 
+function formatPlansTrialDetail(entitlement,pageMeta){
+ if(!entitlement) return null;
+ const planKey=String(entitlement.planKey||'wayfinder').trim()||'wayfinder';
+ if(planKey!=='wayfinder') return null;
+ const status=String(entitlement.subscriptionStatus||'free').trim();
+ const trialEnd=entitlement.currentPeriodEnd?new Date(entitlement.currentPeriodEnd):null;
+ const trialEndValid=trialEnd&&!Number.isNaN(trialEnd.getTime());
+ const now=new Date();
+ if(status==='expired'||(trialEndValid&&trialEnd<=now)){
+  return String(pageMeta.trialEndedDetail||'Your 30-day trial has ended. Saved reflections remain readable.').trim();
+ }
+ if(trialEndValid){
+  const msLeft=trialEnd.getTime()-now.getTime();
+  const daysLeft=Math.max(0,Math.ceil(msLeft/(24*60*60*1000)));
+  const endLabel=trialEnd.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+  if(daysLeft<=0){
+   return String(pageMeta.trialEndedDetail||'Your 30-day trial has ended. Saved reflections remain readable.').trim();
+  }
+  const dayWord=daysLeft===1?'day':'days';
+  const template=String(pageMeta.trialActiveDetail||'30-day trial · unlimited saves · {daysLeft} {dayWord} remaining (ends {endDate})');
+  return template.replace('{daysLeft}',String(daysLeft)).replace('{dayWord}',dayWord).replace('{endDate}',endLabel);
+ }
+ return String(pageMeta.trialActiveNoDateDetail||'30-day trial · unlimited reflection saves · no card required').trim();
+}
+
 function PlansPage({back,onSignOut,user,authSession}){
  const pageMeta=typeof WAYFINDER_PLANS_PAGE!=='undefined'?WAYFINDER_PLANS_PAGE:{};
  const [loading,setLoading]=useState(true);
@@ -3495,7 +3520,12 @@ function PlansPage({back,onSignOut,user,authSession}){
   {!loading&&!unavailable&&entitlement ? <div className="card dashboard-section plans-page-current">
    <h2 className="plans-page-section-title">{currentPlanLabel}</h2>
    <p className="plans-page-current-name">{planCatalogLabel(currentPlanKey,pageMeta)}</p>
-   {entitlement.monthlySaveLimit==null ? <p className="sub plans-page-current-detail">Unlimited reflection saves this month</p> : <p className="sub plans-page-current-detail">Up to {entitlement.monthlySaveLimit} saved reflections per month{usage?.savedReflectionCount!=null?` · ${usage.savedReflectionCount} saved this month`:''}</p>}
+   {(()=>{
+    const trialDetail=formatPlansTrialDetail(entitlement,pageMeta);
+    if(trialDetail) return <p className="sub plans-page-current-detail">{trialDetail}</p>;
+    if(entitlement.monthlySaveLimit==null) return <p className="sub plans-page-current-detail">Unlimited reflection saves</p>;
+    return <p className="sub plans-page-current-detail">Up to {entitlement.monthlySaveLimit} saved reflections per month{usage?.savedReflectionCount!=null?` · ${usage.savedReflectionCount} saved this month`:''}</p>;
+   })()}
   </div> : null}
   {loading ? <div className="card dashboard-section"><p className="sub">Loading plan details…</p></div> : null}
   {!loading&&unavailable ? <div className="card dashboard-section plans-page-unavailable"><p className="sub">{unavailableNote}</p></div> : null}
