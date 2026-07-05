@@ -1,7 +1,7 @@
 import {
   SUPABASE_URL,
   getAuthUserFromAccessToken,
-  getProfileByUserId,
+  supabaseAdminFetch,
   parseBody,
   readJson
 } from './_supabase-admin.js';
@@ -48,9 +48,27 @@ const bearerToken = (req) => {
   return match ? match[1].trim() : '';
 };
 
-const isTruthy = (value) => value === true || value === 'true' || value === 1 || value === '1';
-
 const isPreviewDiagnosticEnabled = () => process.env.VERCEL_ENV !== 'production';
+
+const isAuthEmailVerified = (user) => {
+  if (!user) return false;
+  if (user.email_confirmed_at) return true;
+  if (user.confirmed_at) return true;
+  return false;
+};
+
+async function getCheckoutProfileByUserId(userId) {
+  if (!userId) return null;
+  const params = new URLSearchParams({
+    select: 'user_id,parent_id,role',
+    user_id: `eq.${userId}`,
+    limit: '1'
+  });
+  const data = await supabaseAdminFetch(`/rest/v1/profiles?${params.toString()}`, {
+    method: 'GET'
+  });
+  return Array.isArray(data) && data.length > 0 ? data[0] : null;
+}
 
 const envVarPresent = (name) => Boolean(String(process.env[name] ?? '').trim());
 
@@ -96,6 +114,7 @@ const buildSupabaseEnvDiagnostic = () => {
 const buildProfileLookupDiagnostic = ({
   authUserLookupSucceeded = false,
   authUserIdPresent = false,
+  authEmailVerified = null,
   profileLookupSucceeded = null,
   profileRowPresent = null,
   profileLookupHttpStatus = null,
@@ -104,6 +123,7 @@ const buildProfileLookupDiagnostic = ({
 } = {}) => ({
   authUserLookupSucceeded,
   authUserIdPresent,
+  authEmailVerified,
   profileLookupSucceeded,
   profileRowPresent,
   ...buildSupabaseEnvDiagnostic(),
@@ -304,7 +324,7 @@ async function requireVerifiedParent(req, res) {
 
   let profile;
   try {
-    profile = await getProfileByUserId(user.id);
+    profile = await getCheckoutProfileByUserId(user.id);
   } catch (err) {
     const message = String(err?.message || '');
     if (message.includes('SUPABASE_SERVICE_ROLE_KEY')) {
@@ -324,7 +344,7 @@ async function requireVerifiedParent(req, res) {
     return { ok: false };
   }
 
-  if (!isTruthy(profile.email_verified)) {
+  if (!isAuthEmailVerified(user)) {
     res.status(403).json({ error: 'Verified email required.' });
     return { ok: false };
   }
@@ -344,11 +364,14 @@ async function inspectProfileLookup(accessToken) {
     return { profile: null, profileLookup, validationIssue: 'sign in required' };
   }
 
+  const authEmailVerified = isAuthEmailVerified(user);
+
   try {
-    const profile = await getProfileByUserId(user.id);
+    const profile = await getCheckoutProfileByUserId(user.id);
     profileLookup = buildProfileLookupDiagnostic({
       authUserLookupSucceeded: true,
       authUserIdPresent: true,
+      authEmailVerified,
       profileLookupSucceeded: true,
       profileRowPresent: Boolean(profile)
     });
@@ -361,7 +384,7 @@ async function inspectProfileLookup(accessToken) {
       return { profile, profileLookup, validationIssue: 'parent account required' };
     }
 
-    if (!isTruthy(profile.email_verified)) {
+    if (!authEmailVerified) {
       return { profile, profileLookup, validationIssue: 'verified email required' };
     }
 
@@ -371,6 +394,7 @@ async function inspectProfileLookup(accessToken) {
     profileLookup = buildProfileLookupDiagnostic({
       authUserLookupSucceeded: true,
       authUserIdPresent: true,
+      authEmailVerified,
       profileLookupSucceeded: false,
       profileRowPresent: false,
       profileLookupHttpStatus: err?.status || null,
