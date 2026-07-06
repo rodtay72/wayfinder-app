@@ -442,6 +442,58 @@ const clearMhpSetupFromUrl=()=>{
  }catch(_){}
 };
 
+const parseCheckoutReturnFromUrl=()=>{
+ if(typeof window==='undefined') return null;
+ try{
+  const url=new URL(window.location.href);
+  const checkout=String(url.searchParams.get('checkout')||'').trim().toLowerCase();
+  if(checkout==='success') return 'success';
+  if(checkout==='cancelled') return 'cancelled';
+ }catch(_){}
+ return null;
+};
+
+const clearCheckoutFromUrl=()=>{
+ if(typeof window==='undefined') return;
+ try{
+  const url=new URL(window.location.href);
+  let changed=false;
+  if(url.searchParams.has('checkout')){url.searchParams.delete('checkout');changed=true;}
+  if(url.searchParams.has('session_id')){url.searchParams.delete('session_id');changed=true;}
+  if(!changed) return;
+  window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
+ }catch(_){}
+};
+
+const startStripeCheckout=async(planKey,interval)=>{
+ const {data,error}=await Auth.getFreshSession();
+ if(error||!data?.session?.access_token){
+  throw new Error('CHECKOUT_AUTH_REQUIRED');
+ }
+ const response=await fetch('/api/create-checkout-session',{
+  method:'POST',
+  headers:{
+   'Content-Type':'application/json',
+   Authorization:`Bearer ${data.session.access_token}`
+  },
+  body:JSON.stringify({planKey,interval})
+ });
+ let payload={};
+ try{
+  payload=await response.json();
+ }catch(_){
+  payload={};
+ }
+ if(!response.ok){
+  throw new Error('CHECKOUT_REQUEST_FAILED');
+ }
+ const url=String(payload?.url||'').trim();
+ if(!url){
+  throw new Error('CHECKOUT_URL_MISSING');
+ }
+ window.location.href=url;
+};
+
 function MhpInviteLeaveLink({meta,onLeave}){
  if(typeof onLeave!=='function') return null;
  return <p className="auth-invite-leave-wrap"><button type="button" className="auth-invite-leave-link" onClick={onLeave}>{meta.officialMhpSignInLink||'Go to official MHP sign in'}</button></p>;
@@ -3456,31 +3508,71 @@ function formatPlansTrialDetail(entitlement,pageMeta){
  return String(pageMeta.trialActiveNoDateDetail||'30-day trial · unlimited reflection saves · no card required').trim();
 }
 
-function PlansPage({back,onSignOut,user,authSession}){
+function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismissCheckoutReturnNotice}){
  const pageMeta=typeof WAYFINDER_PLANS_PAGE!=='undefined'?WAYFINDER_PLANS_PAGE:{};
  const [loading,setLoading]=useState(true);
  const [unavailable,setUnavailable]=useState(false);
  const [entitlement,setEntitlement]=useState(null);
  const [usage,setUsage]=useState(null);
+ const [checkoutBusy,setCheckoutBusy]=useState(null);
+ const [checkoutError,setCheckoutError]=useState('');
  const pageTitle=String(pageMeta.title||'Plans').trim()||'Plans';
  const subtitle=String(pageMeta.subtitle||'').trim();
  const privacyBaseline=String(pageMeta.privacyBaseline||'').trim();
  const readAccessReassurance=String(pageMeta.readAccessReassurance||'').trim();
  const connectDisclaimer=String(pageMeta.connectDisclaimer||'').trim();
- const billingComingSoonNote=String(pageMeta.billingComingSoonNote||'').trim();
+ const sandboxTestModeNote=String(pageMeta.sandboxTestModeNote||'').trim();
  const catalogHeading=String(pageMeta.catalogHeading||'Wayfinder plans').trim();
  const currentPlanLabel=String(pageMeta.currentPlanLabel||'Your current plan').trim();
  const unavailableNote=String(pageMeta.unavailableNote||'Plan details are not ready yet.').trim();
  const catalog=Array.isArray(pageMeta.catalog)?pageMeta.catalog:[];
  const currentPlanKey=String(entitlement?.planKey||'wayfinder').trim()||'wayfinder';
+ const upgradeMonthlyLabel=String(pageMeta.checkoutUpgradeMonthly||'Upgrade — monthly').trim();
+ const upgradeYearlyLabel=String(pageMeta.checkoutUpgradeYearly||'Upgrade — yearly').trim();
+ const checkoutLoadingLabel=String(pageMeta.checkoutLoading||'Opening secure checkout…').trim();
+ const checkoutErrorMessage=String(pageMeta.checkoutErrorMessage||'Checkout could not be started. Please sign in again or try later.').trim();
+ const checkoutSuccessNotice=String(pageMeta.checkoutSuccessNotice||'Payment received. Your plan may take a moment to refresh.').trim();
+ const checkoutCancelledNotice=String(pageMeta.checkoutCancelledNotice||'Checkout was cancelled. No changes were made.').trim();
+ const dismissNoticeLabel=String(pageMeta.checkoutDismissNotice||'Dismiss').trim();
+
+ const loadEntitlementSnapshot=async()=>{
+  if(!user?.id||!authSession?.access_token){
+   setLoading(false);
+   setEntitlement(null);
+   setUsage(null);
+   return;
+  }
+  setLoading(true);
+  try{
+   const result=await DB.getCurrentUserEntitlement(user.id,authSession);
+   if(result.unavailable){
+    setUnavailable(true);
+    setEntitlement(null);
+    setUsage(null);
+    return;
+   }
+   setUnavailable(false);
+   setEntitlement(result.entitlement);
+   setUsage(result.usage);
+  }catch(err){
+   AuthDebug.log('[plans] entitlement load failed:', { message: err?.message || String(err) });
+   setUnavailable(true);
+   setEntitlement(null);
+   setUsage(null);
+  }finally{
+   setLoading(false);
+  }
+ };
 
  useEffect(()=>{
   let cancelled=false;
   const loadEntitlement=async()=>{
    if(!user?.id||!authSession?.access_token){
-    setLoading(false);
-    setEntitlement(null);
-    setUsage(null);
+    if(!cancelled){
+     setLoading(false);
+     setEntitlement(null);
+     setUsage(null);
+    }
     return;
    }
    setLoading(true);
@@ -3510,8 +3602,50 @@ function PlansPage({back,onSignOut,user,authSession}){
   return ()=>{cancelled=true;};
  },[user?.id,authSession?.access_token]);
 
+ useEffect(()=>{
+  if(checkoutReturnNotice!=='success') return;
+  loadEntitlementSnapshot();
+ },[checkoutReturnNotice,user?.id,authSession?.access_token]);
+
+ const canUpgradeToTier=(tierPlanKey)=>{
+  if(tierPlanKey==='wayfinder') return false;
+  if(tierPlanKey==='wayfinder_plus'){
+   return currentPlanKey==='wayfinder';
+  }
+  if(tierPlanKey==='wayfinder_connect'){
+   return currentPlanKey!=='wayfinder_connect';
+  }
+  return false;
+ };
+
+ const handleCheckout=async(planKey,interval)=>{
+  const busyKey=`${planKey}:${interval}`;
+  if(checkoutBusy) return;
+  setCheckoutBusy(busyKey);
+  setCheckoutError('');
+  try{
+   await startStripeCheckout(planKey,interval);
+  }catch(err){
+   AuthDebug.log('[plans] checkout start failed:', { message: err?.message || String(err) });
+   setCheckoutBusy(null);
+   setCheckoutError(checkoutErrorMessage);
+  }
+ };
+
  return <div className="wrap">
   <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
+  {checkoutReturnNotice==='success' ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--success" role="status">
+   <p className="plans-checkout-notice-text">{checkoutSuccessNotice}</p>
+   {typeof onDismissCheckoutReturnNotice==='function' ? <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={onDismissCheckoutReturnNotice}>{dismissNoticeLabel}</button> : null}
+  </div> : null}
+  {checkoutReturnNotice==='cancelled' ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--cancelled" role="status">
+   <p className="plans-checkout-notice-text">{checkoutCancelledNotice}</p>
+   {typeof onDismissCheckoutReturnNotice==='function' ? <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={onDismissCheckoutReturnNotice}>{dismissNoticeLabel}</button> : null}
+  </div> : null}
+  {checkoutError ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--error" role="alert">
+   <p className="plans-checkout-notice-text">{checkoutError}</p>
+   <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={()=>setCheckoutError('')}>{dismissNoticeLabel}</button>
+  </div> : null}
   <div className="card dashboard-section plans-page-intro">
    {subtitle ? <p className="dashboard-helper plans-page-subtitle">{subtitle}</p> : null}
    {privacyBaseline ? <p className="plans-page-privacy">{privacyBaseline}</p> : null}
@@ -3548,12 +3682,20 @@ function PlansPage({back,onSignOut,user,authSession}){
       {Array.isArray(tier.highlights)&&tier.highlights.length ? <ul className="plan-tier-highlights">
        {tier.highlights.map(item=><li key={item}>{item}</li>)}
       </ul> : null}
+      {canUpgradeToTier(tier.planKey) ? <div className="plan-tier-actions">
+       {tier.priceMonthly ? <button type="button" className="btn btn-primary plan-tier-checkout-btn" disabled={!!checkoutBusy||!authSession?.access_token} onClick={()=>handleCheckout(tier.planKey,'monthly')}>
+        {checkoutBusy===`${tier.planKey}:monthly` ? checkoutLoadingLabel : upgradeMonthlyLabel}
+       </button> : null}
+       {tier.priceYearly ? <button type="button" className="btn btn-secondary plan-tier-checkout-btn" disabled={!!checkoutBusy||!authSession?.access_token} onClick={()=>handleCheckout(tier.planKey,'yearly')}>
+        {checkoutBusy===`${tier.planKey}:yearly` ? checkoutLoadingLabel : upgradeYearlyLabel}
+       </button> : null}
+      </div> : null}
      </article>;
     })}
    </div>
   </div>
   {connectDisclaimer ? <div className="card dashboard-section plans-page-disclaimer"><p className="plans-page-disclaimer-text">{connectDisclaimer}</p></div> : null}
-  {billingComingSoonNote ? <div className="card dashboard-section plans-page-billing-note"><p className="plans-page-billing-text">{billingComingSoonNote}</p></div> : null}
+  {sandboxTestModeNote ? <div className="card dashboard-section plans-page-billing-note"><p className="plans-page-billing-text">{sandboxTestModeNote}</p></div> : null}
  </div>;
 }
 
@@ -4514,6 +4656,17 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const privacyNoticeVersion=String(privacyNotice.version||'').trim();
  const [inviteShareOpen,setInviteShareOpen]=useState(false);
  const [privacyAck,setPrivacyAck]=useState({loading:true,showBanner:false,submitting:false,successMessage:'',errorMessage:'',fetchFailed:false});
+ const [checkoutReturnNotice,setCheckoutReturnNotice]=useState(null);
+ const [openPlansAfterLoad,setOpenPlansAfterLoad]=useState(false);
+
+ useEffect(()=>{
+  if(!authSession?.access_token) return;
+  const status=parseCheckoutReturnFromUrl();
+  if(!status) return;
+  clearCheckoutFromUrl();
+  setCheckoutReturnNotice(status);
+  setOpenPlansAfterLoad(true);
+ },[authSession?.access_token]);
 
  const refreshSignupPrivacyAcknowledgement=async()=>{
   if(!user?.id||!authSession?.access_token||!privacyNoticeVersion){
@@ -4684,7 +4837,12 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   }
   setEntries(allEntries);
 
-  if(allDyads.length===0){setDyad(blankDyad());setStage('dashboard');return;}
+  if(allDyads.length===0){
+   setDyad(blankDyad());
+   setStage(openPlansAfterLoad?'plans':'dashboard');
+   if(openPlansAfterLoad) setOpenPlansAfterLoad(false);
+   return;
+  }
 
   const primaryDyad=allDyads[0];
   if(primaryDyad?.disc){
@@ -4729,7 +4887,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
    }
   }
 
-  setStage('dashboard');
+  setStage(openPlansAfterLoad?'plans':'dashboard');
+  if(openPlansAfterLoad) setOpenPlansAfterLoad(false);
  };
  const startNewEntry=()=>{
   if(dyads.length===0){startNewChild();return;}
@@ -4955,7 +5114,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
  if(stage==='appVersion') return <AppVersionPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
- if(stage==='plans') return <PlansPage back={()=>setStage('dashboard')} onSignOut={onSignOut} user={user} authSession={authSession}/>;
+ if(stage==='plans') return <PlansPage back={()=>setStage('dashboard')} onSignOut={onSignOut} user={user} authSession={authSession} checkoutReturnNotice={checkoutReturnNotice} onDismissCheckoutReturnNotice={()=>setCheckoutReturnNotice(null)}/>;
 
  if(stage==='events') return <ActivityEventsPage back={()=>setStage('dashboard')} onSignOut={onSignOut} authSession={authSession}/>;
 
