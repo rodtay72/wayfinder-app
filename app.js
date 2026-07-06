@@ -3590,7 +3590,9 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
  const manageBillingLabel=String(pageMeta.manageBillingLabel||'Manage billing').trim();
  const manageBillingLoadingLabel=String(pageMeta.manageBillingLoading||'Opening billing portal…').trim();
  const manageBillingErrorMessage=String(pageMeta.manageBillingErrorMessage||'Billing portal could not be opened. If you have not subscribed yet, use Upgrade below.').trim();
- const billingReturnNoticeText=String(pageMeta.billingReturnNotice||'You returned from billing management. Plan changes may take a moment to refresh.').trim();
+ const manageBillingNote=String(pageMeta.manageBillingNote||'').trim();
+ const billingReturnNoticeText=String(pageMeta.billingReturnNotice||"You're back from billing. If you changed your plan, Stripe may take a moment to confirm it. Some changes take effect at the next renewal date.").trim();
+ const currentPlanConfirmedNote=String(pageMeta.currentPlanConfirmedNote||'Your current plan reflects what Stripe has confirmed as active now.').trim();
 
  const loadEntitlementSnapshot=async()=>{
   if(!user?.id||!authSession?.access_token){
@@ -3668,6 +3670,7 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
  const billableStatuses=new Set(['active','trialing','past_due']);
  const subscriptionStatus=String(entitlement?.subscriptionStatus||'').trim();
  const canManageBilling=!loading&&!unavailable&&entitlement&&paidPlanKeys.has(currentPlanKey)&&billableStatuses.has(subscriptionStatus);
+ const showCurrentPlanConfirmedNote=!loading&&!unavailable&&entitlement&&paidPlanKeys.has(currentPlanKey);
 
  const canUpgradeToTier=(tierPlanKey)=>{
   if(tierPlanKey==='wayfinder') return false;
@@ -3743,7 +3746,9 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
     if(entitlement.monthlySaveLimit==null) return <p className="sub plans-page-current-detail">Unlimited reflection saves</p>;
     return <p className="sub plans-page-current-detail">Up to {entitlement.monthlySaveLimit} saved reflections per month{usage?.savedReflectionCount!=null?` · ${usage.savedReflectionCount} saved this month`:''}</p>;
    })()}
+   {showCurrentPlanConfirmedNote&&currentPlanConfirmedNote ? <p className="plans-current-plan-note">{currentPlanConfirmedNote}</p> : null}
    {canManageBilling ? <div className="plans-manage-billing-wrap">
+    {manageBillingNote ? <p className="plans-manage-billing-note">{manageBillingNote}</p> : null}
     <button type="button" className="btn btn-secondary plans-manage-billing-btn" disabled={portalBusy||!!checkoutBusy||!authSession?.access_token} onClick={handleManageBilling}>
      {portalBusy ? manageBillingLoadingLabel : manageBillingLabel}
     </button>
