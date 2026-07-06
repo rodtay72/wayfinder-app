@@ -20,6 +20,18 @@ const HANDLED_EVENT_TYPES = new Set([
 ]);
 
 const ALLOWED_LOG_PLAN_KEYS = new Set(['wayfinder', 'wayfinder_plus', 'wayfinder_connect']);
+const ALLOWED_ERROR_CATEGORIES = new Set([
+  'unknown_price_id',
+  'plan_metadata_mismatch',
+  'missing_checkout_subscription',
+  'unresolvable_user_id',
+  'parent_profile_required',
+  'stripe_subscription_fetch_failed',
+  'invoice_missing_subscription_id',
+  'supabase_request_failed',
+  'webhook_retryable_error',
+  'webhook_unknown_permanent_error'
+]);
 const SIGNATURE_TOLERANCE_SECONDS = 300;
 
 class PermanentWebhookError extends Error {
@@ -78,7 +90,40 @@ const eventIdSuffix = (eventId) => {
   return id.length >= 6 ? id.slice(-6) : id;
 };
 
-const logWebhook = ({ eventType = null, eventIdSuffix: idSuffix = null, livemode = null, outcome, planKey = null, httpStatus }) => {
+const classifyWebhookError = (err) => {
+  const msg = String(err?.message || '').trim();
+  const lower = msg.toLowerCase();
+
+  if (err instanceof PermanentWebhookError) {
+    if (msg === 'Unknown price ID') return 'unknown_price_id';
+    if (msg === 'Plan metadata mismatch') return 'plan_metadata_mismatch';
+    if (msg === 'Missing subscription on checkout session') return 'missing_checkout_subscription';
+    if (msg === 'Unresolvable user_id') return 'unresolvable_user_id';
+    if (msg === 'Stripe subscription fetch failed') return 'stripe_subscription_fetch_failed';
+    if (msg === 'Invoice missing subscription id') return 'invoice_missing_subscription_id';
+    if (lower.includes('parent profile required')) return 'parent_profile_required';
+    if (msg) return 'supabase_request_failed';
+    return 'webhook_unknown_permanent_error';
+  }
+
+  if (err instanceof RetryableWebhookError) {
+    if (msg === 'Stripe subscription fetch failed') return 'stripe_subscription_fetch_failed';
+    if (msg === 'Supabase request failed' || err?.status) return 'supabase_request_failed';
+    return 'webhook_retryable_error';
+  }
+
+  return 'webhook_retryable_error';
+};
+
+const logWebhook = ({
+  eventType = null,
+  eventIdSuffix: idSuffix = null,
+  livemode = null,
+  outcome,
+  planKey = null,
+  errorCategory = null,
+  httpStatus
+}) => {
   const entry = {
     eventType,
     eventIdSuffix: idSuffix,
@@ -88,6 +133,9 @@ const logWebhook = ({ eventType = null, eventIdSuffix: idSuffix = null, livemode
   };
   if (planKey && ALLOWED_LOG_PLAN_KEYS.has(planKey)) {
     entry.planKey = planKey;
+  }
+  if (errorCategory && ALLOWED_ERROR_CATEGORIES.has(errorCategory)) {
+    entry.errorCategory = errorCategory;
   }
   console.error('[stripe-webhook]', entry);
 };
@@ -556,6 +604,7 @@ async function finalizeClaimedEvent(event, config) {
         eventIdSuffix: idSuffix,
         livemode,
         outcome: 'retryable_error',
+        errorCategory: classifyWebhookError(err),
         httpStatus: 500
       });
       return { status: 500, body: { error: 'Webhook processing failed.' } };
@@ -576,6 +625,7 @@ async function finalizeClaimedEvent(event, config) {
             eventIdSuffix: idSuffix,
             livemode,
             outcome: 'retryable_error',
+            errorCategory: classifyWebhookError(markErr),
             httpStatus: 500
           });
           return { status: 500, body: { error: 'Webhook processing failed.' } };
@@ -587,6 +637,7 @@ async function finalizeClaimedEvent(event, config) {
         eventIdSuffix: idSuffix,
         livemode,
         outcome: 'failed',
+        errorCategory: classifyWebhookError(err),
         httpStatus: 200
       });
       return { status: 200, body: { received: true } };
@@ -602,6 +653,7 @@ async function finalizeClaimedEvent(event, config) {
       eventIdSuffix: idSuffix,
       livemode,
       outcome: 'retryable_error',
+      errorCategory: 'webhook_retryable_error',
       httpStatus: 500
     });
     return { status: 500, body: { error: 'Webhook processing failed.' } };
@@ -689,6 +741,7 @@ export default async function handler(req, res) {
         eventIdSuffix: idSuffix,
         livemode,
         outcome: 'retryable_error',
+        errorCategory: classifyWebhookError(err),
         httpStatus: 500
       });
       return res.status(500).json({ error: 'Webhook processing failed.' });
@@ -699,6 +752,7 @@ export default async function handler(req, res) {
       eventIdSuffix: idSuffix,
       livemode,
       outcome: 'retryable_error',
+      errorCategory: 'webhook_retryable_error',
       httpStatus: 500
     });
     return res.status(500).json({ error: 'Webhook processing failed.' });
