@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-06
 
-**Last verified merge:** PR #150 — Stripe webhook errorCategory diagnostic logging
+**Last verified merge:** PR #151 — Stripe sync RPC ambiguity fix (SQL applied; Checkout E2E processed)
 
-**Next proposed PR:** PR #151 — Stripe sync RPC ambiguity fix — **owner SQL apply pending**
+**Next proposed PR:** PR #152 — parent-facing Stripe Checkout buttons (sandbox/test mode only)
 
 **PR #149 (in flight):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; **no checkout UI, Portal, or save gating**.
 
@@ -20,9 +20,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** Test-mode only (`sk_test_...` on `/api/create-checkout-session`). **No live Stripe activation.** PR #149 adds `/api/stripe-webhook` runtime (Draft — requires owner `STRIPE_WEBHOOK_SECRET` + Stripe Dashboard webhook before E2E smoke). No Customer Portal, checkout buttons, billing UI, or save gating.
+**Stripe:** Test-mode only (`sk_test_...`). Checkout E2E entitlement sync **verified** (PR #149–#151). PR #152 adds parent-facing upgrade buttons on Plans — no Customer Portal, save gating, or live Stripe.
 
-**Current owner blocker:** Merge PR #151, apply [supabase-pr151-stripe-sync-rpc-ambiguity-fix.sql](../supabase-pr151-stripe-sync-rpc-ambiguity-fix.sql) in Supabase SQL Editor, run rollback RPC verification, then fresh Checkout E2E (do not retry old webhook events).
+**Current owner blocker:** Merge PR #152, then manual Plans-page Checkout smoke (sandbox/test mode only). Do not retry old webhook events.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
