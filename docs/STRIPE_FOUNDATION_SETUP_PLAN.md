@@ -37,7 +37,8 @@ Wayfinder is ALIGN/CAB parent-development support — not child diagnosis, behav
 | Feature gating / trial-expiry enforcement | **Not active** |
 | Journal read access | Unchanged — existing saved reflections remain readable |
 | Stripe runtime | **Test-mode only** — PR #145 `/api/create-checkout-session` (`sk_test_...`); **no live Stripe activation** |
-| Stripe webhook / Customer Portal / billing UI | **Not active** — PR #148 SQL foundation in flight; webhook runtime deferred |
+| Stripe webhook | **PR #149 in flight (Draft)** — `/api/stripe-webhook.js` calls PR #148 RPCs; test-mode only; owner webhook + E2E smoke pending |
+| Stripe Customer Portal / billing UI | **Not active** |
 | Stripe billing ID storage | **PR #148** — `stripe_billing_references` (server-only; not on parent-readable `user_entitlements`) |
 
 ---
@@ -148,17 +149,31 @@ Never import Stripe secret key into `app.js`, `supabase.js`, or static browser b
 
 ### 6.3 `api/stripe-webhook.js`
 
+**PR #149 in flight (Draft):** Test-mode webhook handler implemented server-side. **POST only**, no CORS, no browser auth. Requires `STRIPE_WEBHOOK_SECRET`, `sk_test_...`, price env vars, and Supabase service role. Verifies `Stripe-Signature` on **raw body** (`export const config = { api: { bodyParser: false } }`). Calls PR #148 RPCs (`claim_stripe_webhook_event`, `mark_stripe_webhook_event_outcome`, `sync_parent_entitlement_from_stripe`) via service role. Idempotency: claim → process → mark outcome; **release claim** via service-role DELETE on retryable failure (HTTP 500). Livemode events skipped with 200. No Stripe SDK — `node:crypto` + `fetch` only.
+
 **Method:** POST
 **Auth:** Stripe signature verification via `STRIPE_WEBHOOK_SECRET` — **no** Bearer token; raw body required for signature check.
 
 **Behaviour:**
 
-- Verify `Stripe-Signature` header.
-- Idempotent event processing (store processed event IDs or use Stripe idempotency patterns).
-- Map subscription/price → `user_entitlements` update via service role or approved RPC.
-- Never log full card details, journal content, or parent reflection text.
+- Verify `Stripe-Signature` header on raw body before JSON parse.
+- Idempotent event processing via `claim_stripe_webhook_event` + outcome marking.
+- Price-canonical plan mapping from env Price IDs; metadata cross-check only.
+- Map subscription/price → `user_entitlements` update via `sync_parent_entitlement_from_stripe`.
+- Never log full card details, journal content, parent reflection text, Stripe IDs, or metadata values.
 
-**Vercel note:** Configure route to receive raw body for signature verification (document in runtime PR).
+**Handled events (test mode):**
+
+| Event | Action |
+| --- | --- |
+| `checkout.session.completed` | Link customer/subscription; initial entitlement sync if subscription mode |
+| `customer.subscription.created` | Map price → plan; set active entitlement row |
+| `customer.subscription.updated` | Plan change, renewal period, status transitions |
+| `customer.subscription.deleted` | Downgrade to Wayfinder expired (no journal deletion) |
+| `invoice.payment_succeeded` | Confirm active/trialing period |
+| `invoice.payment_failed` | Set `past_due`; do not hide existing saves |
+
+**Owner setup (after PR #149 merge):** Stripe Dashboard test-mode webhook → `https://wayfinder-modular.vercel.app/api/stripe-webhook`; copy signing secret to Vercel `STRIPE_WEBHOOK_SECRET`. Mandatory E2E: PR #145 Checkout → complete test payment → verify entitlement sync.
 
 ---
 
@@ -255,13 +270,13 @@ No raw Stripe JSON, email, metadata blobs, journal/CAB/child data.
 
 Browser remains **SELECT-only** on `user_entitlements` via existing RLS; no browser EXECUTE on sync RPCs.
 
-**Webhook runtime (`api/stripe-webhook.js`)** — deferred to post–PR #148 PR after owner SQL apply.
+**Webhook runtime (`api/stripe-webhook.js`)** — **PR #149 in flight (Draft)** after PR #148 SQL owner-applied.
 
 ---
 
-## 10. Webhook event handling (deferred — post–PR #148 runtime PR)
+## 10. Webhook event handling (PR #149 runtime — in flight)
 
-All handlers must be **idempotent** and **signature-verified**.
+All handlers must be **idempotent** and **signature-verified**. Implemented in [`api/stripe-webhook.js`](../api/stripe-webhook.js).
 
 | Event | Intended action |
 | --- | --- |
@@ -369,8 +384,8 @@ PR #144 explicitly does **not**:
 ## 14. Recommended future build sequence (after PR #144)
 
 1. **Owner:** Create Stripe Products + Prices (Plus/Connect monthly/yearly); store Price IDs in Vercel env.
-2. **SQL PR #148:** `stripe_billing_references`, `stripe_webhook_events`, sync RPC — **in flight**; owner apply after merge.
-3. **Runtime PR (post–#148):** `api/stripe-webhook.js` + idempotency; test-mode only.
+2. **SQL PR #148:** `stripe_billing_references`, `stripe_webhook_events`, sync RPC — **merged and applied**.
+3. **Runtime PR #149:** `api/stripe-webhook.js` + idempotency — **in flight (Draft)**; test-mode only.
 4. **Runtime PR:** `create-billing-portal-session` (future).
 5. **UX PR:** Plans page upgrade CTAs + success/cancel routes (still no client-side secrets).
 6. **Enforcement PR:** Trial-expiry save blocking, progress tracker, MHP review gates — with read-access preservation for existing entries.

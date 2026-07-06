@@ -8,19 +8,21 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-05
 
-**Last verified merge:** PR #146 — Free trial entitlement contract correction (30-day, time-only)
+**Last verified merge:** PR #148 — Stripe entitlement sync SQL foundation
 
-**Next proposed PR:** PR #148 — Stripe entitlement sync SQL foundation — **in flight (Draft)**
+**Next proposed PR:** PR #149 — Stripe webhook runtime — **in flight (Draft)**
 
-**PR #148 (in flight):** Server-only `stripe_billing_references`, webhook idempotency table, sync RPC — **SQL + docs only**; no webhook runtime.
+**PR #149 (in flight):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; **no checkout UI, Portal, or save gating**.
+
+**PR #148 (merged):** Server-only `stripe_billing_references`, webhook idempotency table, sync RPC — **SQL applied and verified**; webhook runtime deferred to PR #149.
 
 **PR #146 (merged):** 30-day no-card Free trial (time-only; unlimited saves during trial). Owner SQL applied (Backfill Policy B). Display-only Plans copy on main. No save gating.
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** Test-mode only (`sk_test_...` on `/api/create-checkout-session`). **No live Stripe activation.** Webhook runtime not active. No Customer Portal, checkout buttons, billing UI, or save gating.
+**Stripe:** Test-mode only (`sk_test_...` on `/api/create-checkout-session`). **No live Stripe activation.** PR #149 adds `/api/stripe-webhook` runtime (Draft — requires owner `STRIPE_WEBHOOK_SECRET` + Stripe Dashboard webhook before E2E smoke). No Customer Portal, checkout buttons, billing UI, or save gating.
 
-**Current owner blocker:** Merge PR #148, then owner applies [supabase-pr148-stripe-entitlement-sync-foundation.sql](../supabase-pr148-stripe-entitlement-sync-foundation.sql) before any webhook runtime PR.
+**Current owner blocker:** Merge PR #149, then configure Stripe Dashboard test-mode webhook + Vercel `STRIPE_WEBHOOK_SECRET`; run real Checkout E2E smoke before marking production-ready.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -113,7 +115,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 ## Payment & entitlement strategy
 
-**Status:** PR #143 foundation **merged and applied**. **PR #146 merged and SQL applied** (Backfill Policy B). **PR #144 Stripe planning merged.** **PR #145 Checkout Session API merged** — test-mode server endpoint only; **no live Stripe activation**. Supabase **Pro** and Vercel **Pro** active. No webhook, Customer Portal, checkout buttons, entitlement sync, billing UI, or save gating.
+**Status:** PR #143 foundation **merged and applied**. **PR #146 merged and SQL applied** (Backfill Policy B). **PR #144 Stripe planning merged.** **PR #145 Checkout Session API merged** — test-mode server endpoint only. **PR #148 SQL merged and applied.** **PR #149 webhook runtime in flight (Draft)** — `api/stripe-webhook.js` calls PR #148 RPCs; **no live Stripe activation**. Supabase **Pro** and Vercel **Pro** active. No Customer Portal, checkout buttons, save gating, or billing UI.
 
 **Primary docs:**
 
@@ -125,7 +127,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - [supabase-pricing-entitlement-foundation.sql](../supabase-pricing-entitlement-foundation.sql) (PR #143)
 - [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (PR #146 — Policy B applied)
 
-**SQL (PR #148 — owner apply after merge):** [supabase-pr148-stripe-entitlement-sync-foundation.sql](../supabase-pr148-stripe-entitlement-sync-foundation.sql) — server-only billing refs + sync RPC; **no webhook runtime**
+**SQL (PR #148 — applied):** [supabase-pr148-stripe-entitlement-sync-foundation.sql](../supabase-pr148-stripe-entitlement-sync-foundation.sql) — server-only billing refs + sync RPC
+
+**Runtime (PR #149 — in flight):** [api/stripe-webhook.js](../api/stripe-webhook.js) — test-mode webhook; signature verify on raw body; idempotency via PR #148 RPCs
 
 **Key product rule:** Privacy is **baseline across every plan** — not a paid or limited feature.
 
@@ -139,9 +143,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **PR #143 runtime:** Default parent entitlement; Plans page (display-only); read RPC only — **no feature gates**.
 
-**Stripe (PR #145 merged):** Test-mode Checkout Session API on main (`POST /api/create-checkout-session`; requires `sk_test_...`). **Live Stripe not activated.** PR #148 adds SQL foundation for future webhook sync; **webhook runtime deferred**. Customer Portal, checkout buttons, billing UI, and save gating remain future PRs.
+**Stripe (PR #145 merged):** Test-mode Checkout Session API on main (`POST /api/create-checkout-session`; requires `sk_test_...`). **Live Stripe not activated.** PR #148 SQL applied. PR #149 adds webhook runtime (Draft). Customer Portal, checkout buttons, billing UI, and save gating remain future PRs.
 
-**Explicit non-goals (unchanged):** Save gating in Decode/Journal, live Stripe keys, webhooks, Customer Portal, checkout buttons, entitlement sync, billing UI, usage counter writes, progress-tracker gates, MHP review gates.
+**Explicit non-goals (unchanged):** Save gating in Decode/Journal, live Stripe keys, Customer Portal, checkout buttons, billing UI, usage counter writes, progress-tracker gates, MHP review gates.
 
 ## Simplified Chinese language toggle
 
@@ -186,7 +190,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | PR #144 Stripe foundation planning | Docs-only Checkout/Portal/webhook plan; env vars; entitlement mapping; no runtime | Complete (merged) |
 | PR #145 Stripe Checkout Session API | Test-mode `/api/create-checkout-session`; preview + production owner smoke PASS; no webhook, Portal, entitlement writes, checkout buttons, or gating | Complete (merged) |
 | PR #146 Free trial entitlement correction | 30-day time-only Free trial contract; owner SQL applied (Policy B); display-only Plans copy; no save gating | Complete (merged + SQL applied) |
-| PR #148 Stripe entitlement sync SQL foundation | Server-only billing refs, webhook idempotency table, sync RPC; no webhook runtime | In flight (Draft) |
+| PR #148 Stripe entitlement sync SQL foundation | Server-only billing refs, webhook idempotency table, sync RPC; no webhook runtime | Complete (merged + SQL applied) |
+| PR #149 Stripe webhook runtime | Test-mode `api/stripe-webhook.js`; PR #148 RPCs; raw-body signature verify; no UI/gating | In flight (Draft) |
 | PR #121 PWA install compatibility hardening | Manifest/HTML install metadata for Android Chrome/OEM; audit doc; no auth/journal/runtime changes | Complete (merged — GitHub #122) |
 | PR #123 Simplified Chinese language toggle strategy | English / 简体中文 (`en` / `zh-Hans`) strategy spec; static UI only in future runtime; no auto-translate private reflections | Complete (merged) |
 | PR #124 language toggle foundation | Static `WAYFINDER_I18N` dictionary, `localStorage` preference, parent dashboard toggle; small safe UI surface only | Complete (merged) |
@@ -220,8 +225,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 - **Stripe foundation planning (PR #144)** — **merged** — [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md)
 - **Stripe Checkout Session API (PR #145)** — **merged** — test-mode `/api/create-checkout-session`; owner preview + production smoke **PASS**; no webhook, Customer Portal, entitlement updates, checkout buttons, or gating
 - **Free trial entitlement correction (PR #146)** — **merged and SQL applied** — 30-day time-only contract; [supabase-pr146-free-trial-entitlement-correction.sql](../supabase-pr146-free-trial-entitlement-correction.sql) (Policy B)
-- **Stripe entitlement sync SQL (PR #148)** — **in flight (Draft)** — [supabase-pr148-stripe-entitlement-sync-foundation.sql](../supabase-pr148-stripe-entitlement-sync-foundation.sql); server-only billing refs; no webhook runtime
-- **Stripe webhook runtime (post–PR #148)** — **pending** — `api/stripe-webhook.js` after PR #148 SQL owner-applied; test-mode only
+- **Stripe entitlement sync SQL (PR #148)** — **merged and SQL applied** — [supabase-pr148-stripe-entitlement-sync-foundation.sql](../supabase-pr148-stripe-entitlement-sync-foundation.sql)
+- **Stripe webhook runtime (PR #149)** — **in flight (Draft)** — [api/stripe-webhook.js](../api/stripe-webhook.js); test-mode only; owner webhook + E2E smoke pending
 - **Next Stripe/payment PR (Portal, checkout UI, enforcement)** — **pending owner scope approval** — see [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) §14
 - **Live Stripe activation** — **not started** — test-mode Checkout API only; no webhook, Customer Portal, checkout buttons, entitlement sync, or billing UI
 - **Simplified Chinese language toggle runtime** — **PR #124–#127 complete** — see [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
