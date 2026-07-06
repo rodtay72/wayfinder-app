@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-06
 
-**Last verified merge:** PR #152 — parent-facing Stripe Checkout buttons (sandbox/test mode)
+**Last verified merge:** PR #153 — Stripe Customer Portal / Manage billing (sandbox/test mode)
 
-**Next proposed PR:** PR #153 — Stripe Customer Portal / Manage billing (sandbox/test mode only)
+**Next proposed PR:** PR #154 — Billing Portal scheduled-change copy polish
 
 **PR #149 (in flight):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; **no checkout UI, Portal, or save gating**.
 
@@ -20,9 +20,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** Test-mode only (`sk_test_...`). Checkout + webhook E2E **verified** (PR #149–#152). PR #153 adds Manage billing via Stripe Customer Portal — no save gating or live Stripe.
+**Stripe:** Test-mode only (`sk_test_...`). Checkout, webhook, and Customer Portal E2E **verified** (PR #149–#153). PR #154 adds scheduled-change billing copy on Plans — no save gating or live Stripe.
 
-**Current owner blocker:** Merge PR #153; configure Stripe sandbox Customer Portal; manual Manage billing smoke on Plans page.
+**Current owner blocker:** Merge PR #154; quick Plans billing-copy smoke after deploy.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
