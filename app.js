@@ -494,6 +494,57 @@ const startStripeCheckout=async(planKey,interval)=>{
  window.location.href=url;
 };
 
+const parseBillingReturnFromUrl=()=>{
+ if(typeof window==='undefined') return false;
+ try{
+  const url=new URL(window.location.href);
+  return String(url.searchParams.get('billing')||'').trim().toLowerCase()==='return';
+ }catch(_){}
+ return false;
+};
+
+const clearBillingFromUrl=()=>{
+ if(typeof window==='undefined') return;
+ try{
+  const url=new URL(window.location.href);
+  if(!url.searchParams.has('billing')) return;
+  url.searchParams.delete('billing');
+  window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
+ }catch(_){}
+};
+
+const startStripeBillingPortal=async()=>{
+ const {data,error}=await Auth.getFreshSession();
+ if(error||!data?.session?.access_token){
+  throw new Error('PORTAL_AUTH_REQUIRED');
+ }
+ const response=await fetch('/api/create-billing-portal-session',{
+  method:'POST',
+  headers:{
+   'Content-Type':'application/json',
+   Authorization:`Bearer ${data.session.access_token}`
+  },
+  body:JSON.stringify({})
+ });
+ let payload={};
+ try{
+  payload=await response.json();
+ }catch(_){
+  payload={};
+ }
+ if(!response.ok){
+  if(response.status===404){
+   throw new Error('PORTAL_NO_BILLING_ACCOUNT');
+  }
+  throw new Error('PORTAL_REQUEST_FAILED');
+ }
+ const url=String(payload?.url||'').trim();
+ if(!url){
+  throw new Error('PORTAL_URL_MISSING');
+ }
+ window.location.href=url;
+};
+
 function MhpInviteLeaveLink({meta,onLeave}){
  if(typeof onLeave!=='function') return null;
  return <p className="auth-invite-leave-wrap"><button type="button" className="auth-invite-leave-link" onClick={onLeave}>{meta.officialMhpSignInLink||'Go to official MHP sign in'}</button></p>;
@@ -3508,7 +3559,7 @@ function formatPlansTrialDetail(entitlement,pageMeta){
  return String(pageMeta.trialActiveNoDateDetail||'30-day trial · unlimited reflection saves · no card required').trim();
 }
 
-function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismissCheckoutReturnNotice}){
+function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismissCheckoutReturnNotice,billingReturnNotice,onDismissBillingReturnNotice}){
  const pageMeta=typeof WAYFINDER_PLANS_PAGE!=='undefined'?WAYFINDER_PLANS_PAGE:{};
  const [loading,setLoading]=useState(true);
  const [unavailable,setUnavailable]=useState(false);
@@ -3516,6 +3567,8 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
  const [usage,setUsage]=useState(null);
  const [checkoutBusy,setCheckoutBusy]=useState(null);
  const [checkoutError,setCheckoutError]=useState('');
+ const [portalBusy,setPortalBusy]=useState(false);
+ const [portalError,setPortalError]=useState('');
  const pageTitle=String(pageMeta.title||'Plans').trim()||'Plans';
  const subtitle=String(pageMeta.subtitle||'').trim();
  const privacyBaseline=String(pageMeta.privacyBaseline||'').trim();
@@ -3534,6 +3587,10 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
  const checkoutSuccessNotice=String(pageMeta.checkoutSuccessNotice||'Payment received. Your plan may take a moment to refresh.').trim();
  const checkoutCancelledNotice=String(pageMeta.checkoutCancelledNotice||'Checkout was cancelled. No changes were made.').trim();
  const dismissNoticeLabel=String(pageMeta.checkoutDismissNotice||'Dismiss').trim();
+ const manageBillingLabel=String(pageMeta.manageBillingLabel||'Manage billing').trim();
+ const manageBillingLoadingLabel=String(pageMeta.manageBillingLoading||'Opening billing portal…').trim();
+ const manageBillingErrorMessage=String(pageMeta.manageBillingErrorMessage||'Billing portal could not be opened. If you have not subscribed yet, use Upgrade below.').trim();
+ const billingReturnNoticeText=String(pageMeta.billingReturnNotice||'You returned from billing management. Plan changes may take a moment to refresh.').trim();
 
  const loadEntitlementSnapshot=async()=>{
   if(!user?.id||!authSession?.access_token){
@@ -3603,9 +3660,14 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
  },[user?.id,authSession?.access_token]);
 
  useEffect(()=>{
-  if(checkoutReturnNotice!=='success') return;
+  if(checkoutReturnNotice!=='success'&&!billingReturnNotice) return;
   loadEntitlementSnapshot();
- },[checkoutReturnNotice,user?.id,authSession?.access_token]);
+ },[checkoutReturnNotice,billingReturnNotice,user?.id,authSession?.access_token]);
+
+ const paidPlanKeys=new Set(['wayfinder_plus','wayfinder_connect']);
+ const billableStatuses=new Set(['active','trialing','past_due']);
+ const subscriptionStatus=String(entitlement?.subscriptionStatus||'').trim();
+ const canManageBilling=!loading&&!unavailable&&entitlement&&paidPlanKeys.has(currentPlanKey)&&billableStatuses.has(subscriptionStatus);
 
  const canUpgradeToTier=(tierPlanKey)=>{
   if(tierPlanKey==='wayfinder') return false;
@@ -3632,6 +3694,19 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
   }
  };
 
+ const handleManageBilling=async()=>{
+  if(portalBusy||checkoutBusy) return;
+  setPortalBusy(true);
+  setPortalError('');
+  try{
+   await startStripeBillingPortal();
+  }catch(err){
+   AuthDebug.log('[plans] billing portal start failed:', { message: err?.message || String(err) });
+   setPortalBusy(false);
+   setPortalError(manageBillingErrorMessage);
+  }
+ };
+
  return <div className="wrap">
   <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
   {checkoutReturnNotice==='success' ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--success" role="status">
@@ -3645,6 +3720,14 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
   {checkoutError ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--error" role="alert">
    <p className="plans-checkout-notice-text">{checkoutError}</p>
    <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={()=>setCheckoutError('')}>{dismissNoticeLabel}</button>
+  </div> : null}
+  {portalError ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--error" role="alert">
+   <p className="plans-checkout-notice-text">{portalError}</p>
+   <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={()=>setPortalError('')}>{dismissNoticeLabel}</button>
+  </div> : null}
+  {billingReturnNotice ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--success" role="status">
+   <p className="plans-checkout-notice-text">{billingReturnNoticeText}</p>
+   {typeof onDismissBillingReturnNotice==='function' ? <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={onDismissBillingReturnNotice}>{dismissNoticeLabel}</button> : null}
   </div> : null}
   <div className="card dashboard-section plans-page-intro">
    {subtitle ? <p className="dashboard-helper plans-page-subtitle">{subtitle}</p> : null}
@@ -3660,6 +3743,11 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
     if(entitlement.monthlySaveLimit==null) return <p className="sub plans-page-current-detail">Unlimited reflection saves</p>;
     return <p className="sub plans-page-current-detail">Up to {entitlement.monthlySaveLimit} saved reflections per month{usage?.savedReflectionCount!=null?` · ${usage.savedReflectionCount} saved this month`:''}</p>;
    })()}
+   {canManageBilling ? <div className="plans-manage-billing-wrap">
+    <button type="button" className="btn btn-secondary plans-manage-billing-btn" disabled={portalBusy||!!checkoutBusy||!authSession?.access_token} onClick={handleManageBilling}>
+     {portalBusy ? manageBillingLoadingLabel : manageBillingLabel}
+    </button>
+   </div> : null}
   </div> : null}
   {loading ? <div className="card dashboard-section"><p className="sub">Loading plan details…</p></div> : null}
   {!loading&&unavailable ? <div className="card dashboard-section plans-page-unavailable"><p className="sub">{unavailableNote}</p></div> : null}
@@ -4657,15 +4745,23 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const [inviteShareOpen,setInviteShareOpen]=useState(false);
  const [privacyAck,setPrivacyAck]=useState({loading:true,showBanner:false,submitting:false,successMessage:'',errorMessage:'',fetchFailed:false});
  const [checkoutReturnNotice,setCheckoutReturnNotice]=useState(null);
+ const [billingReturnNotice,setBillingReturnNotice]=useState(false);
  const [openPlansAfterLoad,setOpenPlansAfterLoad]=useState(false);
 
  useEffect(()=>{
   if(!authSession?.access_token) return;
-  const status=parseCheckoutReturnFromUrl();
-  if(!status) return;
-  clearCheckoutFromUrl();
-  setCheckoutReturnNotice(status);
-  setOpenPlansAfterLoad(true);
+  const checkoutStatus=parseCheckoutReturnFromUrl();
+  if(checkoutStatus){
+   clearCheckoutFromUrl();
+   setCheckoutReturnNotice(checkoutStatus);
+   setOpenPlansAfterLoad(true);
+   return;
+  }
+  if(parseBillingReturnFromUrl()){
+   clearBillingFromUrl();
+   setBillingReturnNotice(true);
+   setOpenPlansAfterLoad(true);
+  }
  },[authSession?.access_token]);
 
  const refreshSignupPrivacyAcknowledgement=async()=>{
@@ -5114,7 +5210,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
 
  if(stage==='appVersion') return <AppVersionPage back={()=>setStage('dashboard')} onSignOut={onSignOut}/>;
 
- if(stage==='plans') return <PlansPage back={()=>setStage('dashboard')} onSignOut={onSignOut} user={user} authSession={authSession} checkoutReturnNotice={checkoutReturnNotice} onDismissCheckoutReturnNotice={()=>setCheckoutReturnNotice(null)}/>;
+ if(stage==='plans') return <PlansPage back={()=>setStage('dashboard')} onSignOut={onSignOut} user={user} authSession={authSession} checkoutReturnNotice={checkoutReturnNotice} onDismissCheckoutReturnNotice={()=>setCheckoutReturnNotice(null)} billingReturnNotice={billingReturnNotice} onDismissBillingReturnNotice={()=>setBillingReturnNotice(false)}/>;
 
  if(stage==='events') return <ActivityEventsPage back={()=>setStage('dashboard')} onSignOut={onSignOut} authSession={authSession}/>;
 

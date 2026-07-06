@@ -282,6 +282,8 @@
   .plans-checkout-notice--error{background:#FFF4F2;border-color:#E8C4BC;}
   .plans-checkout-notice--error .plans-checkout-notice-text{color:#7a3b2e;}
   .plans-checkout-dismiss{margin-top:10px;padding-left:0;padding-right:0;}
+  .plans-manage-billing-wrap{margin-top:14px;}
+  .plans-manage-billing-btn{margin:0;}
   .pdpa-notice-block{max-width:100%;overflow:hidden;box-sizing:border-box;background:#FBF8F3;border:1px solid #E8E0D4;border-radius:10px;padding:16px 18px;margin-bottom:16px;}
   .pdpa-notice-title{font-size:15px;font-weight:800;color:#40514b;margin:0 0 10px;line-height:1.35;text-transform:none;letter-spacing:normal;}
   .pdpa-notice-body{font-size:13px;line-height:1.65;color:#5d6c66;margin:0 0 14px;overflow-wrap:anywhere;word-wrap:break-word;}

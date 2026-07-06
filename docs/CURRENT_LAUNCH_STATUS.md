@@ -8,9 +8,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-06
 
-**Last verified merge:** PR #151 — Stripe sync RPC ambiguity fix (SQL applied; Checkout E2E processed)
+**Last verified merge:** PR #152 — parent-facing Stripe Checkout buttons (sandbox/test mode)
 
-**Next proposed PR:** PR #152 — parent-facing Stripe Checkout buttons (sandbox/test mode only)
+**Next proposed PR:** PR #153 — Stripe Customer Portal / Manage billing (sandbox/test mode only)
 
 **PR #149 (in flight):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; **no checkout UI, Portal, or save gating**.
 
@@ -20,9 +20,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** Test-mode only (`sk_test_...`). Checkout E2E entitlement sync **verified** (PR #149–#151). PR #152 adds parent-facing upgrade buttons on Plans — no Customer Portal, save gating, or live Stripe.
+**Stripe:** Test-mode only (`sk_test_...`). Checkout + webhook E2E **verified** (PR #149–#152). PR #153 adds Manage billing via Stripe Customer Portal — no save gating or live Stripe.
 
-**Current owner blocker:** Merge PR #152, then manual Plans-page Checkout smoke (sandbox/test mode only). Do not retry old webhook events.
+**Current owner blocker:** Merge PR #153; configure Stripe sandbox Customer Portal; manual Manage billing smoke on Plans page.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
