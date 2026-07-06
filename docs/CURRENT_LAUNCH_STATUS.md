@@ -6,11 +6,11 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-05
+**Last updated:** 2026-07-06
 
-**Last verified merge:** PR #148 — Stripe entitlement sync SQL foundation
+**Last verified merge:** PR #150 — Stripe webhook errorCategory diagnostic logging
 
-**Next proposed PR:** PR #149 — Stripe webhook runtime — **in flight (Draft)**
+**Next proposed PR:** PR #151 — Stripe sync RPC ambiguity fix — **owner SQL apply pending**
 
 **PR #149 (in flight):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; **no checkout UI, Portal, or save gating**.
 
@@ -22,7 +22,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** Test-mode only (`sk_test_...` on `/api/create-checkout-session`). **No live Stripe activation.** PR #149 adds `/api/stripe-webhook` runtime (Draft — requires owner `STRIPE_WEBHOOK_SECRET` + Stripe Dashboard webhook before E2E smoke). No Customer Portal, checkout buttons, billing UI, or save gating.
 
-**Current owner blocker:** Merge PR #149, then configure Stripe Dashboard test-mode webhook + Vercel `STRIPE_WEBHOOK_SECRET`; run real Checkout E2E smoke before marking production-ready.
+**Current owner blocker:** Merge PR #151, apply [supabase-pr151-stripe-sync-rpc-ambiguity-fix.sql](../supabase-pr151-stripe-sync-rpc-ambiguity-fix.sql) in Supabase SQL Editor, run rollback RPC verification, then fresh Checkout E2E (do not retry old webhook events).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -129,7 +129,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **SQL (PR #148 — applied):** [supabase-pr148-stripe-entitlement-sync-foundation.sql](../supabase-pr148-stripe-entitlement-sync-foundation.sql) — server-only billing refs + sync RPC
 
-**Runtime (PR #149 — in flight):** [api/stripe-webhook.js](../api/stripe-webhook.js) — test-mode webhook; signature verify on raw body; idempotency via PR #148 RPCs
+**SQL (PR #151 — pending owner apply):** [supabase-pr151-stripe-sync-rpc-ambiguity-fix.sql](../supabase-pr151-stripe-sync-rpc-ambiguity-fix.sql) — fix `ON CONFLICT (user_id)` ambiguity in sync RPC (42702)
+
+**Runtime (PR #149 merged; PR #150 merged):** [api/stripe-webhook.js](../api/stripe-webhook.js) — test-mode webhook; allowlisted `errorCategory` logging on failure paths
 
 **Key product rule:** Privacy is **baseline across every plan** — not a paid or limited feature.
 
