@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-07
 
-**Related PR:** #155 (docs only, merged) · #156 (runtime live-capable gate — **does not activate live**)
+**Related PR:** #155 (docs only, merged) · #156 (runtime gate, merged) · #157 (pre-live evidence pack, docs only)
 
 Read first:
 
@@ -30,7 +30,8 @@ Read first:
 | PR #153 Customer Portal / Manage billing | Merged |
 | PR #154 billing scheduled-change copy | Merged |
 | PR #155 live-readiness cutover plan (docs) | Merged |
-| PR #156 Stripe live-runtime safety gate | In flight — **does not activate live** |
+| PR #156 Stripe live-runtime safety gate | Merged — sandbox smoke passed; **live not active** |
+| PR #157 pre-live evidence pack (docs) | In flight — **does not activate live** |
 | Sandbox Checkout E2E | Verified |
 | Webhook processing | Verified (`processed` outcomes) |
 | Supabase entitlement sync | Verified |
@@ -75,6 +76,8 @@ Current default behaviour (unchanged until cutover):
 - Mode-mismatched webhook events (e.g. test key + `livemode: true`) → HTTP 200, `skipped_mode_mismatch`, **no entitlement sync**.
 
 All three server routes share the gate via `api/_stripe-runtime-mode.js`. **PR #156 does not change Vercel env vars, Stripe Dashboard, or SQL.** Do not set `STRIPE_ALLOW_LIVE=true` until explicit owner-approved live cutover.
+
+Post-PR #156 Production sandbox smoke (test mode) passed: Checkout, Billing Portal, and webhook (`livemode: false`, outcome `processed`). Evidence ledger: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md).
 
 ---
 
@@ -396,6 +399,7 @@ Until then: **remain on sandbox/test mode** (`sk_test_...`).
 ## Cross-links
 
 - [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) — architecture, env vars, webhook design
+- [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — post-PR #156 evidence and remaining pre-live steps (docs only)
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) — pricing, privacy baseline, monetised value
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — merge / smoke tracking
 
@@ -406,3 +410,4 @@ Until then: **remain on sandbox/test mode** (`sk_test_...`).
 | Date | Change |
 | --- | --- |
 | 2026-07-07 | PR #155 — initial live-readiness and cutover checklist (docs only) |
+| 2026-07-07 | PR #157 — cross-link pre-live evidence pack; note PR #156 sandbox smoke passed |

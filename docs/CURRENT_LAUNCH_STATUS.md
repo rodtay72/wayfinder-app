@@ -8,13 +8,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-07
 
-**Last verified merge:** PR #155 — Stripe live-readiness cutover plan (docs only)
+**Last verified merge:** PR #156 — Stripe live-runtime safety gate (sandbox-smoked)
 
-**Next proposed PR:** PR #156 — Stripe live-runtime safety gate (no activation)
+**Next proposed PR:** PR #157 — final pre-live evidence pack (docs only)
 
 **PR #155 (merged):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only; does not activate live).
 
-**PR #156 (in flight):** Shared `api/_stripe-runtime-mode.js` live-capable gate across Checkout, webhook, and Billing Portal. Requires `STRIPE_SECRET_KEY=sk_live_...` **and** `STRIPE_ALLOW_LIVE=true` for live runtime. **Does not activate live Stripe.** Production env unchanged until owner-approved cutover.
+**PR #156 (merged):** Shared `api/_stripe-runtime-mode.js` live-capable gate across Checkout, webhook, and Billing Portal. Requires `STRIPE_SECRET_KEY=sk_live_...` **and** `STRIPE_ALLOW_LIVE=true` for live runtime. **Does not activate live Stripe.** Post-merge sandbox smoke passed on Production (test mode).
+
+**PR #157 (in flight):** [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — docs-only final pre-live evidence pack and operator checklist. Does not activate live Stripe.
 
 **PR #149 (merged):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; checkout, webhook, Customer Portal, and scheduled-change billing copy verified through PR #154; no save gating or live Stripe.
 
@@ -24,9 +26,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** Test-mode only (`sk_test_...`). Checkout, webhook, Customer Portal, and scheduled-change copy **verified** (PR #149–#154). **Live Stripe not active.** PR #156 adds live-capable runtime gate (`STRIPE_ALLOW_LIVE=true` required with live key) — **no Production env change in PR #156.** Cutover checklist: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md)
+**Stripe:** Test mode active (`sk_test_...`). PR #156 sandbox smoke **passed** (Checkout, Portal, webhook `processed`). **Live Stripe not active.** `STRIPE_ALLOW_LIVE` not set. No live webhook configured. Evidence pack: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). Cutover checklist: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md)
 
-**Current owner blocker:** Merge and deploy PR #156 (runtime gate). Live activation blocked until explicit owner-approved Production env cutover per cutover plan. No save gating.
+**Current owner blocker:** Merge PR #157 (docs). Live cutover remains blocked until explicit Rodney approval and manual Vercel/Stripe owner actions. No save gating.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
