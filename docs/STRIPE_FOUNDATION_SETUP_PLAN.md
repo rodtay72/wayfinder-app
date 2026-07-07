@@ -411,6 +411,7 @@ PR #144 explicitly does **not**:
 - [Stripe subscription webhooks](https://docs.stripe.com/billing/subscriptions/webhooks)
 - [Stripe Customer Portal](https://docs.stripe.com/customer-management/portal-deep-dive)
 - Wayfinder: [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
+- Wayfinder: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only; live not active)
 
 ---
 
