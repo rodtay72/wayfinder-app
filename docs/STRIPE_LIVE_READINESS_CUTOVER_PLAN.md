@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-07
 
-**Related PR:** #155 (docs only) · #156 (runtime live-capable gate — **does not activate live**)
+**Related PR:** #155 (docs only, merged) · #156 (runtime live-capable gate — **does not activate live**)
 
 Read first:
 
@@ -29,8 +29,8 @@ Read first:
 | PR #152 parent Checkout buttons on Plans | Merged |
 | PR #153 Customer Portal / Manage billing | Merged |
 | PR #154 billing scheduled-change copy | Merged |
-| PR #155 live-readiness cutover plan (docs) | Merged or in flight — see repo |
-| PR #156 Stripe live-runtime safety gate | Runtime PR — **does not activate live** |
+| PR #155 live-readiness cutover plan (docs) | Merged |
+| PR #156 Stripe live-runtime safety gate | In flight — **does not activate live** |
 | Sandbox Checkout E2E | Verified |
 | Webhook processing | Verified (`processed` outcomes) |
 | Supabase entitlement sync | Verified |
@@ -150,7 +150,6 @@ STRIPE_ALLOW_LIVE=true
 ```
 
 `STRIPE_ALLOW_LIVE` must be the exact string `true`. Do not set it during sandbox operation or before approved live cutover.
-
 ---
 
 ## 4. Live Price IDs are separate from sandbox Price IDs

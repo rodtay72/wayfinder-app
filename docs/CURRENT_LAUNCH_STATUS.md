@@ -8,11 +8,11 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-07
 
-**Last verified merge:** PR #154 — Billing Portal scheduled-change copy polish
+**Last verified merge:** PR #155 — Stripe live-readiness cutover plan (docs only)
 
 **Next proposed PR:** PR #156 — Stripe live-runtime safety gate (no activation)
 
-**PR #155 (merged or in flight):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only; does not activate live).
+**PR #155 (merged):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only; does not activate live).
 
 **PR #156 (in flight):** Shared `api/_stripe-runtime-mode.js` live-capable gate across Checkout, webhook, and Billing Portal. Requires `STRIPE_SECRET_KEY=sk_live_...` **and** `STRIPE_ALLOW_LIVE=true` for live runtime. **Does not activate live Stripe.** Production env unchanged until owner-approved cutover.
 
