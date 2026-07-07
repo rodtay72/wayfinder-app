@@ -5,6 +5,7 @@ import {
   parseBody,
   readJson
 } from './_supabase-admin.js';
+import { resolveStripeRuntime } from './_stripe-runtime-mode.js';
 
 const ALLOWED_PLAN_KEYS = new Set(['wayfinder_plus', 'wayfinder_connect']);
 const ALLOWED_INTERVALS = new Set(['monthly', 'yearly']);
@@ -140,7 +141,7 @@ const buildRuntimeEnvDiagnostic = () => {
   }
 
   const envFormat = {
-    STRIPE_SECRET_KEYStartsWithSkTest: envVarStartsWith('STRIPE_SECRET_KEY', 'sk_test_'),
+    stripeRuntimeConfigured: resolveStripeRuntime().ok,
     APP_BASE_URLLooksHttps: /^https:\/\/.+/i.test(String(process.env.APP_BASE_URL || '').trim())
   };
   for (const name of PRICE_ENV_VAR_NAMES) {
@@ -157,7 +158,7 @@ const buildRuntimeEnvDiagnostic = () => {
 };
 
 const buildConfigDiagnostic = ({ priceEnvKey = null } = {}) => ({
-  stripeSecretKeyLooksTest: envVarStartsWith('STRIPE_SECRET_KEY', 'sk_test_'),
+  stripeRuntimeConfigured: resolveStripeRuntime().ok,
   appBaseUrlPresent: envVarPresent('APP_BASE_URL'),
   appBaseUrlLooksHttps: /^https:\/\/.+/i.test(String(process.env.APP_BASE_URL || '').trim()),
   selectedPriceEnvKey: priceEnvKey || null,
@@ -214,10 +215,10 @@ const respondUnhandledFailure = (res, validationIssue = 'unhandled server except
 };
 
 const getBaseCheckoutConfig = () => {
-  const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY || '').trim();
+  const runtime = resolveStripeRuntime();
   const appBaseUrl = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
 
-  if (!stripeSecretKey || !stripeSecretKey.startsWith('sk_test_')) {
+  if (!runtime.ok) {
     return null;
   }
 
@@ -225,7 +226,7 @@ const getBaseCheckoutConfig = () => {
     return null;
   }
 
-  return { stripeSecretKey, appBaseUrl };
+  return { stripeSecretKey: runtime.stripeSecretKey, appBaseUrl, stripeMode: runtime.mode };
 };
 
 const describeIdFormat = (value) => {

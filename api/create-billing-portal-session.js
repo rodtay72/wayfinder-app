@@ -4,6 +4,7 @@ import {
   parseBody,
   readJson
 } from './_supabase-admin.js';
+import { resolveStripeRuntime } from './_stripe-runtime-mode.js';
 
 const setCors = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -53,10 +54,10 @@ async function getStripeCustomerIdForUser(userId) {
 }
 
 const getPortalConfig = () => {
-  const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY || '').trim();
+  const runtime = resolveStripeRuntime();
   const appBaseUrl = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
 
-  if (!stripeSecretKey || !stripeSecretKey.startsWith('sk_test_')) {
+  if (!runtime.ok) {
     return null;
   }
 
@@ -64,7 +65,7 @@ const getPortalConfig = () => {
     return null;
   }
 
-  return { stripeSecretKey, appBaseUrl };
+  return { stripeSecretKey: runtime.stripeSecretKey, appBaseUrl, stripeMode: runtime.mode };
 };
 
 const logPortalFailure = (reason, details = {}) => {

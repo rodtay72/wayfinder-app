@@ -6,13 +6,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-06
+**Last updated:** 2026-07-07
 
-**Last verified merge:** PR #153 — Stripe Customer Portal / Manage billing (sandbox/test mode)
+**Last verified merge:** PR #154 — Billing Portal scheduled-change copy polish
 
-**Next proposed PR:** PR #154 — Billing Portal scheduled-change copy polish
+**Next proposed PR:** PR #156 — Stripe live-runtime safety gate (no activation)
 
-**PR #149 (in flight):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; **no checkout UI, Portal, or save gating**.
+**PR #155 (merged or in flight):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only; does not activate live).
+
+**PR #156 (in flight):** Shared `api/_stripe-runtime-mode.js` live-capable gate across Checkout, webhook, and Billing Portal. Requires `STRIPE_SECRET_KEY=sk_live_...` **and** `STRIPE_ALLOW_LIVE=true` for live runtime. **Does not activate live Stripe.** Production env unchanged until owner-approved cutover.
+
+**PR #149 (merged):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; checkout, webhook, Customer Portal, and scheduled-change billing copy verified through PR #154; no save gating or live Stripe.
 
 **PR #148 (merged):** Server-only `stripe_billing_references`, webhook idempotency table, sync RPC — **SQL applied and verified**; webhook runtime deferred to PR #149.
 
@@ -20,9 +24,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** Test-mode only (`sk_test_...`). Checkout, webhook, and Customer Portal E2E **verified** (PR #149–#153). PR #154 adds scheduled-change billing copy on Plans — no save gating or live Stripe.
+**Stripe:** Test-mode only (`sk_test_...`). Checkout, webhook, Customer Portal, and scheduled-change copy **verified** (PR #149–#154). **Live Stripe not active.** PR #156 adds live-capable runtime gate (`STRIPE_ALLOW_LIVE=true` required with live key) — **no Production env change in PR #156.** Cutover checklist: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md)
 
-**Current owner blocker:** Merge PR #154; quick Plans billing-copy smoke after deploy.
+**Current owner blocker:** Merge and deploy PR #156 (runtime gate). Live activation blocked until explicit owner-approved Production env cutover per cutover plan. No save gating.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
