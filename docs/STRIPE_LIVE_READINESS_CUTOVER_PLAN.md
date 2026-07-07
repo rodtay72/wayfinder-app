@@ -1,8 +1,11 @@
 # Stripe Live Readiness and Cutover Plan
 
-**Status:** Readiness checklist only — **live Stripe is not active**  
-**Scope:** Documentation for owner/operator cutover planning  
-**Last updated:** 2026-07-07  
+**Status:** Readiness checklist only — **live Stripe is not active**
+
+**Scope:** Documentation for owner/operator cutover planning
+
+**Last updated:** 2026-07-07
+
 **Related PR:** #155 (docs only)
 
 Read first:
