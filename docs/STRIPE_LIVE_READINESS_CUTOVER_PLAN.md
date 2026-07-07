@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-07
 
-**Related PR:** #155 (docs only)
+**Related PR:** #155 (docs only, merged) · #156 (runtime live-capable gate — **does not activate live**)
 
 Read first:
 
@@ -29,6 +29,8 @@ Read first:
 | PR #152 parent Checkout buttons on Plans | Merged |
 | PR #153 Customer Portal / Manage billing | Merged |
 | PR #154 billing scheduled-change copy | Merged |
+| PR #155 live-readiness cutover plan (docs) | Merged |
+| PR #156 Stripe live-runtime safety gate | In flight — **does not activate live** |
 | Sandbox Checkout E2E | Verified |
 | Webhook processing | Verified (`processed` outcomes) |
 | Supabase entitlement sync | Verified |
@@ -57,12 +59,22 @@ Wayfinder is ALIGN/CAB parent-development support — not child diagnosis, behav
 
 ### Important runtime note before live cutover
 
-As of PR #149–#154 on `main`, production runtime is intentionally **test-mode gated**:
+**PR #156** (runtime live-capable gate, **no activation**) makes Checkout, webhook, and Billing Portal routes able to accept live Stripe **only when both** are set:
 
-- Server routes require `STRIPE_SECRET_KEY` beginning with `sk_test_`.
-- Livemode webhook events are **skipped** (HTTP 200, no entitlement sync).
+```text
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_ALLOW_LIVE=true
+```
 
-**Live activation therefore requires a separate owner-approved runtime PR** (not this docs PR) to accept `sk_live_...` and process `livemode: true` events before or together with Production env cutover. Do not change Vercel env vars to live values until that runtime gate is reviewed and deployed.
+Until an owner-approved Production env cutover sets those values **together with** live `STRIPE_WEBHOOK_SECRET`, live Price IDs, and live webhook endpoint configuration, **Production remains test mode**.
+
+Current default behaviour (unchanged until cutover):
+
+- `STRIPE_SECRET_KEY=sk_test_...` with `STRIPE_ALLOW_LIVE` unset → sandbox/test Checkout, Portal, and webhooks work as today.
+- `sk_live_...` without `STRIPE_ALLOW_LIVE=true` → Checkout and Portal return safe “not configured” responses; webhooks return HTTP 503 with `skipped_live_not_enabled` log — **no entitlement sync**.
+- Mode-mismatched webhook events (e.g. test key + `livemode: true`) → HTTP 200, `skipped_mode_mismatch`, **no entitlement sync**.
+
+All three server routes share the gate via `api/_stripe-runtime-mode.js`. **PR #156 does not change Vercel env vars, Stripe Dashboard, or SQL.** Do not set `STRIPE_ALLOW_LIVE=true` until explicit owner-approved live cutover.
 
 ---
 
@@ -134,8 +146,10 @@ Placeholder example for operator notes:
 
 ```text
 STRIPE_SECRET_KEY=sk_live_...
+STRIPE_ALLOW_LIVE=true
 ```
 
+`STRIPE_ALLOW_LIVE` must be the exact string `true`. Do not set it during sandbox operation or before approved live cutover.
 ---
 
 ## 4. Live Price IDs are separate from sandbox Price IDs
@@ -241,6 +255,7 @@ After cutover, verify:
 | Variable | Purpose | Cutover placeholder |
 | --- | --- | --- |
 | `STRIPE_SECRET_KEY` | Server Stripe API | `sk_live_...` |
+| `STRIPE_ALLOW_LIVE` | Explicit live activation guard (required with live key) | `true` |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature verify | `whsec_...` (live endpoint) |
 | `STRIPE_PRICE_PLUS_MONTHLY` | Plus monthly Checkout / webhook map | `price_...` (live) |
 | `STRIPE_PRICE_PLUS_YEARLY` | Plus yearly | `price_...` (live) |
@@ -254,8 +269,8 @@ After cutover, verify:
 ### Cutover operator sequence (env only)
 
 1. [ ] Snapshot current **known-good test-mode** Production values (secure vault — placeholders in runbook).
-2. [ ] Confirm approved **runtime live gate** PR is merged and deployed (see §1).
-3. [ ] Update Production env vars in Vercel Dashboard — **Production scope only**.
+2. [ ] Confirm **PR #156** runtime live gate is merged and deployed (see §1).
+3. [ ] Update Production env vars in Vercel Dashboard — **Production scope only** — including `STRIPE_ALLOW_LIVE=true` with `sk_live_...`.
 4. [ ] Trigger Production redeploy (or wait for deploy hook) after env changes.
 5. [ ] Leave Preview / local test env on `sk_test_...` unless explicitly approved otherwise.
 6. [ ] Run production smoke sequence (§9) before announcing live billing.

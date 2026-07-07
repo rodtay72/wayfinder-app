@@ -1,5 +1,9 @@
 import crypto from 'node:crypto';
 import { supabaseAdminFetch } from './_supabase-admin.js';
+import {
+  resolveStripeRuntime,
+  shouldProcessStripeWebhookEvent
+} from './_stripe-runtime-mode.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -63,12 +67,12 @@ const buildPriceToPlan = () => {
 };
 
 const getWebhookConfig = () => {
-  const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY || '').trim();
+  const runtime = resolveStripeRuntime();
   const webhookSecret = String(process.env.STRIPE_WEBHOOK_SECRET || '').trim();
   const supabaseUrl = String(process.env.SUPABASE_URL || '').trim();
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-  if (!stripeSecretKey.startsWith('sk_test_')) return null;
+  if (!runtime.ok) return null;
   if (!webhookSecret) return null;
   if (!supabaseUrl || !serviceRoleKey) return null;
 
@@ -78,7 +82,8 @@ const getWebhookConfig = () => {
   }
 
   return {
-    stripeSecretKey,
+    stripeSecretKey: runtime.stripeSecretKey,
+    stripeMode: runtime.mode,
     webhookSecret,
     priceToPlan: buildPriceToPlan()
   };
@@ -119,6 +124,7 @@ const logWebhook = ({
   eventType = null,
   eventIdSuffix: idSuffix = null,
   livemode = null,
+  stripeMode = null,
   outcome,
   planKey = null,
   errorCategory = null,
@@ -131,6 +137,9 @@ const logWebhook = ({
     outcome,
     httpStatus
   };
+  if (stripeMode === 'test' || stripeMode === 'live') {
+    entry.stripeMode = stripeMode;
+  }
   if (planKey && ALLOWED_LOG_PLAN_KEYS.has(planKey)) {
     entry.planKey = planKey;
   }
@@ -666,6 +675,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
+  const runtimeProbe = resolveStripeRuntime();
+  if (!runtimeProbe.ok && runtimeProbe.liveNotEnabled) {
+    logWebhook({
+      outcome: 'skipped_live_not_enabled',
+      stripeMode: 'live',
+      httpStatus: 503
+    });
+    return res.status(503).json({ error: 'Webhook is not configured.' });
+  }
+
   const config = getWebhookConfig();
   if (!config) {
     logWebhook({ outcome: 'not_configured', httpStatus: 503 });
@@ -705,7 +724,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (livemode) {
+    if (!shouldProcessStripeWebhookEvent(config.stripeMode, livemode)) {
       const claimed = await claimWebhookEvent(eventId, eventType, livemode);
       if (claimed) {
         await markWebhookOutcome(eventId, 'skipped');
@@ -714,7 +733,8 @@ export default async function handler(req, res) {
         eventType,
         eventIdSuffix: idSuffix,
         livemode,
-        outcome: claimed ? 'skipped' : 'duplicate',
+        stripeMode: config.stripeMode,
+        outcome: claimed ? 'skipped_mode_mismatch' : 'duplicate',
         httpStatus: 200
       });
       return res.status(200).json({ received: true });
@@ -726,6 +746,7 @@ export default async function handler(req, res) {
         eventType,
         eventIdSuffix: idSuffix,
         livemode,
+        stripeMode: config.stripeMode,
         outcome: 'duplicate',
         httpStatus: 200
       });
@@ -740,6 +761,7 @@ export default async function handler(req, res) {
         eventType,
         eventIdSuffix: idSuffix,
         livemode,
+        stripeMode: config.stripeMode,
         outcome: 'retryable_error',
         errorCategory: classifyWebhookError(err),
         httpStatus: 500
@@ -751,6 +773,7 @@ export default async function handler(req, res) {
       eventType,
       eventIdSuffix: idSuffix,
       livemode,
+      stripeMode: config.stripeMode,
       outcome: 'retryable_error',
       errorCategory: 'webhook_retryable_error',
       httpStatus: 500
