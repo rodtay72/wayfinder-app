@@ -12,7 +12,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Next proposed PR:** PR #155 — Stripe live-readiness cutover plan (docs only)
 
-**PR #149 (in flight):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; **no checkout UI, Portal, or save gating**.
+**PR #149 (merged):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; checkout, webhook, Customer Portal, and scheduled-change billing copy are now verified through PR #154; no save gating or live Stripe.
 
 **PR #148 (merged):** Server-only `stripe_billing_references`, webhook idempotency table, sync RPC — **SQL applied and verified**; webhook runtime deferred to PR #149.
 
