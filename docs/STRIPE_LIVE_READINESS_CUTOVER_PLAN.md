@@ -300,7 +300,7 @@ Live Customer Portal must be configured **separately** from test mode.
 
 ### Billing Portal session safety (post-cutover, PR #159)
 
-Stripe-hosted Billing Portal session URLs are sensitive and may remain usable briefly after Wayfinder logout because the page is hosted by Stripe. Wayfinder logout should **not** be represented as revoking an already-open Stripe Portal tab. Users should close Stripe billing tabs when finished, especially on shared devices.
+Stripe-hosted Billing Portal pages may remain reachable in the browser after Wayfinder sign-out because billing is hosted by Stripe. Wayfinder sign-out does not automatically close an already-open Stripe billing page in the browser window. On shared devices, users should return to Wayfinder, sign out, close the browser window, and clear browser history or site data if needed.
 
 **Support rules:** never paste or store Portal session URLs; never use a Portal URL as proof of the signed-in Wayfinder user; verify billing from webhook-synced entitlement and Stripe records; do not manually edit entitlements or `stripe_billing_references`. Legacy pre-gateway Plus (e.g. **P-44947**) must not receive Portal sessions until a reviewed migration procedure links billing.
 

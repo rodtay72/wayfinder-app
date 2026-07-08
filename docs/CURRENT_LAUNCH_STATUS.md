@@ -14,7 +14,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **PR #158 (merged):** Live cutover evidence + [platform sync brief](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) (docs only).
 
-**PR #159 (in flight):** Billing Portal session safety documentation + parent-facing Plans copy. Records post-cutover finding that Stripe Portal tabs may remain usable briefly after Wayfinder logout. No auth/RLS/API/env changes.
+**PR #159 (in flight):** Billing Portal session safety documentation + parent-facing Plans copy. Records post-cutover finding that Stripe billing pages may remain reachable in the browser after Wayfinder sign-out. No auth/RLS/API/env changes.
 
 **PR #155 (merged):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only).
 

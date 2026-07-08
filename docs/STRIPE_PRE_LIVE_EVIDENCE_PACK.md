@@ -135,7 +135,9 @@ Rollback guidance remains in §8 and [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./S
 
 ### Billing Portal session safety (PR #159)
 
-**Finding:** Stripe-hosted Billing Portal session URLs are sensitive and may remain usable briefly after Wayfinder logout because the page is hosted by Stripe. Wayfinder logout should **not** be represented as revoking an already-open Stripe Portal tab. Users should close Stripe billing tabs when finished, especially on shared devices.
+**Finding:** Stripe-hosted Billing Portal pages may remain reachable in the browser after Wayfinder sign-out because billing is hosted by Stripe. Wayfinder sign-out does not automatically close an already-open Stripe billing page in the browser window.
+
+**Shared-device guidance:** After billing, return to Wayfinder, sign out, close the browser window, and clear browser history or site data if needed.
 
 **This does not automatically prove a Wayfinder auth/RLS/account-linking bug.** Wayfinder must still only create a Billing Portal session for the currently signed-in verified parent with a linked Stripe customer (`stripe_billing_references.stripe_customer_id`).
 

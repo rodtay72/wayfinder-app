@@ -142,7 +142,7 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 3. A separate reviewed migration/support procedure is needed before linking or transitioning legacy Plus users.
 4. Do not manually patch entitlements or `stripe_billing_references` during normal support.
 5. Continue monitoring live webhook deliveries and Vercel logs after cutover.
-6. **Billing Portal session URLs** may remain usable briefly after Wayfinder logout (Stripe-hosted page). See [STRIPE_PRE_LIVE_EVIDENCE_PACK.md — Post-cutover operational findings](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#post-cutover-operational-findings) (PR #159).
+6. **Billing Portal pages** may remain reachable in the browser after Wayfinder sign-out (Stripe-hosted). Shared-device users should sign out, close the browser window, and clear browser history or site data if needed. See [STRIPE_PRE_LIVE_EVIDENCE_PACK.md — Post-cutover operational findings](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#post-cutover-operational-findings) (PR #159).
 
 ---
 
