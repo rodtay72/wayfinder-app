@@ -298,6 +298,14 @@ Live Customer Portal must be configured **separately** from test mode.
 - [ ] No privacy feature monetised or framed as paid-only in Portal copy.
 - [ ] Connect disclaimer remains accurate: parent-controlled, not therapy/diagnosis/emergency/crisis, nothing automatic.
 
+### Billing Portal session safety (post-cutover, PR #159)
+
+Stripe-hosted Billing Portal session URLs are sensitive and may remain usable briefly after Wayfinder logout because the page is hosted by Stripe. Wayfinder logout should **not** be represented as revoking an already-open Stripe Portal tab. Users should close Stripe billing tabs when finished, especially on shared devices.
+
+**Support rules:** never paste or store Portal session URLs; never use a Portal URL as proof of the signed-in Wayfinder user; verify billing from webhook-synced entitlement and Stripe records; do not manually edit entitlements or `stripe_billing_references`. Legacy pre-gateway Plus (e.g. **P-44947**) must not receive Portal sessions until a reviewed migration procedure links billing.
+
+Full finding: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md — Post-cutover operational findings](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#post-cutover-operational-findings).
+
 ---
 
 ## 9. Production smoke test sequence (future live cutover)
@@ -414,3 +422,4 @@ Until then: **remain on sandbox/test mode** (`sk_test_...`).
 | 2026-07-07 | PR #155 — initial live-readiness and cutover checklist (docs only) |
 | 2026-07-07 | PR #157 — cross-link pre-live evidence pack; note PR #156 sandbox smoke passed |
 | 2026-07-08 | PR #158 — live cutover completed; cross-link live cutover result evidence |
+| 2026-07-08 | PR #159 — Billing Portal session safety operator note |

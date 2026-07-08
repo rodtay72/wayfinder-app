@@ -128,6 +128,29 @@ Sandbox smoke after PR #156 merge confirmed test-mode paths worked end-to-end be
 | Rollback executed | No |
 
 Rollback guidance remains in §8 and [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) §10.
+
+---
+
+## Post-cutover operational findings
+
+### Billing Portal session safety (PR #159)
+
+**Finding:** Stripe-hosted Billing Portal session URLs are sensitive and may remain usable briefly after Wayfinder logout because the page is hosted by Stripe. Wayfinder logout should **not** be represented as revoking an already-open Stripe Portal tab. Users should close Stripe billing tabs when finished, especially on shared devices.
+
+**This does not automatically prove a Wayfinder auth/RLS/account-linking bug.** Wayfinder must still only create a Billing Portal session for the currently signed-in verified parent with a linked Stripe customer (`stripe_billing_references.stripe_customer_id`).
+
+**Support rules:**
+
+- Never paste or store Billing Portal session URLs.
+- Never use a Billing Portal URL as proof of the currently signed-in Wayfinder user.
+- Verify billing state from webhook-synced entitlement and Stripe records.
+- Do **not** manually edit entitlements or `stripe_billing_references`.
+- **P-44947** remains a legacy pre-payment-gateway Plus migration/support case.
+
+**P-44947 fresh-session Manage Billing test:** **Passed (expected).** Billing Portal did **not** open from inside Wayfinder — no Stripe Portal session URL was issued. Server requires a linked billing reference; legacy Plus without a gateway-linked customer receives a safe “no billing account” response. Manage Billing may still appear for legacy Plus entitlement display; Portal creation correctly blocked until a reviewed migration procedure links billing.
+
+Parent-facing safety copy added on Plans (PR #159): before opening Portal and after return from billing.
+
 ---
 
 ## 4. Systems untouched / preserved
@@ -147,7 +170,8 @@ This evidence pack and PR #157 / PR #158 do **not** change:
 - Manual `stripe_billing_references` edits
 - SQL / schema
 - Live Stripe activation (cutover was owner-controlled Vercel/Stripe action — PR #158 records evidence only)
-- Vercel Production environment variables (PR #158 docs only)- Stripe Dashboard configuration
+- Vercel Production environment variables (PR #158 docs only)
+- Stripe Dashboard configuration
 
 Entitlement updates remain **webhook-driven**; browser redirect or Portal return alone must not be treated as proof of plan change.
 
@@ -257,3 +281,4 @@ Production is now on **live Stripe**. Rollback remains available per §8 if live
 | --- | --- |
 | 2026-07-07 | PR #157 — initial pre-live evidence pack (docs only) |
 | 2026-07-08 | PR #158 — live cutover result recorded; pre-live evidence marked completed; platform sync brief added |
+| 2026-07-08 | PR #159 — Billing Portal session safety finding; P-44947 Manage Billing test recorded |
