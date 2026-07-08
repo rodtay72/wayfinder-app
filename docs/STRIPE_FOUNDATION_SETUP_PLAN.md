@@ -412,7 +412,7 @@ PR #144 explicitly does **not**:
 - [Stripe Customer Portal](https://docs.stripe.com/customer-management/portal-deep-dive)
 - Wayfinder: [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md)
 - Wayfinder: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only; live not active)
-- Wayfinder: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — post-PR #156 evidence and pre-live operator steps (docs only)
+- Wayfinder: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — pre-live and live cutover evidence (docs only)
 
 ---
 
