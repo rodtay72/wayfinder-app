@@ -246,9 +246,9 @@ Production is now on **live Stripe**. Rollback remains available per §8 if live
 
 - [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — full cutover checklist and operator plan
 - [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) — architecture and webhook design
+- [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) — cross-platform post-cutover handoff (PR #158)
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — merge and smoke tracking
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) — pricing and privacy baseline
-
 ---
 
 ## Document history
@@ -256,4 +256,4 @@ Production is now on **live Stripe**. Rollback remains available per §8 if live
 | Date | Change |
 | --- | --- |
 | 2026-07-07 | PR #157 — initial pre-live evidence pack (docs only) |
-| 2026-07-08 | PR #158 — live cutover result recorded; pre-live evidence marked completed |
+| 2026-07-08 | PR #158 — live cutover result recorded; pre-live evidence marked completed; platform sync brief added |

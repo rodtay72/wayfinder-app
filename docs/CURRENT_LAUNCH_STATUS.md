@@ -18,7 +18,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **PR #157 (merged):** [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — pre-live evidence pack and operator checklist (docs only).
 
-**PR #158 (in flight):** Live cutover evidence record (docs only). Records successful Production live cutover and smoke — no runtime/API/SQL/UI/env changes.
+**PR #158 (in flight):** Live cutover evidence record + [platform sync brief](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) (docs only). Records successful Production live cutover and smoke — no runtime/API/SQL/UI/env changes.
 
 **PR #149 (merged):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; checkout, webhook, Customer Portal, and scheduled-change billing copy verified through PR #154; no save gating.
 
@@ -28,9 +28,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** **Live Stripe active** on Production. Live Checkout, webhook (`livemode: true`, outcome `processed`), and Billing Portal smoke **passed**. `STRIPE_ALLOW_LIVE=true` with live key configured. No save gating. Privacy baseline unchanged across plans. Auth, RLS, journal save/read, and dashboard loading unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) (Live cutover result). Cutover plan: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md)
+**Stripe:** **Live Stripe active** on Production. Live Checkout, webhook (`livemode: true`, outcome `processed`), and Billing Portal smoke **passed**. `STRIPE_ALLOW_LIVE=true` with live key configured. No save gating. Privacy baseline unchanged across plans. Auth, RLS, journal save/read, and dashboard loading unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) (Live cutover result). Cutover plan: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #158 (evidence record). Then plan separate pre-gateway Plus migration/support decision (e.g. legacy Plus parent P-44947 — not a live cutover blocker). Do not manually edit entitlements or `stripe_billing_references`; future pre-gateway paid-user migration requires a separate reviewed support/admin procedure.
+**Current owner blocker:** Merge PR #158 (evidence record + platform sync brief). Then plan separate pre-gateway Plus migration/support decision (e.g. legacy Plus parent P-44947 — not a live cutover blocker). Do not manually edit entitlements or `stripe_billing_references`; future pre-gateway paid-user migration requires a separate reviewed support/admin procedure.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
