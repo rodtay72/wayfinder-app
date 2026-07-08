@@ -3591,7 +3591,9 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
  const manageBillingLoadingLabel=String(pageMeta.manageBillingLoading||'Opening billing portal…').trim();
  const manageBillingErrorMessage=String(pageMeta.manageBillingErrorMessage||'Billing portal could not be opened. If you have not subscribed yet, use Upgrade below.').trim();
  const manageBillingNote=String(pageMeta.manageBillingNote||'').trim();
+ const manageBillingSessionSafetyNote=String(pageMeta.manageBillingSessionSafetyNote||'').trim();
  const billingReturnNoticeText=String(pageMeta.billingReturnNotice||"You're back from billing. If you changed your plan, Stripe may take a moment to confirm it. Some changes take effect at the next renewal date.").trim();
+ const billingReturnSessionSafetyNote=String(pageMeta.billingReturnSessionSafetyNote||'').trim();
  const currentPlanConfirmedNote=String(pageMeta.currentPlanConfirmedNote||'Your current plan reflects what Stripe has confirmed as active now.').trim();
 
  const loadEntitlementSnapshot=async()=>{
@@ -3730,6 +3732,7 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
   </div> : null}
   {billingReturnNotice ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--success" role="status">
    <p className="plans-checkout-notice-text">{billingReturnNoticeText}</p>
+   {billingReturnSessionSafetyNote ? <p className="plans-checkout-notice-text plans-checkout-notice-text--followup">{billingReturnSessionSafetyNote}</p> : null}
    {typeof onDismissBillingReturnNotice==='function' ? <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={onDismissBillingReturnNotice}>{dismissNoticeLabel}</button> : null}
   </div> : null}
   <div className="card dashboard-section plans-page-intro">
@@ -3749,6 +3752,7 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
    {showCurrentPlanConfirmedNote&&currentPlanConfirmedNote ? <p className="plans-current-plan-note">{currentPlanConfirmedNote}</p> : null}
    {canManageBilling ? <div className="plans-manage-billing-wrap">
     {manageBillingNote ? <p className="plans-manage-billing-note">{manageBillingNote}</p> : null}
+    {manageBillingSessionSafetyNote ? <p className="plans-manage-billing-note">{manageBillingSessionSafetyNote}</p> : null}
     <button type="button" className="btn btn-secondary plans-manage-billing-btn" disabled={portalBusy||!!checkoutBusy||!authSession?.access_token} onClick={handleManageBilling}>
      {portalBusy ? manageBillingLoadingLabel : manageBillingLabel}
     </button>

@@ -275,6 +275,7 @@
   .plan-tier-checkout-btn{flex:1 1 160px;margin:0;}
   .plans-checkout-notice{padding:14px 18px;}
   .plans-checkout-notice-text{margin:0;font-size:14px;line-height:1.6;}
+  .plans-checkout-notice-text--followup{margin-top:10px;}
   .plans-checkout-notice--success{background:#F3F7F4;border-color:#C5D9CC;}
   .plans-checkout-notice--success .plans-checkout-notice-text{color:#40514b;}
   .plans-checkout-notice--cancelled{background:#F8F6F2;border-color:#E8E0D4;}
