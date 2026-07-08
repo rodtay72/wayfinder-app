@@ -6,19 +6,21 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-07
+**Last updated:** 2026-07-08
 
-**Last verified merge:** PR #156 — Stripe live-runtime safety gate (sandbox-smoked)
+**Last verified merge:** PR #157 — Stripe pre-live evidence pack (docs only)
 
-**Next proposed PR:** PR #157 — final pre-live evidence pack (docs only)
+**Next proposed PR:** PR #158 — live cutover evidence record (docs only)
 
-**PR #155 (merged):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only; does not activate live).
+**PR #155 (merged):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only).
 
-**PR #156 (merged):** Shared `api/_stripe-runtime-mode.js` live-capable gate across Checkout, webhook, and Billing Portal. Requires `STRIPE_SECRET_KEY=sk_live_...` **and** `STRIPE_ALLOW_LIVE=true` for live runtime. **Does not activate live Stripe.** Post-merge sandbox smoke passed on Production (test mode).
+**PR #156 (merged):** Shared `api/_stripe-runtime-mode.js` live-capable gate across Checkout, webhook, and Billing Portal.
 
-**PR #157 (in flight):** [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — docs-only final pre-live evidence pack and operator checklist. Does not activate live Stripe.
+**PR #157 (merged):** [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — pre-live evidence pack and operator checklist (docs only).
 
-**PR #149 (merged):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; checkout, webhook, Customer Portal, and scheduled-change billing copy verified through PR #154; no save gating or live Stripe.
+**PR #158 (in flight):** Live cutover evidence record + [platform sync brief](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) (docs only). Records successful Production live cutover and smoke — no runtime/API/SQL/UI/env changes.
+
+**PR #149 (merged):** `api/stripe-webhook.js` — test-mode webhook handler calling PR #148 RPCs; checkout, webhook, Customer Portal, and scheduled-change billing copy verified through PR #154; no save gating.
 
 **PR #148 (merged):** Server-only `stripe_billing_references`, webhook idempotency table, sync RPC — **SQL applied and verified**; webhook runtime deferred to PR #149.
 
@@ -26,9 +28,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** Test mode active (`sk_test_...`). PR #156 sandbox smoke **passed** (Checkout, Portal, webhook `processed`). **Live Stripe not active.** `STRIPE_ALLOW_LIVE` not set. No live webhook configured. Evidence pack: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). Cutover checklist: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md)
+**Stripe:** **Live Stripe active** on Production. Live Checkout, webhook (`livemode: true`, outcome `processed`), and Billing Portal smoke **passed**. `STRIPE_ALLOW_LIVE=true` with live key configured. No save gating. Privacy baseline unchanged across plans. Auth, RLS, journal save/read, and dashboard loading unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) (Live cutover result). Cutover plan: [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #157 (docs). Live cutover remains blocked until explicit Rodney approval and manual Vercel/Stripe owner actions. No save gating.
+**Current owner blocker:** Merge PR #158 (evidence record + platform sync brief). Then plan separate pre-gateway Plus migration/support decision (e.g. legacy Plus parent P-44947 — not a live cutover blocker). Do not manually edit entitlements or `stripe_billing_references`; future pre-gateway paid-user migration requires a separate reviewed support/admin procedure.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 

@@ -1,12 +1,12 @@
 # Stripe Live Readiness and Cutover Plan
 
-**Status:** Readiness checklist only — **live Stripe is not active**
+**Status:** Live cutover **completed** — evidence in [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) (Live cutover result)
 
-**Scope:** Documentation for owner/operator cutover planning
+**Scope:** Documentation for owner/operator cutover planning and post-cutover evidence
 
-**Last updated:** 2026-07-07
+**Last updated:** 2026-07-08
 
-**Related PR:** #155 (docs only, merged) · #156 (runtime gate, merged) · #157 (pre-live evidence pack, docs only)
+**Related PR:** #155 (docs only, merged) · #156 (runtime gate, merged) · #157 (pre-live evidence, merged) · #158 (live cutover evidence, docs only)
 
 Read first:
 
@@ -31,7 +31,9 @@ Read first:
 | PR #154 billing scheduled-change copy | Merged |
 | PR #155 live-readiness cutover plan (docs) | Merged |
 | PR #156 Stripe live-runtime safety gate | Merged — sandbox smoke passed; **live not active** |
-| PR #157 pre-live evidence pack (docs) | In flight — **does not activate live** |
+| PR #157 pre-live evidence pack (docs) | Merged |
+| PR #158 live cutover evidence (docs) | In flight — records completed cutover |
+| Live Stripe cutover | **Completed** — smoke passed (see evidence pack) |
 | Sandbox Checkout E2E | Verified |
 | Webhook processing | Verified (`processed` outcomes) |
 | Supabase entitlement sync | Verified |
@@ -77,7 +79,7 @@ Current default behaviour (unchanged until cutover):
 
 All three server routes share the gate via `api/_stripe-runtime-mode.js`. **PR #156 does not change Vercel env vars, Stripe Dashboard, or SQL.** Do not set `STRIPE_ALLOW_LIVE=true` until explicit owner-approved live cutover.
 
-Post-PR #156 Production sandbox smoke (test mode) passed: Checkout, Billing Portal, and webhook (`livemode: false`, outcome `processed`). Evidence ledger: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md).
+Post-PR #156 Production sandbox smoke (test mode) passed before cutover. **Live cutover completed** — full smoke evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#live-cutover-result).
 
 ---
 
@@ -399,7 +401,7 @@ Until then: **remain on sandbox/test mode** (`sk_test_...`).
 ## Cross-links
 
 - [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) — architecture, env vars, webhook design
-- [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — post-PR #156 evidence and remaining pre-live steps (docs only)
+- [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — pre-live and [live cutover result](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#live-cutover-result) evidence (docs only)
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) — pricing, privacy baseline, monetised value
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — merge / smoke tracking
 
@@ -411,3 +413,4 @@ Until then: **remain on sandbox/test mode** (`sk_test_...`).
 | --- | --- |
 | 2026-07-07 | PR #155 — initial live-readiness and cutover checklist (docs only) |
 | 2026-07-07 | PR #157 — cross-link pre-live evidence pack; note PR #156 sandbox smoke passed |
+| 2026-07-08 | PR #158 — live cutover completed; cross-link live cutover result evidence |
