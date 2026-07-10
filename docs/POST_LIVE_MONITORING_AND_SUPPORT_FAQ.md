@@ -185,3 +185,4 @@ Do **not**:
 | Date | Change |
 | --- | --- |
 | 2026-07-10 | PR #161 — initial post-live monitoring and support FAQ (docs only) |
+| 2026-07-11 | PR #162 — parent-facing Plans/Dashboard copy polish; see [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) |

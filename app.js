@@ -3590,6 +3590,7 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
  const manageBillingLabel=String(pageMeta.manageBillingLabel||'Manage billing').trim();
  const manageBillingLoadingLabel=String(pageMeta.manageBillingLoading||'Opening billing portal…').trim();
  const manageBillingErrorMessage=String(pageMeta.manageBillingErrorMessage||'Billing portal could not be opened. If you have not subscribed yet, use Upgrade below.').trim();
+ const manageBillingLegacyErrorMessage=String(pageMeta.manageBillingLegacyErrorMessage||'').trim();
  const manageBillingNote=String(pageMeta.manageBillingNote||'').trim();
  const manageBillingSessionSafetyNote=String(pageMeta.manageBillingSessionSafetyNote||'').trim();
  const billingReturnNoticeText=String(pageMeta.billingReturnNotice||"You're back from billing. If you changed your plan, Stripe may take a moment to confirm it. Some changes take effect at the next renewal date.").trim();
@@ -3708,7 +3709,8 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
   }catch(err){
    AuthDebug.log('[plans] billing portal start failed:', { message: err?.message || String(err) });
    setPortalBusy(false);
-   setPortalError(manageBillingErrorMessage);
+   const legacyPortalFailure=String(err?.message||'').trim()==='PORTAL_NO_BILLING_ACCOUNT';
+   setPortalError(legacyPortalFailure&&manageBillingLegacyErrorMessage?manageBillingLegacyErrorMessage:manageBillingErrorMessage);
   }
  };
 
@@ -5003,6 +5005,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
  const startNewChild=()=>{setDyad(blankDyad());setStage('register');};
  const startDecode=()=>setStage('decode');
  const reviewShareMeta=typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING:{};
+ const dashboardPolish=typeof WAYFINDER_DASHBOARD_POLISH!=='undefined'?WAYFINDER_DASHBOARD_POLISH:{};
  const openTrailForReview=(entryId)=>{
   setTrailShareEntryId(entryId||null);
   setTrailScrollToShare(true);
@@ -5052,6 +5055,11 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch switch-muted" onClick={onSignOut}>{t('nav.signOut','Sign out')}</button>
    </div>
   </div>
+
+   {(dashboardPolish.pathwayNote||dashboardPolish.plansEntryNote)?<div className="card dashboard-section dashboard-polish-note">
+    {dashboardPolish.pathwayNote?<p className="dashboard-helper">{dashboardPolish.pathwayNote}</p>:null}
+    {dashboardPolish.plansEntryNote?<p className="dashboard-helper">{dashboardPolish.plansEntryNote}</p>:null}
+   </div>:null}
 
    <SignupPrivacyAcknowledgement
     meta={privacyAckMeta}

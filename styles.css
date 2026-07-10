@@ -162,6 +162,8 @@
   .dashboard-wrap{max-width:980px;}
   .dashboard-kicker{opacity:.82;font-size:13px;margin:0 0 4px;letter-spacing:.3px;}
   .dashboard-helper{font-size:13px;color:var(--ink-soft);line-height:1.55;margin:4px 0 0;max-width:52ch;}
+  .dashboard-polish-note{padding:16px 20px;}
+  .dashboard-polish-note .dashboard-helper+.dashboard-helper{margin-top:10px;}
   .dashboard-hero{position:relative;overflow:hidden;padding:26px 28px;min-height:112px;}
   .dashboard-hero-copy{max-width:580px;padding-right:280px;}
   .dashboard-hero h1{margin-bottom:10px;}

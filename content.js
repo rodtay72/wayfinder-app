@@ -495,16 +495,21 @@ const APP_VERSION_PAGE = {
   workflowNote: "Wayfinder updates this page when parent-facing improvements are released. Future research or data use will always be explained with clear notice, consent, and privacy safeguards."
 };
 
+const WAYFINDER_DASHBOARD_POLISH = {
+  pathwayNote: "Wayfinder helps you reflect on what happened, what your child may have needed, what happened in you, and one next step you may try.",
+  plansEntryNote: "Plans are for saving, revisiting, and optional parent-controlled review support. Privacy is included in every plan."
+};
+
 const WAYFINDER_PLANS_PAGE = {
   title: "Plans",
-  subtitle: "Every Wayfinder plan is privacy-first. The difference between plans is how much you can save, revisit, track your parent growth, and — only if you choose — share for Mental Health Professional review support.",
-  privacyBaseline: "No ads. No data-selling. Consent-led research only. Your reflections stay private unless you choose to share.",
+  subtitle: "Paid plans help you save, revisit, and reflect on your parent-growth practice. Connect adds optional, parent-controlled MHP review support if you choose it.",
+  privacyBaseline: "Privacy is included in every plan. No ads. No data-selling. Research use is consent-led.",
   readAccessReassurance: "Reflections you have already saved remain readable even if your trial ends or paid access lapses.",
   trialActiveDetail: "30-day trial · unlimited saves · {daysLeft} {dayWord} remaining (ends {endDate})",
   trialActiveNoDateDetail: "30-day trial · unlimited reflection saves · no card required",
   trialEndedDetail: "Your 30-day trial has ended. Saved reflections remain readable.",
-  connectDisclaimer: "Wayfinder Connect adds optional, parent-controlled Mental Health Professional review support. It is not therapy, diagnosis, emergency care, or crisis support. Payment does not improve your child — it may help you reflect and grow as a parent.",
-  sandboxTestModeNote: "Upgrades use Stripe secure checkout in sandbox test mode during early rollout. Your plan updates after payment is confirmed — it may take a moment to refresh here.",
+  connectDisclaimer: "Wayfinder Connect adds optional, parent-controlled Mental Health Professional review support. It is not therapy, diagnosis, emergency care, or crisis support.",
+  sandboxTestModeNote: "Upgrades use Stripe secure checkout. Your plan updates after payment is confirmed — it may take a moment to refresh here.",
   checkoutUpgradeMonthly: "Upgrade — monthly",
   checkoutUpgradeYearly: "Upgrade — yearly",
   checkoutLoading: "Opening secure checkout…",
@@ -514,7 +519,8 @@ const WAYFINDER_PLANS_PAGE = {
   checkoutDismissNotice: "Dismiss",
   manageBillingLabel: "Manage billing",
   manageBillingLoading: "Opening billing portal…",
-  manageBillingErrorMessage: "Billing portal could not be opened. If you have not subscribed yet, use Upgrade below.",
+  manageBillingErrorMessage: "Billing portal could not be opened. Please try again in a moment or use Upgrade below.",
+  manageBillingLegacyErrorMessage: "Billing portal could not be opened. If your Plus access was set up before Stripe billing was connected, your access remains unchanged. Billing management is not yet linked.",
   manageBillingNote: "Manage billing opens Stripe's secure billing portal. Some changes, such as downgrades or billing interval changes, may take effect at your next renewal date. Until Stripe confirms the change, Wayfinder continues to show your current active plan.",
   manageBillingSessionSafetyNote: "Stripe will open a secure billing page in this browser. For privacy on shared devices, please return to Wayfinder, sign out, and close this browser window when finished.",
   billingReturnNotice: "You're back from billing. If you changed your plan, Stripe may take a moment to confirm it. Some changes take effect at the next renewal date.",
@@ -573,6 +579,16 @@ const WAYFINDER_PLANS_PAGE = {
 };
 
 const WAYFINDER_APP_VERSIONS = [
+  {
+    id: "v0-4-6-live-billing-support-polish",
+    version: "v0.4.6",
+    date: "July 2026",
+    status: "released",
+    tag: "Plans and support",
+    title: "Live billing, clearer Plans, and support guidance",
+    body: "Wayfinder now has live Stripe checkout for paid plans, clearer Plans wording, and safer Billing Portal guidance for shared devices. Legacy Plus accounts set up before live billing keep their current access while billing migration remains deferred. Privacy remains included in every plan.",
+    parentAction: "Use Plans to review your current plan or upgrade through Stripe secure checkout. If you use a shared device, sign out and close the browser window when finished."
+  },
   {
     id: "v0-4-5-parent-mhp-portrait-display",
     version: "v0.4.5",
@@ -654,6 +670,16 @@ const WAYFINDER_APP_VERSIONS = [
     parentAction: "Use it to revisit what you noticed, what helped, and what you may try next."
   },
   {
+    id: "upcoming-language-toggle-zh-hans",
+    version: "Upcoming",
+    date: "Planned",
+    status: "planned",
+    tag: "Language access",
+    title: "Simplified Chinese language toggle",
+    body: "We are planning an English / 简体中文 toggle for static Wayfinder guidance and product copy. Private reflections, child names, journal entries, and MHP feedback will not be automatically translated.",
+    parentAction: "Continue writing reflections in the language that feels natural to you."
+  },
+  {
     id: "upcoming-privacy-reminder",
     version: "Upcoming",
     date: "Planned",
@@ -662,16 +688,6 @@ const WAYFINDER_APP_VERSIONS = [
     title: "Reflection privacy reminder",
     body: "Wayfinder uses generated Parent IDs and Child IDs in the app interface. When writing reflections, avoid adding names or identifying details unless they are truly needed.",
     parentAction: "Keep reflections focused on what happened, what you noticed, and what you may try next."
-  },
-  {
-    id: "upcoming-pdpa-consent",
-    version: "Upcoming",
-    date: "Planned",
-    status: "planned",
-    tag: "Privacy and consent",
-    title: "Clearer PDPA and research-use notice",
-    body: "We are planning clearer consent and research-use notices before registration, so parents can understand what may be used, what is not used, and how anonymised or de-identified learning may support future improvements.",
-    parentAction: "We will keep privacy, clarity, and parent choice at the centre."
   }
 ];
 
@@ -1130,6 +1146,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CULTURE,
     UI_TEXT,
     APP_VERSION_PAGE,
+    WAYFINDER_DASHBOARD_POLISH,
     WAYFINDER_PLANS_PAGE,
     WAYFINDER_APP_VERSIONS,
     PDPA_SIGNUP_NOTICE,
