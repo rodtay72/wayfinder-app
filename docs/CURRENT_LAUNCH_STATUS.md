@@ -8,15 +8,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-10
 
-**Last verified merge:** PR #159 — Billing Portal session safety follow-up
+**Last verified merge:** PR #160 — legacy Plus migration/support procedure (docs only)
 
-**Next proposed PR:** PR #160 — legacy Plus migration/support procedure (docs only)
+**Next proposed PR:** PR #161 — post-live monitoring, billing support FAQ, language toggle planning refresh (docs only)
 
-**PR #159 (merged):** Billing Portal session safety documentation + parent-facing Plans shared-device copy. Post-cutover finding documented. No auth/RLS/API/env changes.
+**PR #160 (merged):** [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) — legacy Plus support procedure. **Migration implementation deferred.**
 
-**PR #160 (in flight):** [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) — reviewed support procedure for pre-payment-gateway Plus users (e.g. P-44947). Docs only — no migration code, SQL, API, or manual billing edits.
+**PR #161 (in flight):** [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) — post-live ops, billing FAQ, language planning refresh. Docs only.
 
-**PR #158 (merged):** Live cutover evidence + [platform sync brief](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) (docs only).
+**PR #159 (merged):** Billing Portal session safety + shared-device Plans copy.
+
+**PR #158 (merged):** Live cutover evidence + [platform sync brief](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md).
 
 **PR #155 (merged):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only).
 
@@ -32,9 +34,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** **Live Stripe active** on Production. Legacy Plus migration/support procedure in PR #160. No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
+**Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ in PR #161. No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #160 (legacy Plus support procedure). Then decide whether to build a safe parent-initiated legacy billing migration flow (separate implementation PR). **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy example: P-44947 — see [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
+**Current owner blocker:** Merge PR #161 (post-live ops FAQ). Then proceed to **PR #162** parent-facing launch polish and App Version update. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 

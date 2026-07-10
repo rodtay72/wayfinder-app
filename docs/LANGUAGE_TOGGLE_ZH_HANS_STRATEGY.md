@@ -317,6 +317,22 @@ The first **runtime** language toggle PR should be accepted only if:
 
 ---
 
+## 17. Post-live planning update (PR #161)
+
+After live Stripe cutover, Billing Portal safety (PR #159), and legacy Plus procedure (PR #160):
+
+- **Language toggle remains planned** — not part of live billing stabilisation.
+- **First runtime language PR** should implement **static UI/product copy only** (`en` / `zh-Hans`).
+- Do **not** translate saved journal entries, Decode reflections, child names, MHP feedback, research exports, or Stripe-hosted receipts/invoices.
+- Do **not** use external translation APIs for private parent content.
+- Language preference is **not** a paid feature.
+- Preserve ALIGN/CAB non-diagnostic framing in both languages.
+- **Recommended sequencing:** PR #162 parent-facing launch polish and App Version update first; then language toggle foundation runtime PR.
+
+Ops and billing support reference: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md).
+
+---
+
 ## Related docs
 
 | Doc | Role |
@@ -324,3 +340,13 @@ The first **runtime** language toggle PR should be accepted only if:
 | [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) | Payment + roadmap context |
 | [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md) | PWA complete; Android install warning deferred |
 | [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) | Portrait privacy unchanged |
+| [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) | Post-live ops and billing FAQ |
+
+---
+
+## Document history
+
+| Date | Change |
+| --- | --- |
+| 2026-06-29 | PR #123 — initial Simplified Chinese language toggle strategy (docs only) |
+| 2026-07-10 | PR #161 — post-live planning update; static UI copy scope reaffirmed |
