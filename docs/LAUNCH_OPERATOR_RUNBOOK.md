@@ -373,6 +373,7 @@ Daily (or after any user-facing merge):
 | When | Action |
 |------|--------|
 | Morning | Read [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md); review open PRs |
+| Post-live ops | Use [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) for billing support and webhook monitoring notes |
 | After merge | Production smoke §6–§12 if user-facing; update launch status if shipped |
 | Automated | Production Smoke Reminder schedule 22:00 UTC — review Actions summary |
 | Issue | Reusable `production-watch` issue — manual checklist reminder only |
@@ -423,6 +424,7 @@ When stopped: update evidence pack, pause merges, use [PRODUCTION_INCIDENT_TRIAG
 
 ## Related docs
 
+- [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) — post-live monitoring, billing support FAQ (PR #161)
 - [LAUNCH_READINESS_EVIDENCE_PACK.md](./LAUNCH_READINESS_EVIDENCE_PACK.md)
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md)
 - [PLATFORM_SYNC_PRODUCTION_OPS.md](./PLATFORM_SYNC_PRODUCTION_OPS.md)
