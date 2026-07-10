@@ -118,7 +118,7 @@ Sandbox smoke after PR #156 merge confirmed test-mode paths worked end-to-end be
 
 **Smoke account:** Fresh Free parent account used for live cutover smoke.
 
-**Separate support case (not a cutover blocker):** Existing pre-payment-gateway Plus account **P-44947** is a separate migration/support decision. Future pre-gateway paid-user migration must follow a **separate reviewed support/admin procedure**. Do **not** manually edit entitlements or `stripe_billing_references` as part of routine ops.
+**Separate support case (not a cutover blocker):** Existing pre-payment-gateway Plus account **P-44947** — see [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md). Future pre-gateway paid-user migration must follow that reviewed procedure. Do **not** manually edit entitlements or `stripe_billing_references` as part of routine ops.
 
 ### Rollback
 
@@ -147,7 +147,7 @@ Rollback guidance remains in §8 and [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./S
 - Never use a Billing Portal URL as proof of the currently signed-in Wayfinder user.
 - Verify billing state from webhook-synced entitlement and Stripe records.
 - Do **not** manually edit entitlements or `stripe_billing_references`.
-- **P-44947** remains a legacy pre-payment-gateway Plus migration/support case.
+- **P-44947** remains a legacy pre-payment-gateway Plus migration/support case — procedure: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
 
 **P-44947 fresh-session Manage Billing test:** **Passed (expected).** Billing Portal did **not** open from inside Wayfinder — no Stripe Portal session URL was issued. Server requires a linked billing reference; legacy Plus without a gateway-linked customer receives a safe “no billing account” response. Manage Billing may still appear for legacy Plus entitlement display; Portal creation correctly blocked until a reviewed migration procedure links billing.
 
@@ -273,6 +273,7 @@ Production is now on **live Stripe**. Rollback remains available per §8 if live
 - [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — full cutover checklist and operator plan
 - [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) — architecture and webhook design
 - [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) — cross-platform post-cutover handoff (PR #158)
+- [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) — legacy Plus support (PR #160)
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — merge and smoke tracking
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) — pricing and privacy baseline
 ---
@@ -284,3 +285,4 @@ Production is now on **live Stripe**. Rollback remains available per §8 if live
 | 2026-07-07 | PR #157 — initial pre-live evidence pack (docs only) |
 | 2026-07-08 | PR #158 — live cutover result recorded; pre-live evidence marked completed; platform sync brief added |
 | 2026-07-08 | PR #159 — Billing Portal session safety finding; P-44947 Manage Billing test recorded |
+| 2026-07-10 | PR #160 — cross-link legacy Plus migration/support procedure |

@@ -302,7 +302,7 @@ Live Customer Portal must be configured **separately** from test mode.
 
 Stripe-hosted Billing Portal pages may remain reachable in the browser after Wayfinder sign-out because billing is hosted by Stripe. Wayfinder sign-out does not automatically close an already-open Stripe billing page in the browser window. On shared devices, users should return to Wayfinder, sign out, close the browser window, and clear browser history or site data if needed.
 
-**Support rules:** never paste or store Portal session URLs; never use a Portal URL as proof of the signed-in Wayfinder user; verify billing from webhook-synced entitlement and Stripe records; do not manually edit entitlements or `stripe_billing_references`. Legacy pre-gateway Plus (e.g. **P-44947**) must not receive Portal sessions until a reviewed migration procedure links billing.
+**Support rules:** never paste or store Portal session URLs; never use a Portal URL as proof of the signed-in Wayfinder user; verify billing from webhook-synced entitlement and Stripe records; do not manually edit entitlements or `stripe_billing_references`. Legacy pre-gateway Plus (e.g. **P-44947**): follow [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) — Portal blocked until safe migration links billing.
 
 Full finding: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md — Post-cutover operational findings](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#post-cutover-operational-findings).
 
@@ -410,6 +410,7 @@ Until then: **remain on sandbox/test mode** (`sk_test_...`).
 
 - [STRIPE_FOUNDATION_SETUP_PLAN.md](./STRIPE_FOUNDATION_SETUP_PLAN.md) — architecture, env vars, webhook design
 - [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — pre-live and [live cutover result](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#live-cutover-result) evidence (docs only)
+- [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) — legacy Plus support (PR #160)
 - [PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md](./PAYMENT_GATEWAY_AND_PRICING_STRATEGY.md) — pricing, privacy baseline, monetised value
 - [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) — merge / smoke tracking
 
@@ -423,3 +424,4 @@ Until then: **remain on sandbox/test mode** (`sk_test_...`).
 | 2026-07-07 | PR #157 — cross-link pre-live evidence pack; note PR #156 sandbox smoke passed |
 | 2026-07-08 | PR #158 — live cutover completed; cross-link live cutover result evidence |
 | 2026-07-08 | PR #159 — Billing Portal session safety operator note |
+| 2026-07-10 | PR #160 — cross-link legacy Plus migration/support procedure |

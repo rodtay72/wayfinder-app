@@ -139,7 +139,7 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 
 1. Pre-payment-gateway Plus users may not have Stripe live customer/subscription records.
 2. **P-44947** is a known legacy Plus/support case, not a cutover blocker.
-3. A separate reviewed migration/support procedure is needed before linking or transitioning legacy Plus users.
+3. Legacy Plus migration/support procedure: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) (PR #160). **Do not manually link billing or edit entitlements** until an approved migration flow exists.
 4. Do not manually patch entitlements or `stripe_billing_references` during normal support.
 5. Continue monitoring live webhook deliveries and Vercel logs after cutover.
 6. **Billing Portal pages** may remain reachable in the browser after Wayfinder sign-out (Stripe-hosted). Shared-device users should sign out, close the browser window, and clear browser history or site data if needed. See [STRIPE_PRE_LIVE_EVIDENCE_PACK.md — Post-cutover operational findings](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#post-cutover-operational-findings) (PR #159).
@@ -150,13 +150,13 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 
 | Platform | Next action |
 | --- | --- |
-| ChatGPT | Keep Stripe live cutover context as current state; help plan legacy Plus migration/support procedure next. |
-| Cursor | Use this brief as source context for next docs/support PR; do not change auth/RLS/journal/billing runtime unless explicitly instructed. |
+| ChatGPT | Keep Stripe live cutover context; use [legacy Plus procedure](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) for P-44947-style support. |
+| Cursor | Use legacy Plus procedure for support/docs PRs; do not change auth/RLS/journal/billing runtime unless explicitly instructed. |
 | Codex | If asked to review, verify PR #158 remains docs-only and contains no secrets/IDs. |
 | Claude Projects | Use this brief for copy/research/socialisation review; preserve ALIGN/CAB and privacy baseline. |
 | Claude Code | Reviewer or isolated branch only; no direct production-impact edits without explicit issue allowlist. |
 | OpenClaw | Socialise this state across configured agent channels/manual handoff. |
-| Human owner | Merge PR #158 after review; then plan separate pre-gateway Plus migration/support decision. |
+| Human owner | Merge PR #160; then decide whether to build parent-initiated legacy billing migration (separate implementation PR). |
 
 ---
 
@@ -166,3 +166,4 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 | --- | --- |
 | 2026-07-08 | PR #158 — initial platform sync brief for live cutover handoff |
 | 2026-07-08 | PR #159 — Billing Portal session safety risk cross-link |
+| 2026-07-10 | PR #160 — legacy Plus migration/support procedure cross-link |

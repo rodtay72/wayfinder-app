@@ -6,15 +6,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-10
 
-**Last verified merge:** PR #158 — Stripe live cutover evidence + platform sync brief (docs only)
+**Last verified merge:** PR #159 — Billing Portal session safety follow-up
 
-**Next proposed PR:** PR #159 — Billing Portal session safety follow-up
+**Next proposed PR:** PR #160 — legacy Plus migration/support procedure (docs only)
+
+**PR #159 (merged):** Billing Portal session safety documentation + parent-facing Plans shared-device copy. Post-cutover finding documented. No auth/RLS/API/env changes.
+
+**PR #160 (in flight):** [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) — reviewed support procedure for pre-payment-gateway Plus users (e.g. P-44947). Docs only — no migration code, SQL, API, or manual billing edits.
 
 **PR #158 (merged):** Live cutover evidence + [platform sync brief](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) (docs only).
-
-**PR #159 (in flight):** Billing Portal session safety documentation + parent-facing Plans copy. Records post-cutover finding that Stripe billing pages may remain reachable in the browser after Wayfinder sign-out. No auth/RLS/API/env changes.
 
 **PR #155 (merged):** [STRIPE_LIVE_READINESS_CUTOVER_PLAN.md](./STRIPE_LIVE_READINESS_CUTOVER_PLAN.md) — live cutover checklist (docs only).
 
@@ -30,9 +32,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** **Live Stripe active** on Production. Live Checkout, webhook (`livemode: true`, outcome `processed`), and Billing Portal smoke **passed**. Post-cutover Billing Portal session safety documented (PR #159). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
+**Stripe:** **Live Stripe active** on Production. Legacy Plus migration/support procedure in PR #160. No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #159 (Billing Portal session safety). Plan separate pre-gateway Plus migration/support for legacy Plus (e.g. P-44947 — not a cutover blocker; Manage Billing correctly blocked without linked billing reference). Do not manually edit entitlements or `stripe_billing_references`.
+**Current owner blocker:** Merge PR #160 (legacy Plus support procedure). Then decide whether to build a safe parent-initiated legacy billing migration flow (separate implementation PR). **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy example: P-44947 — see [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
