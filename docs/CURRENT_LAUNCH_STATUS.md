@@ -75,7 +75,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Counsellor response status badges | Counsellor workspace shows Pending response, Draft saved, Published, Revoked, and Status unavailable badges on parent-approved entries | PR #67 |
 | Parent Feedback Library | Parent dashboard keeps published counsellor feedback accessible after mark-as-read clears the unread notice | PR #69 |
 
-## Issue #71 — Mental Health Professional onboarding / invite (launch notes)
+## Issue #71 — Mental Health Practitioner (MHP) onboarding / invite (launch notes)
 
 **Status:** **Owner smoke passed / ready to close Issue #71** — handoff runbook: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md); closure checklist: [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) (C6f owner smoke pass recorded)
 
@@ -177,7 +177,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Languages:** English (`en`) · 简体中文 (`zh-Hans`)
 
-**Key rules:** Static UI/product copy only in first runtime PRs; saved journal/Decode/reflection text stays in the language entered; ALIGN/CAB non-diagnostic tone in both languages; MHP parent-facing label remains Mental Health Professional; internal role stays `counsellor`.
+**Key rules:** Static UI/product copy only in first runtime PRs; saved journal/Decode/reflection text stays in the language entered; ALIGN/CAB non-diagnostic tone in both languages; MHP parent-facing label is **Mental Health Practitioner (MHP)**; internal role stays `counsellor`.
 
 ## In flight
 

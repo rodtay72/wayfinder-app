@@ -564,7 +564,7 @@ function MhpInviteInvalidScreen({meta,message,onLeave}){
 function MhpInviteAutoAcceptLoadingScreen({meta,inviteStatus}){
  return <div className="wrap">
   <div className="card mhp-invite-card">
-   <h2>{meta.inviteAutoAcceptTitle||'Setting up your Mental Health Professional profile…'}</h2>
+   <h2>{meta.inviteAutoAcceptTitle||'Setting up your Mental Health Practitioner profile…'}</h2>
    <p className="sub auth-invite-subtitle">{meta.inviteAutoAcceptBody||'Please wait while Wayfinder prepares your profile and licence draft.'}</p>
    {inviteStatus?.invitedEmail ? <p className="sub mhp-invite-email-hint"><span className="mhp-invite-email-label">{meta.inviteUseEmailLabel||'Invited email'}: </span>{inviteStatus.invitedEmail}</p> : null}
    <p className="dashboard-helper" style={{marginTop:20,color:'#666'}}>{meta.inviteCheckingMessage||'Checking your invitation…'}</p>
@@ -587,7 +587,7 @@ function MhpInviteNoActiveScreen({meta,message,onGoToMhpSignIn,onSignOut}){
  return <div className="wrap">
   <div className="card mhp-invite-card mhp-invite-invalid-card">
    <h2>{meta.inviteNoActiveInviteTitle||'No active invitation found'}</h2>
-   <p className="dashboard-helper">{message||meta.inviteNoActiveInviteMessage||'No active Mental Health Professional invitation was found for this signed-in email.'}</p>
+   <p className="dashboard-helper">{message||meta.inviteNoActiveInviteMessage||'No active Mental Health Practitioner invitation was found for this signed-in email.'}</p>
    <p className="sub mhp-invite-note">{meta.inviteNoActiveInviteBody||'If you expected an invitation, sign in with the invited email or contact Wayfinder admin for a new invite link.'}</p>
    {typeof onGoToMhpSignIn==='function' ? <button type="button" className="btn btn-secondary btn-block" onClick={onGoToMhpSignIn}>{meta.officialMhpSignInLink||'Go to MHP sign in'}</button> : null}
    <button type="button" className="btn btn-ghost btn-block" onClick={onSignOut}>Sign out</button>
@@ -626,7 +626,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
  const portalLabel=role==='admin'
   ? 'Wayfinder Owner Admin'
   : role==='counsellor'
-  ? (mhpMeta.onboardingPortalLabel||'Mental Health Professional Portal')
+  ? (mhpMeta.onboardingPortalLabel||'Mental Health Practitioner (MHP) Portal')
   : 'A space to find your way back to each other';
  const pdpaNotice=typeof PDPA_SIGNUP_NOTICE!=='undefined'?PDPA_SIGNUP_NOTICE:{};
  const pdpaTitle=String(pdpaNotice.title||'Before you create your account').trim();
@@ -634,7 +634,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
  const pdpaCheckboxLabel=String(pdpaNotice.checkboxLabel||'I have read and understood this privacy and data-use notice.').trim();
  const pdpaUncheckedMessage=String(pdpaNotice.uncheckedMessage||'Please read the privacy and data-use notice and confirm you understand it before creating your account.').trim();
  const authHeading=inviteCreateMode
-  ? (mhpMeta.inviteCreateAccountTitle||'Create your Wayfinder Mental Health Professional account')
+  ? (mhpMeta.inviteCreateAccountTitle||'Create your Wayfinder Mental Health Practitioner account')
   : inviteSignInMode
   ? (mhpMeta.inviteSignInTitle||'Sign in with your invited email')
   : (activeMode==='signin'?'Sign in':'Create account');
@@ -744,7 +744,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
    <p className="sub mhp-invite-note">{mhpMeta.inviteCreateAccountIntro||mhpMeta.inviteProfileSetupDetail||'This invitation is tied to the email below. After email verification, sign in with this email and Wayfinder will continue your profile and licence setup.'}</p>
   </div> : null}
   <div className="card auth-login-card" style={{padding:0,overflow:'hidden'}}>
-   {(role==='parent'||(role==='counsellor'&&!inviteToken)) ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Counselling team':'Parent and child'}/> : null}
+   {(role==='parent'||(role==='counsellor'&&!inviteToken)) ? <img className="auth-login-hero" src={role==='counsellor'?'login-hero.jpg':'parent-hero.jpg'} alt={role==='counsellor'?'Mental Health Practitioner workspace':'Parent and child'}/> : null}
    <div className="auth-login-body">
    {inviteSignupPendingVerification ? <div className="auth-invite-pending-panel">
     <h2>{mhpMeta.inviteSignupPendingTitle||'Check your email to continue'}</h2>
@@ -766,7 +766,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
     <button type="button" className="btn btn-ghost btn-block auth-forgot-back" onClick={()=>{setForgotOpen(false);setResetStatus('');setError('');}}>{mhpMeta.forgotPasswordBack||'Back to sign in'}</button>
    </> : <>
    <h2>{authHeading}</h2>
-   {mhpSetupSignInGuidance&&!inviteToken ? <p className="sub auth-invite-subtitle">{mhpMeta.mhpSetupSignInGuidance||'Your email is verified. Sign in with the invited email address to continue Mental Health Professional profile setup.'}</p> : null}
+   {mhpSetupSignInGuidance&&!inviteToken ? <p className="sub auth-invite-subtitle">{mhpMeta.mhpSetupSignInGuidance||'Your email is verified. Sign in with the invited email address to continue Mental Health Practitioner profile setup.'}</p> : null}
    {inviteCreateMode ? <p className="sub auth-invite-subtitle">{mhpMeta.inviteCreateAccountSubtitle||'This invitation is tied to the email below. After email verification, sign in with this email and Wayfinder will continue your profile and licence setup.'}</p> : null}
    <div className="field"><label>Email</label><input type="email" value={email} readOnly={inviteEmailLocked} className={inviteEmailLocked?'field-input-locked':''} onChange={e=>!inviteEmailLocked&&setEmail(e.target.value)} placeholder="your@email.com" onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
    {inviteToken&&inviteStatus?.invitedEmail ? <p className="hint mhp-invite-email-locked-note">{mhpMeta.inviteEmailLockedNote||'This invitation is tied to this email address.'}</p> : null}
@@ -804,7 +804,7 @@ function AuthScreen({onAuth, role, message, messageEmail, inviteToken, inviteSta
    {inviteToken ? <MhpInviteLeaveLink meta={mhpMeta} onLeave={onLeaveInviteFlow}/> : null}
    {allowSignup&&!inviteToken ? <p style={{textAlign:'center',marginTop:16,fontSize:13,color:'#666'}}>
     {activeMode==='signin'?<span>No account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signup')}>Sign up</span></span>:<span>Have an account? <span style={{color:'var(--sage)',cursor:'pointer',fontWeight:600}} onClick={()=>switchMode('signin')}>Sign in</span></span>}
-   </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : role==='counsellor'&&!inviteToken ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{mhpMeta.counsellorSignInOnlyNote||'New Mental Health Professional onboarding requires an invitation from Wayfinder admin.'}</p> : null}
+   </p> : role==='admin' ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>Owner admin sign-in only. No public signup.</p> : role==='counsellor'&&!inviteToken ? <p className="sub" style={{textAlign:'center',marginTop:16,fontSize:13}}>{mhpMeta.counsellorSignInOnlyNote||'New Mental Health Practitioner onboarding requires an invitation from Wayfinder admin.'}</p> : null}
    </>}
    </div>
   </div>
@@ -857,10 +857,10 @@ function VerificationRequiredScreen({authSession, role, onRefreshSession, onSign
  };
 
  return <div className="wrap mhp-invite-setup-wrap">
-  <div className="card banner"><h1>{inviteSetupActive?(mhpMeta.inviteVerificationTitle||'Verify your email to continue profile setup'):'Verify your Wayfinder account'}</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{inviteSetupActive?(mhpMeta.onboardingPortalLabel||'Mental Health Professional Portal'):(role==='counsellor'?'Counsellor Portal':'A space to find your way back to each other')}</p></div>
+  <div className="card banner"><h1>{inviteSetupActive?(mhpMeta.inviteVerificationTitle||'Verify your email to continue profile setup'):'Verify your Wayfinder account'}</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>{inviteSetupActive?(mhpMeta.onboardingPortalLabel||'Mental Health Practitioner (MHP) Portal'):(role==='counsellor'?'Mental Health Practitioner (MHP) Portal':'A space to find your way back to each other')}</p></div>
   <div className="card" style={{textAlign:'center',padding:32}}>
    <h2 style={{marginBottom:10}}>Email verification required</h2>
-   <p className="sub" style={{lineHeight:1.6}}>{inviteSetupActive?(mhpMeta.inviteVerificationBody||'Please confirm your email address before continuing Mental Health Professional profile setup. After verification you will return to this invitation flow.'):'Please use the verification link sent to your inbox before opening your Wayfinder workspace. This keeps parent and counsellor records protected.'}</p>
+   <p className="sub" style={{lineHeight:1.6}}>{inviteSetupActive?(mhpMeta.inviteVerificationBody||'Please confirm your email address before continuing Mental Health Practitioner profile setup. After verification you will return to this invitation flow.'):'Please use the verification link sent to your inbox before opening your Wayfinder workspace. This keeps parent and MHP records protected.'}</p>
    {status&&<div style={{color:'#4f7a5e',fontSize:13,marginTop:16,padding:'10px 12px',background:'#edf7ef',borderRadius:6}}>{status}</div>}
    {error&&<div style={{color:'#8a5a00',fontSize:13,marginTop:16,padding:'10px 12px',background:'#fff4d6',borderRadius:6}}>{error}</div>}
    <div style={{marginTop:22,display:'flex',flexDirection:'column',gap:10}}>
@@ -902,10 +902,10 @@ function PasswordRecoveryScreen({status, role, onSubmit, onSignOut}){
   return <div className="wrap">
    <div className="card banner"><h1>Password updated</h1><p style={{opacity:.85,fontSize:14,marginTop:4}}>Wayfinder by PsyTec</p></div>
    <div className="card" style={{textAlign:'center',padding:32}}>
-    <h2 style={{marginBottom:10}}>Continue to the counsellor portal</h2>
-    <p className="sub" style={{lineHeight:1.6}}>Your password has been updated. This account is registered for the counsellor portal.</p>
+    <h2 style={{marginBottom:10}}>Continue to the MHP portal</h2>
+    <p className="sub" style={{lineHeight:1.6}}>Your password has been updated. This account is registered for the Mental Health Practitioner (MHP) portal.</p>
     <div style={{marginTop:22,display:'flex',flexDirection:'column',gap:10}}>
-     <a className="btn btn-primary" href="counsellor.html" style={{textDecoration:'none'}}>Go to counsellor portal</a>
+     <a className="btn btn-primary" href="counsellor.html" style={{textDecoration:'none'}}>Go to MHP portal</a>
      <button className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
     </div>
    </div>
@@ -1501,9 +1501,9 @@ function OwnerAdminInviteRequestCard({row,meta,user,authSession,actionState,appr
   const link=inviteResult?.inviteLink||'';
   const email=String(inviteResult?.invitedEmail||row.colleagueEmail||'').trim();
   if(!link) return;
-  const subject=meta.inviteEmailSubject||'Wayfinder Mental Health Professional invitation';
+  const subject=meta.inviteEmailSubject||'Wayfinder Mental Health Practitioner invitation';
   const body=[
-   meta.inviteEmailIntro||'You have been invited to join Wayfinder as a Mental Health Professional.',
+   meta.inviteEmailIntro||'You have been invited to join Wayfinder as a Mental Health Practitioner.',
    '',
    link,
    '',
@@ -1575,14 +1575,14 @@ function OwnerAdminApp({user,authSession,onSignOut}){
    }
    if(!result.ok){
     setProfiles([]);
-    setBanner({type:'error',message:'We could not load the Mental Health Professional review queue right now.'});
+    setBanner({type:'error',message:'We could not load the Mental Health Practitioner review queue right now.'});
     return;
    }
    setProfiles(result.rows||[]);
   }catch(err){
    AuthDebug.log('[owner admin] queue load failed:', { message: err?.message || String(err) });
    setProfiles([]);
-   setBanner({type:'error',message:'We could not load the Mental Health Professional review queue right now.'});
+   setBanner({type:'error',message:'We could not load the Mental Health Practitioner review queue right now.'});
   }finally{
    setQueueLoading(false);
   }
@@ -1687,10 +1687,10 @@ function OwnerAdminApp({user,authSession,onSignOut}){
   const mhpUserId=row?.mhpUserId;
   if(!mhpUserId||!user?.id) return;
   const actionMap={
-   publish:{profileStatus:'published',profileVisible:true,membershipStatus:'active',confirm:'Publish and activate this Mental Health Professional for parent selection?'},
+   publish:{profileStatus:'published',profileVisible:true,membershipStatus:'active',confirm:'Publish and activate this Mental Health Practitioner for parent selection?'},
    pending:{profileStatus:'pending_review',profileVisible:false,membershipStatus:'pending_review',confirm:null},
    hide:{profileStatus:'hidden',profileVisible:false,membershipStatus:'pending_review',confirm:null},
-   suspend:{profileStatus:'suspended',profileVisible:false,membershipStatus:'suspended',confirm:'Suspend this Mental Health Professional? They will be removed from parent selection.'}
+   suspend:{profileStatus:'suspended',profileVisible:false,membershipStatus:'suspended',confirm:'Suspend this Mental Health Practitioner? They will be removed from parent selection.'}
   };
   const action=actionMap[actionKey];
   if(!action) return;
@@ -1744,7 +1744,7 @@ function OwnerAdminApp({user,authSession,onSignOut}){
  if(!adminGate.isAdmin){
   return <div className="wrap owner-admin-wrap"><div className="card owner-admin-access-card">
    <h2>Owner admin access required.</h2>
-   <p className="dashboard-helper">This page is for Wayfinder owner administrators only. Mental Health Professional profiles are not shown here unless your account is listed in owner admin settings.</p>
+   <p className="dashboard-helper">This page is for Wayfinder owner administrators only. Mental Health Practitioner profiles are not shown here unless your account is listed in owner admin settings.</p>
    <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
   </div></div>;
  }
@@ -1753,7 +1753,7 @@ function OwnerAdminApp({user,authSession,onSignOut}){
   <div className="card banner owner-admin-hero">
    <div className="owner-admin-hero-copy">
     <p className="dashboard-kicker">Wayfinder Owner Admin</p>
-    <h1>Mental Health Professional review queue</h1>
+    <h1>Mental Health Practitioner review queue</h1>
     <p className="dashboard-helper">Review draft and pending profiles, then publish or suspend only through owner-controlled publication. MHP draft completion is not publication.</p>
    </div>
    <div className="owner-admin-hero-actions">
@@ -1768,7 +1768,7 @@ function OwnerAdminApp({user,authSession,onSignOut}){
    <div className="owner-admin-section-head">
     <div>
      <h2>{inviteRequestMeta.sectionTitle||'Pending MHP colleague invite requests'}</h2>
-     <p className="dashboard-helper">{inviteRequestMeta.sectionIntro||'Counsellor-submitted requests awaiting owner review.'}</p>
+     <p className="dashboard-helper">{inviteRequestMeta.sectionIntro||'MHP-submitted requests awaiting owner review.'}</p>
     </div>
     <button type="button" className="switch switch-muted" onClick={loadInviteRequests} disabled={inviteQueueLoading}>{inviteQueueLoading?(inviteRequestMeta.refreshButton||'Refresh requests')+'…':(inviteRequestMeta.refreshButton||'Refresh requests')}</button>
    </div>
@@ -1818,7 +1818,7 @@ function OwnerAdminApp({user,authSession,onSignOut}){
    >{item.label}</button>)}
   </div>
 
-  {queueLoading && !profiles.length ? <div className="card owner-admin-empty">Loading Mental Health Professional profiles…</div> : null}
+  {queueLoading && !profiles.length ? <div className="card owner-admin-empty">Loading Mental Health Practitioner profiles…</div> : null}
 
   {!queueLoading && !filteredProfiles.length ? <div className="card owner-admin-empty">
    <h2>No profiles in this view</h2>
@@ -2025,7 +2025,7 @@ function App(){
     return;
    }
    if(!status.hasActiveInvite){
-    const noActiveMessage=status.message||mhpMeta.inviteNoActiveInviteMessage||'No active Mental Health Professional invitation was found for this signed-in email.';
+    const noActiveMessage=status.message||mhpMeta.inviteNoActiveInviteMessage||'No active Mental Health Practitioner invitation was found for this signed-in email.';
     setInviteAutoAcceptActive(false);
     setInviteSetupNoActive(true);
     setInviteSetupNoActiveMessage(noActiveMessage);
@@ -2270,7 +2270,7 @@ function App(){
         return false;
        }
        if(mhpSetupFromUrlRef.current&&status.ready){
-        const noActiveMessage=status.message||mhpMeta.inviteNoActiveInviteMessage||'No active Mental Health Professional invitation was found for this signed-in email.';
+        const noActiveMessage=status.message||mhpMeta.inviteNoActiveInviteMessage||'No active Mental Health Practitioner invitation was found for this signed-in email.';
         setProfile(null);
         setInviteAutoAcceptActive(false);
         setInviteSetupNoActive(true);
@@ -2308,7 +2308,7 @@ function App(){
      AuthDebug.log('[profile] counsellor access confirmation failed:', { event, sessionUserId, message });
      setProfile(null);
      setProfileError('');
-     setAccessDenied('Access denied: counsellor role required.');
+     setAccessDenied('Access denied: MHP role required.');
      setEntered(false);
     }else if(message.includes('Auth session not ready')||message.includes('No authenticated Supabase session')){
      AuthDebug.log('[profile] waiting for auth session:', { event, sessionUserId, message });
@@ -2481,9 +2481,9 @@ function App(){
 
   // Wrong portal check
   if(APP_ROLE!=='admin'&&profile.role !== APP_ROLE){AuthDebug.log('[render] branch: wrong portal');return <div className="wrap"><div className="card" style={{textAlign:'center',padding:32}}>
-   <h2 style={{marginBottom:12}}>{APP_ROLE==='counsellor'?'Access denied: counsellor role required':'Wrong portal'}</h2>
+   <h2 style={{marginBottom:12}}>{APP_ROLE==='counsellor'?'Access denied: MHP role required':'Wrong portal'}</h2>
    <p className="sub">Your account is registered as a <b>{profile.role}</b>.</p>
-  <p className="sub" style={{marginTop:8}}>{profile.role==='parent'?'Please go to the main app to sign in.':'Please go to the counsellor portal to sign in.'}</p>
+  <p className="sub" style={{marginTop:8}}>{profile.role==='parent'?'Please go to the main app to sign in.':'Please go to the MHP portal to sign in.'}</p>
   <button className="btn btn-ghost" style={{marginTop:20}} onClick={signOut}>Sign out</button>
  </div></div>;}
 
@@ -2512,7 +2512,7 @@ function RoleGate({onPick,back,onSignOut,parentId}){
      <div className="d">Journal my thoughts, feelings and actions as I go through an activity with my child.</div>
     </div>
     <div className="role-opt" onClick={()=>onPick('counsellor')}>
-     <div className="illus-wrap"><SpotCompass/></div><div className="t">I'm the counsellor</div>
+     <div className="illus-wrap"><SpotCompass/></div><div className="t">I'm a Mental Health Practitioner (MHP)</div>
      <div className="d">Notice congruence, offer gentle questions, and coach toward emotional safety for the child.</div>
     </div>
    </div>
@@ -4018,7 +4018,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    <div className="decode-actions">
     {saveState==='saved' ? <>
      <button type="button" className="btn btn-primary" onClick={onViewTrail}>View Journal Trail</button>
-     <button type="button" className="btn btn-secondary" onClick={()=>onShareForReview?.(savedEntry)}>{typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING.postSaveButtonLabel:'Share this reflection for counsellor review'}</button>
+     <button type="button" className="btn btn-secondary" onClick={()=>onShareForReview?.(savedEntry)}>{typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING.postSaveButtonLabel:'Share this reflection for MHP review'}</button>
      <button type="button" className="btn btn-secondary" onClick={back}>Return to Dashboard</button>
     </> : <>
      <button type="button" className="btn btn-secondary" onClick={goBack} disabled={saveState==='saving'}>Back</button>
@@ -4233,7 +4233,7 @@ const practitionerSelectOptionLabel=(row)=>{
  if(organizationName) return organizationName;
  if(profileName) return profileName;
  if(labelName) return labelName;
- return wid?('Mental Health Professional '+wid):'Mental Health Professional';
+ return wid?('Mental Health Practitioner '+wid):'Mental Health Practitioner';
 };
 
 const practitionerPortraitInitials=(row)=>{
@@ -4298,19 +4298,19 @@ function ParentCounsellorFeedbackNotification({meta,loading,available,unreadCoun
  return <div className="card parent-feedback-notification">
   <div className="parent-feedback-notification-copy">
    <p className="pill parent-feedback-notification-pill">{badgeLabel}</p>
-   <h2>{meta.notificationTitle||'Counsellor feedback to review'}</h2>
-   <p className="dashboard-helper">{meta.notificationSubtitle||'Your counsellor has shared a contextual reflection on entries you chose to share.'}</p>
+   <h2>{meta.notificationTitle||'MHP feedback to review'}</h2>
+   <p className="dashboard-helper">{meta.notificationSubtitle||'Your Mental Health Practitioner has shared a contextual reflection on entries you chose to share.'}</p>
    {unreadRows.length>0 && <ul className="parent-feedback-notification-list">
     {unreadRows.slice(0,3).map(row=><li key={row.responseId}>
      <button type="button" className="parent-feedback-notification-link" onClick={()=>onOpenFeedback(row.responseId)}>
-      {row.contextLabel||meta.openFeedbackButton||'Read counsellor feedback'}
+      {row.contextLabel||meta.openFeedbackButton||'Read MHP feedback'}
       {row.publishedAt ? <span className="parent-feedback-notification-date"> · {formatCounsellorFeedbackDate(row.publishedAt)}</span> : null}
      </button>
     </li>)}
    </ul>}
   </div>
   {unreadRows[0]?.responseId && <button type="button" className="btn btn-primary" onClick={()=>onOpenFeedback(unreadRows[0].responseId)}>
-   {meta.openFeedbackButton||'Read counsellor feedback'}
+   {meta.openFeedbackButton||'Read MHP feedback'}
   </button>}
  </div>;
 }
@@ -4334,13 +4334,13 @@ function ParentCounsellorFeedbackLibrary({meta,loading,available,rows,unreadResp
     return `${title} · ${formatCounsellorFeedbackDate(date)}`;
    }
   }
-  return meta.feedbackLibraryTitle||'Counsellor feedback';
+  return meta.feedbackLibraryTitle||'MHP feedback';
  };
  return <div className="card parent-feedback-library">
   <div className="parent-feedback-library-head">
    <div>
-    <h2>{meta.feedbackLibraryTitle||'Counsellor feedback'}</h2>
-    <p className="dashboard-helper">{meta.feedbackLibrarySubtitle||'Feedback your counsellor has shared on entries you chose to share.'}</p>
+    <h2>{meta.feedbackLibraryTitle||'MHP feedback'}</h2>
+    <p className="dashboard-helper">{meta.feedbackLibrarySubtitle||'Feedback your Mental Health Practitioner has shared on entries you chose to share.'}</p>
    </div>
    <span className="pill parent-feedback-library-count">{sortedRows.length} {sortedRows.length===1?'item':'items'}</span>
   </div>
@@ -4402,18 +4402,18 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
    if(!result.available){
     setAvailable(false);
     setDetail(null);
-    setLoadError(meta.unavailable||'Counsellor feedback is not available yet. Your journal and shared reflections remain unchanged.');
+    setLoadError(meta.unavailable||'MHP feedback is not available yet. Your journal and shared reflections remain unchanged.');
     return;
    }
    setAvailable(true);
    setDetail(result.detail||null);
    if(!result.detail){
-    setLoadError(meta.detailUnavailable||'This counsellor feedback could not be loaded right now.');
+    setLoadError(meta.detailUnavailable||'This MHP feedback could not be loaded right now.');
    }
   }catch(err){
    setAvailable(false);
    setDetail(null);
-   setLoadError(meta.unavailable||'Counsellor feedback is not available yet. Your journal and shared reflections remain unchanged.');
+   setLoadError(meta.unavailable||'MHP feedback is not available yet. Your journal and shared reflections remain unchanged.');
    AuthDebug.log('[parent feedback] detail load failed:', { message: err?.message || String(err) });
   }finally{
    setLoading(false);
@@ -4445,13 +4445,13 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
   try{
    const result=await DB.markParentCounsellorFeedbackRead(user.id,responseId,authSession);
    if(!result.available||!result.ok){
-    setMarkReadError(meta.markReadError||'Mark as read could not be completed right now. Your counsellor feedback remains visible.');
+    setMarkReadError(meta.markReadError||'Mark as read could not be completed right now. Your MHP feedback remains visible.');
     return;
    }
    setDetail(prev=>prev?({...prev,isRead:true,readAt:result.readAt||prev.readAt}):prev);
    onMarkedRead?.();
   }catch(err){
-   setMarkReadError(meta.markReadError||'Mark as read could not be completed right now. Your counsellor feedback remains visible.');
+   setMarkReadError(meta.markReadError||'Mark as read could not be completed right now. Your MHP feedback remains visible.');
    AuthDebug.log('[parent feedback] mark read failed:', { message: err?.message || String(err) });
   }finally{
    setMarkingRead(false);
@@ -4479,10 +4479,10 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
 
  const journalEntryId=detail?.journalEntryId||detail?.linkedGrantEntries?.[0]?.journalEntryId||detail?.linkedJournalEntryIds?.[0]||null;
 
- if(loading) return <div className="wrap"><div className="card parent-feedback-reader"><p className="sub">Loading counsellor feedback…</p></div></div>;
+ if(loading) return <div className="wrap"><div className="card parent-feedback-reader"><p className="sub">Loading MHP feedback…</p></div></div>;
 
  return <div className="wrap parent-feedback-reader-wrap">
-  <Bar title={meta.readerTitle||'Counsellor feedback'} back={onBack} onSignOut={onSignOut}/>
+  <Bar title={meta.readerTitle||'MHP feedback'} back={onBack} onSignOut={onSignOut}/>
   <div className="card parent-feedback-reader">
    {!available || !detail ? <p className="sub parent-feedback-unavailable">{loadError||meta.unavailable}</p> : <>
     <p className="parent-feedback-reader-intro sub">{meta.readerIntro||'This reflection relates only to the Wayfinder entries you chose to share.'}</p>
@@ -4491,7 +4491,7 @@ function ParentCounsellorFeedbackReader({user,authSession,responseId,entries,ent
      <p>{meta.confidentialityNotice}</p>
     </div>
     <div className="parent-feedback-meta-row">
-     {detail.counsellorWayfinderId ? <span className="pill">{meta.counsellorLabelPrefix||'Counsellor'} · {detail.counsellorWayfinderId}</span> : null}
+     {detail.counsellorWayfinderId ? <span className="pill">{meta.counsellorLabelPrefix||'MHP'} · {detail.counsellorWayfinderId}</span> : null}
      {detail.publishedAt ? <span className="sub">{meta.publishedLabel||'Published'}: {formatCounsellorFeedbackDate(detail.publishedAt)}</span> : null}
      {detail.isRead ? <span className="pill parent-feedback-read-pill">{meta.markReadDone||'Marked as read'}</span> : null}
     </div>
@@ -4605,7 +4605,7 @@ function ParentSignupInviteModal({open,context,onClose}){
     <button type="button" className="btn btn-ghost btn-sm invite-share-close" onClick={onClose}>{meta.closeButton||'Close'}</button>
    </div>
    <p className="dashboard-helper invite-share-intro">{meta.modalIntro||'Share the parent signup link below. This is only the Wayfinder parent entry point.'}</p>
-   <p className="sub invite-share-privacy">{meta.privacyNote||'No referral tracking, automatic journal sharing, professional account creation, or counsellor provisioning is included.'}</p>
+   <p className="sub invite-share-privacy">{meta.privacyNote||'No referral tracking, automatic journal sharing, professional account creation, or MHP provisioning is included.'}</p>
    <label className="field invite-share-link-field">
     <span>{meta.linkLabel||'Parent signup link'}</span>
     <input type="text" className="invite-share-link-input" readOnly value={link} onFocus={(event)=>event.target.select()}/>
@@ -4647,7 +4647,7 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose,user,authSessi
 
  const buildRequestDraft=()=>{
   const lines=[
-   meta.requestDraftIntro||'Wayfinder Mental Health Professional invitation request',
+   meta.requestDraftIntro||'Wayfinder Mental Health Practitioner invitation request',
    '',
    `${meta.fieldColleagueName||'Colleague name'}: ${String(form.colleagueName||'').trim()||'-'}`,
    `${meta.fieldColleagueEmail||'Colleague email'}: ${String(form.colleagueEmail||'').trim()||'-'}`,
@@ -4659,7 +4659,7 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose,user,authSessi
  };
 
  const emailAdmin=()=>{
-  const subject=meta.requestDraftIntro||'Wayfinder Mental Health Professional invitation request';
+  const subject=meta.requestDraftIntro||'Wayfinder Mental Health Practitioner invitation request';
   const body=buildRequestDraft();
   const adminEmail=String(meta.adminEmail||'').trim();
   const mailtoBase=adminEmail?`mailto:${encodeURIComponent(adminEmail)}`:'mailto:';
@@ -4700,10 +4700,10 @@ function MentalHealthProfessionalInviteRequestModal({open,onClose,user,authSessi
  return <div className="invite-share-overlay" role="presentation" onClick={onClose}>
   <div className="invite-share-modal invite-request-modal card" role="dialog" aria-modal="true" aria-labelledby="mhp-invite-request-title" onClick={(event)=>event.stopPropagation()}>
    <div className="invite-share-head">
-    <h2 id="mhp-invite-request-title">{meta.modalTitle||'Invite counsellors to Wayfinder'}</h2>
+    <h2 id="mhp-invite-request-title">{meta.modalTitle||'Invite MHP colleagues to Wayfinder'}</h2>
     <button type="button" className="btn btn-ghost btn-sm invite-share-close" onClick={onClose}>{meta.closeButton||'Close'}</button>
    </div>
-   <p className="dashboard-helper invite-share-intro">{meta.modalIntro||'Mental Health Professional accounts are invitation-only. Submit this request for Wayfinder admin review. No account, invite link, or MHP access is created until admin approval.'}</p>
+   <p className="dashboard-helper invite-share-intro">{meta.modalIntro||'Mental Health Practitioner (MHP) accounts are invitation-only. Submit this request for Wayfinder admin review. No account, invite link, or MHP access is created until admin approval.'}</p>
    <div className="invite-request-fields">
     <label className="field"><span>{meta.fieldColleagueName||'Colleague name'}</span><input type="text" value={form.colleagueName} onChange={(event)=>setField('colleagueName',event.target.value)}/></label>
     <label className="field"><span>{meta.fieldColleagueEmail||'Colleague email'}</span><input type="email" value={form.colleagueEmail} onChange={(event)=>setField('colleagueEmail',event.target.value)}/></label>
@@ -4725,10 +4725,10 @@ function MentalHealthProfessionalInvitePanel({inviteShareMeta,professionalInvite
  const professionalMeta=professionalInviteMeta||mhpProfessionalInviteMeta();
  return <div className="card mhp-invite-panel">
   <h2>{professionalMeta.panelTitle||'Invite others to Wayfinder'}</h2>
-  <p className="mhp-invite-panel-intro">{professionalMeta.panelIntro||'Share the parent signup link with parents you know. Mental Health Professional colleagues must be invited by the Wayfinder administrator.'}</p>
+  <p className="mhp-invite-panel-intro">{professionalMeta.panelIntro||'Share the parent signup link with parents you know. Mental Health Practitioner (MHP) colleagues must be invited by the Wayfinder administrator.'}</p>
   <div className="mhp-invite-panel-actions">
    <button type="button" className="btn btn-secondary" title={professionalMeta.parentButtonTitle||parentMeta.counsellorButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={onInviteParents}>{professionalMeta.parentButtonLabel||parentMeta.counsellorButtonLabel||'Invite parents to Wayfinder'}</button>
-   <button type="button" className="btn btn-ghost" title={professionalMeta.professionalButtonTitle||'Prepare an admin invitation request.'} onClick={onInviteProfessionals}>{professionalMeta.professionalButtonLabel||'Invite counsellors to Wayfinder'}</button>
+   <button type="button" className="btn btn-ghost" title={professionalMeta.professionalButtonTitle||'Prepare an admin invitation request.'} onClick={onInviteProfessionals}>{professionalMeta.professionalButtonLabel||'Invite MHP colleagues to Wayfinder'}</button>
   </div>
  </div>;
 }
@@ -5047,7 +5047,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
      <button className="switch" onClick={startNewChild}>{t('nav.newChild','+ New child')}</button>
      <button className="switch" onClick={startNewEntry}>{t('nav.startActivity','Start new activity')}</button>
      <button className="switch switch-trail" onClick={()=>setStage('trail')}>{t('nav.journalTrail','Journal trail')}</button>
-     <button className="switch switch-trail" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardActionLabel||'Share for counsellor review'}</button>
+     <button className="switch switch-trail" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardActionLabel||'Share for MHP review'}</button>
      <button type="button" className="switch switch-trail" title={inviteShareMeta.parentButtonTitle||'Share only the Wayfinder parent signup link.'} onClick={()=>setInviteShareOpen(true)}>{inviteShareMeta.parentButtonLabel||t('nav.inviteParent','Invite another parent')}</button>
      <button className="switch switch-trail" onClick={()=>setStage('events')}>{t('nav.events','Events')}</button>
      <button className="switch switch-muted" onClick={()=>setStage('plans')}>{t('nav.plans','Plans')}</button>
@@ -5112,8 +5112,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
    <div className="card review-share-dashboard-card">
     <div>
      <p className="pill">{t('dashboard.optionalSupport','Optional support')}</p>
-     <h2>{reviewShareMeta.dashboardCardTitle||'Share for counsellor review'}</h2>
-     <p className="dashboard-helper">{reviewShareMeta.dashboardCardSubtitle||'Choose saved journal or Decode entries to share with your counsellor for time-limited ALIGN/CAB review.'}</p>
+     <h2>{reviewShareMeta.dashboardCardTitle||'Share for MHP review'}</h2>
+     <p className="dashboard-helper">{reviewShareMeta.dashboardCardSubtitle||'Choose saved journal or Decode entries to share with your Mental Health Practitioner for time-limited ALIGN/CAB review.'}</p>
     </div>
     <button type="button" className="btn btn-secondary" onClick={()=>openTrailForReview(null)}>{reviewShareMeta.dashboardCardButton||'Open sharing in Journal Trail'}</button>
    </div>
@@ -5368,7 +5368,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
   const grantEntryIds=selectedIds.filter(id=>!isEntryLocked(id));
   if(!grantEntryIds.length){setError(meta.noEntriesSelected||'Select at least one entry to share.');return;}
   const wid=String(counsellorId||'').trim();
-  if(!wid){setError(meta.counsellorRequired||'Please choose a counsellor before sharing.');return;}
+  if(!wid){setError(meta.counsellorRequired||'Please choose a Mental Health Practitioner before sharing.');return;}
   setSubmitting(true);
   try{
    const resolved=await DB.resolveCounsellorUserId(wid,authSession);
@@ -5410,11 +5410,11 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
   setRevoking(null);
  };
  if(unavailable) return <div ref={panelRef} id="parent-review-share-panel" className="card review-share-card review-share-card--unavailable">
-  <h2>{meta.title||'Share for counsellor review'}</h2>
+  <h2>{meta.title||'Share for MHP review'}</h2>
   <p className="sub">{meta.setupUnavailable}</p>
  </div>;
  return <div ref={panelRef} id="parent-review-share-panel" className={'card review-share-card review-share-card--focused'+(highlight?' is-focused':'')}>
-  <h2>{meta.title||'Share for counsellor review'}</h2>
+  <h2>{meta.title||'Share for MHP review'}</h2>
   <p className="sub">{meta.shareModeIntro||meta.subtitle}</p>
   <p className="review-share-privacy">{meta.privacyNote}</p>
   {shareableEntries.length===0 ? <p className="sub">Save journal or Decode entries first — then you can select which to share.</p> : <>
@@ -5427,7 +5427,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
       const checked=!locked&&selectedIds.some(x=>entryIdMatches(x,id));
       const isDecode=isBehaviourDecodeEntry(e);
       return <label key={id} className={'review-share-entry'+(checked?' is-selected':'')+(locked?' is-locked':'')}>
-       <input type="checkbox" checked={checked} disabled={locked} onChange={()=>toggleId(id)} aria-label={'Share '+entryTitle(e)+' for counsellor review'}/>
+       <input type="checkbox" checked={checked} disabled={locked} onChange={()=>toggleId(id)} aria-label={'Share '+entryTitle(e)+' for MHP review'}/>
        <span className="review-share-entry-text">
         <span className="review-share-entry-title">{entryTitle(e)}</span>
         <span className="review-share-entry-meta">{fmt(entryDateValue(e))}{isDecode?' · Decode a Moment':' · Activity journal'}</span>
@@ -5454,9 +5454,9 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
     </div>
    </div>}
    <div className="field review-share-counsellor-field">
-    <label>{meta.counsellorSelectLabel||'Choose your Mental Health Professional'}</label>
+    <label>{meta.counsellorSelectLabel||'Choose a Mental Health Practitioner'}</label>
     {loadingCounsellors ? <p className="sub">{meta.counsellorSelectLoading||'Loading practitioners…'}</p> : counsellorsUnavailable ? <p className="sub review-share-error">{meta.setupUnavailable}</p> : counsellors.length===0 ? <p className="sub review-share-error">{meta.noCounsellorsAvailable}</p> : <>
-     <div className="review-share-practitioner-list" role="radiogroup" aria-label={meta.counsellorSelectLabel||'Choose your Mental Health Professional'}>
+     <div className="review-share-practitioner-list" role="radiogroup" aria-label={meta.counsellorSelectLabel||'Choose a Mental Health Practitioner'}>
       {counsellors.map(c=>{
        const wid=String(c.wayfinder_id||c.wayfinderId||'').trim();
        const selected=counsellorId===wid;
@@ -5479,7 +5479,7 @@ function ParentReviewSharePanel({user,parentId,entries,authSession,entryTitle,en
     <p className="sub">{meta.consentBody}</p>
     <p className="review-share-expiry">{meta.consentExpiryNotice||'Shared access lasts 30 days unless you revoke it earlier.'}</p>
     <label className="review-share-consent-check">
-     <input type="checkbox" checked={consent} onChange={ev=>setConsent(ev.target.checked)} aria-label={meta.consentCheckbox||'I consent to share selected reflections for counsellor review'}/>
+     <input type="checkbox" checked={consent} onChange={ev=>setConsent(ev.target.checked)} aria-label={meta.consentCheckbox||'I consent to share selected reflections for MHP review'}/>
      <span>{meta.consentCheckbox}</span>
     </label>
    </div>
@@ -5622,7 +5622,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
  if(loading) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>{t('trail.loading','Loading your journal trail...')}</div></div>;
 
  if(shareMode) return <div className="wrap review-share-mode-wrap">
-  <Bar title={reviewMeta.title||'Share for counsellor review'} back={exitShareMode} onSignOut={onSignOut}/>
+  <Bar title={reviewMeta.title||'Share for MHP review'} back={exitShareMode} onSignOut={onSignOut}/>
   <ParentReviewSharePanel user={user} parentId={parentId} entries={entries} authSession={authSession} entryTitle={entryTitle} entryDateValue={entryDateValue} fmt={fmt} focusEntryId={shareFocusEntryId} scrollIntoView={shareScroll} onScrollHandled={()=>setShareScroll(false)} entryLocks={entryLocks} feedbackMeta={feedbackMeta}/>
   <button type="button" className="btn btn-ghost review-share-exit" onClick={exitShareMode}>{reviewMeta.browseTrailLink||'View full journal trail'}</button>
  </div>;
@@ -5631,7 +5631,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
   <Bar title={t('trail.pageTitle','Journal trail')+' - '+parentId} back={back} onSignOut={onSignOut}/>
   <div className="card review-share-cta">
    <div>
-    <h2>{reviewMeta.title||'Share for counsellor review'}</h2>
+    <h2>{reviewMeta.title||'Share for MHP review'}</h2>
     <p className="sub">{reviewMeta.dashboardCardSubtitle||reviewMeta.subtitle}</p>
    </div>
    <button type="button" className="btn btn-secondary" onClick={()=>enterShareMode(null)}>{reviewMeta.dashboardCardButton||'Open sharing'}</button>
@@ -5835,7 +5835,7 @@ function RegisterDyad({parentId,initial,onSave,back,onSignOut}){
    </div>
    <div className="grid2">
     <div className="field"><label>DISC blend (if known)</label><input placeholder="optional — e.g. DSC" value={f.disc} onChange={e=>set('disc',e.target.value.toUpperCase())}/></div>
-    <div className="field"><label>Cultural background</label><select value={f.ethnicity} onChange={e=>set('ethnicity',e.target.value)}>{Object.keys(CULTURE).map(c=><option key={c}>{c}</option>)}</select><p className="hint">Helps your counsellor offer culturally-attuned reflections.</p></div>
+    <div className="field"><label>Cultural background</label><select value={f.ethnicity} onChange={e=>set('ethnicity',e.target.value)}>{Object.keys(CULTURE).map(c=><option key={c}>{c}</option>)}</select><p className="hint">{UI_TEXT?.hints?.cultureHint||'Helps your Mental Health Practitioner offer culturally-attuned reflections.'}</p></div>
    </div>
    {saveError&&<p style={{color:'#c0392b',marginBottom:8}}>{saveError}</p>}
    <button className="btn btn-primary btn-block" onClick={handleSave} disabled={saving}>{saving?'Saving…':'Save & begin'}</button>
@@ -7238,7 +7238,7 @@ function MentalHealthProfessionalProfileEditor({user,authSession,meta}){
   {unavailable ? <p className="sub">{meta.editProfileUnavailable||'Professional profile storage is not available yet.'}</p> : <>
   <div className="topbar mhp-profile-editor-head">
    <div>
-    <h2>{meta.editProfileTitle||'Mental Health Professional profile'}</h2>
+    <h2>{meta.editProfileTitle||'Your Mental Health Practitioner profile'}</h2>
     <p className="dashboard-helper">{meta.editProfileSubtitle||'Update your professional profile draft.'}</p>
    </div>
   </div>
@@ -7309,7 +7309,7 @@ function CounsellorApp({back,user,profile,authSession,onSignOut,startMhpOnboardi
  useEffect(()=>{
   if(!startMhpOnboarding) return;
   setCounsellorStage('editProfile');
-  setInviteAcceptedNotice(mhpMeta.inviteAcceptedMessage||'You may begin your Mental Health Professional profile and licence draft.');
+  setInviteAcceptedNotice(mhpMeta.inviteAcceptedMessage||'You may begin your Mental Health Practitioner profile and licence draft.');
   if(typeof onMhpOnboardingStarted==='function') onMhpOnboardingStarted();
  },[startMhpOnboarding,onMhpOnboardingStarted,mhpMeta.inviteAcceptedMessage]);
 
