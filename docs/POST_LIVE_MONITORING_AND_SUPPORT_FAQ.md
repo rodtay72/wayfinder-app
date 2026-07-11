@@ -107,7 +107,7 @@ Verify billing state from webhook-synced entitlement — not from browser redire
 
 ### Q: Is Connect therapy or emergency support?
 
-**A:** No. Connect is optional, parent-controlled Mental Health Professional review support. It is not therapy, diagnosis, emergency care, or crisis support.
+**A:** No. Connect is optional, parent-controlled Mental Health Practitioner (MHP) review support. It is not therapy, diagnosis, emergency care, or crisis support.
 
 ### Q: Should support manually link my Stripe account?
 
@@ -185,3 +185,4 @@ Do **not**:
 | Date | Change |
 | --- | --- |
 | 2026-07-10 | PR #161 — initial post-live monitoring and support FAQ (docs only) |
+| 2026-07-11 | PR #162 — parent-facing Plans/Dashboard copy polish; see [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) |

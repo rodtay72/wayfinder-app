@@ -43,7 +43,7 @@ const buildDisplayLabel = ({ wayfinderId, fullName, professionalTitle, instituti
   if (fullName) return fullName;
   if (professionalTitle) return professionalTitle;
   if (institutionName) return institutionName;
-  return wayfinderId ? `Mental Health Professional ${wayfinderId}` : 'Mental Health Professional';
+  return wayfinderId ? `Mental Health Practitioner (MHP) ${wayfinderId}` : 'Mental Health Practitioner (MHP)';
 };
 
 const membershipIsActive = (row) => {
@@ -238,13 +238,13 @@ export default async function handler(req, res) {
       return jsonError(res, {
         status: 503,
         error_code: ERROR_CODES.STORAGE_NOT_READY,
-        error: 'Mental Health Professional listing is not ready yet.'
+        error: 'Mental Health Practitioner (MHP) listing is not ready yet.'
       });
     }
     return jsonError(res, {
       status: 503,
       error_code: ERROR_CODES.LIST_FAILED,
-      error: 'Mental Health Professional listing could not be loaded right now.'
+      error: 'Mental Health Practitioner (MHP) listing could not be loaded right now.'
     });
   }
 }

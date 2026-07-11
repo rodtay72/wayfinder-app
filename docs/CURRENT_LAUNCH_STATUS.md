@@ -6,15 +6,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-10
+**Last updated:** 2026-07-11
 
-**Last verified merge:** PR #160 — legacy Plus migration/support procedure (docs only)
+**Last verified merge:** PR #161 — post-live monitoring, billing FAQ, language planning (docs only)
 
-**Next proposed PR:** PR #161 — post-live monitoring, billing support FAQ, language toggle planning refresh (docs only)
+**Next proposed PR:** PR #162 — parent-facing launch polish + App Version update
+
+**PR #162 (in flight):** Runtime copy/UI polish only (`app.js`, `content.js`, `styles.css`); no API/SQL/auth/RLS/Stripe runtime changes. App Version v0.4.6.
+
+**PR #161 (merged):** [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) — post-live ops, billing FAQ, language planning refresh. Docs only.
 
 **PR #160 (merged):** [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md) — legacy Plus support procedure. **Migration implementation deferred.**
-
-**PR #161 (in flight):** [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) — post-live ops, billing FAQ, language planning refresh. Docs only.
 
 **PR #159 (merged):** Billing Portal session safety + shared-device Plans copy.
 
@@ -34,9 +36,9 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Platform (owner upgraded):** Supabase **Pro** · Vercel **Pro**
 
-**Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ in PR #161. No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
+**Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #161 (post-live ops FAQ). Then proceed to **PR #162** parent-facing launch polish and App Version update. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
+**Current owner blocker:** Merge PR #162 (parent-facing launch polish + App Version v0.4.6). Then decide next runtime priority: **language toggle foundation** or other parent-facing polish. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -73,7 +75,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 | Counsellor response status badges | Counsellor workspace shows Pending response, Draft saved, Published, Revoked, and Status unavailable badges on parent-approved entries | PR #67 |
 | Parent Feedback Library | Parent dashboard keeps published counsellor feedback accessible after mark-as-read clears the unread notice | PR #69 |
 
-## Issue #71 — Mental Health Professional onboarding / invite (launch notes)
+## Issue #71 — Mental Health Practitioner (MHP) onboarding / invite (launch notes)
 
 **Status:** **Owner smoke passed / ready to close Issue #71** — handoff runbook: [MHP_OWNER_HANDOFF_RUNBOOK.md](./MHP_OWNER_HANDOFF_RUNBOOK.md); closure checklist: [ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md](./ISSUE_71_MHP_PRODUCTION_SMOKE_CLOSURE_CHECKLIST.md) (C6f owner smoke pass recorded)
 
@@ -175,7 +177,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Languages:** English (`en`) · 简体中文 (`zh-Hans`)
 
-**Key rules:** Static UI/product copy only in first runtime PRs; saved journal/Decode/reflection text stays in the language entered; ALIGN/CAB non-diagnostic tone in both languages; MHP parent-facing label remains Mental Health Professional; internal role stays `counsellor`.
+**Key rules:** Static UI/product copy only in first runtime PRs; saved journal/Decode/reflection text stays in the language entered; ALIGN/CAB non-diagnostic tone in both languages; MHP parent-facing label is **Mental Health Practitioner (MHP)**; internal role stays `counsellor`.
 
 ## In flight
 
