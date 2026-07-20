@@ -6,13 +6,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-11
+**Last updated:** 2026-07-20
 
-**Last verified merge:** PR #161 — post-live monitoring, billing FAQ, language planning (docs only)
+**Last verified merge:** PR #162 — parent-facing launch polish, Plans clarity, App Version v0.4.6, MHP terminology consistency
 
-**Next proposed PR:** PR #162 — parent-facing launch polish + App Version update
+**Next proposed PR:** PR #163 — HIPAA / SOC 2 readiness foundation (docs only)
 
-**PR #162 (in flight):** Runtime copy/UI polish only (`app.js`, `content.js`, `styles.css`); no API/SQL/auth/RLS/Stripe runtime changes. App Version v0.4.6.
+**PR #163 (in flight):** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) — readiness map, gap register, evidence checklist, safe wording rules. **No compliance claim yet** — requires legal/security/auditor confirmation before any HIPAA or SOC 2 positioning.
+
+**PR #162 (merged):** Parent-facing launch polish, Plans clarity, App Version v0.4.6, MHP terminology consistency. Runtime + copy-only API strings in `list-available-mhps.js`.
 
 **PR #161 (merged):** [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) — post-live ops, billing FAQ, language planning refresh. Docs only.
 
@@ -38,7 +40,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #162 (parent-facing launch polish + App Version v0.4.6). Then decide next runtime priority: **language toggle foundation** or other parent-facing polish. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
+**Current owner blocker:** Merge PR #163 (HIPAA / SOC 2 readiness foundation, docs only). **No HIPAA or SOC 2 compliance claims** until legal/security/auditor review. Then decide next priority: **PR #164 compliance evidence expansion**, **language toggle** (next product feature when owner approves), or other parent-facing polish. Legacy Plus migration **implementation remains deferred**. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
@@ -166,6 +168,8 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 **Explicit non-goals (unchanged):** Save gating in Decode/Journal, live Stripe keys, Customer Portal, checkout buttons, billing UI, usage counter writes, progress-tracker gates, MHP review gates.
 
 ## Simplified Chinese language toggle
+
+**Next product feature (when owner approves):** Broader static copy and runtime polish — after PR #163 compliance readiness foundation or in parallel if owner approves, without weakening privacy or ALIGN/CAB boundaries.
 
 **Strategy (PR #123):** Complete — [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
 
