@@ -23,6 +23,8 @@ Read first:
 
 **Support wording rule:** Do **not** tell parents that Wayfinder is “HIPAA compliant”, “SOC 2 compliant”, “certified”, or “audited”. **Support must not promise HIPAA or SOC 2 compliance.** Use **readiness wording only** until legal/security/auditor review. Refer to [HIPAA_SOC2_READINESS_FOUNDATION.md §8](./HIPAA_SOC2_READINESS_FOUNDATION.md#8-product-wording-rules) and [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md). Escalate to owner/legal.
 
+**Log and support-notes rule:** Do **not** paste logs into support notes or AI tools if they may contain parent emails, child names, reflection content, JWTs, Stripe customer/subscription IDs, Billing Portal URLs, or webhook secrets. Use non-identifying outcome categories only. See [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md).
+
 ---
 
 ## 1. Current production state
@@ -183,6 +185,7 @@ Do **not**:
 - [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) — compliance preparation (not a certification)
 - [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) — draft security policy (readiness only)
 - [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) — draft classification/retention (legal review required)
+- [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) — audit-log gap assessment (readiness only; no runtime logging)
 
 ---
 
@@ -194,3 +197,4 @@ Do **not**:
 | 2026-07-11 | PR #162 — parent-facing Plans/Dashboard copy polish; see [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) |
 | 2026-07-20 | PR #163 — HIPAA / SOC 2 readiness foundation cross-link; support wording rule (no compliance claims) |
 | 2026-07-20 | PR #164 — security/classification draft policy cross-links; support readiness wording reminder |
+| 2026-07-20 | PR #165 — log-paste support reminder; cross-link to audit-log gap assessment |

@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-20
 
-**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md)
+**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
 
 Read first:
 
@@ -110,7 +110,7 @@ Monitoring notes and support tickets must **avoid**:
 
 Record only **non-identifying outcome categories** (e.g. “webhook processed”, “dashboard load failed for verified user”, “Plans page unavailable”).
 
-**Application audit-log requirements are not yet fully implemented.** PR #165 should assess gaps before any runtime logging expansion.
+**Application audit-log requirements are not yet fully implemented.** PR #165 gap assessment: [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md). Proposed event catalog: [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md). **No runtime logging in PR #165** — implementation requires legal/security/owner review.
 
 Cross-link: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md)
 
@@ -154,7 +154,7 @@ Escalate and document (non-sensitive notes only) for:
 | --- | --- | --- |
 | Formal admin MFA evidence | Record MFA enabled per system in evidence register | Owner |
 | Access review cadence | [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md) | Owner |
-| Application audit-log requirements | PR #165 gap assessment | Engineering |
+| Application audit-log requirements | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md); PR #167 design doc | Engineering |
 | Breach notification tree if HIPAA scope applies | Legal addendum | Owner + legal |
 | Vendor DPA/BAA review | PR #166 vendor register | Owner + legal |
 | Retention/deletion process | [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) | Owner + legal |
@@ -183,3 +183,4 @@ Escalate to owner + legal/security before proceeding.
 | Date | Change |
 | --- | --- |
 | 2026-07-20 | PR #164 — initial security policy readiness draft (docs only) |
+| 2026-07-20 | PR #165 — cross-links to audit-log gap assessment and event catalog draft |
