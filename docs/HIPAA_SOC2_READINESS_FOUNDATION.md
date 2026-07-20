@@ -8,6 +8,8 @@
 
 **Related:** [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) · [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md)
 
+**Draft policies (PR #164):** [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md)
+
 Read first:
 
 - [AGENTS.md](../AGENTS.md)
@@ -234,8 +236,8 @@ Escalate to owner + legal/security before proceeding.
 
 | PR | Scope | Type |
 | --- | --- | --- |
-| **#163** (this) | HIPAA / SOC 2 readiness foundation, gap register starter, wording rules | Docs only |
-| **#164** | Compliance evidence register expansion + security policy docs | Docs only |
+| **#163** | HIPAA / SOC 2 readiness foundation, gap register starter, wording rules | Docs only — merged |
+| **#164** | Compliance evidence register expansion + draft security/classification/admin policy docs | Docs only |
 | **#165** | Runtime audit-log gap assessment | Docs first; implementation only after review |
 | **#166** | Vendor/subprocessor register with DPA/BAA review columns | Docs only |
 | **Later** | Implementation gaps (logging, retention automation, etc.) | Only after legal/security/auditor review |
@@ -249,3 +251,4 @@ Escalate to owner + legal/security before proceeding.
 | Date | Change |
 | --- | --- |
 | 2026-07-20 | PR #163 — initial HIPAA / SOC 2 readiness foundation (docs only) |
+| 2026-07-20 | PR #164 — cross-links to draft security, data classification, and admin access policy docs |

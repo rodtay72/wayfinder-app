@@ -21,7 +21,7 @@ Read first:
 
 **Privacy rule:** Do not record parent emails, child names, Supabase UUIDs, JWTs, Stripe customer/subscription IDs, live Price IDs, webhook secrets, Portal URLs, event IDs, or reflection content in monitoring notes or support tickets.
 
-**Support wording rule:** Do **not** tell parents that Wayfinder is “HIPAA compliant”, “SOC 2 compliant”, “certified”, or “audited”. Use privacy-first language and refer to [HIPAA_SOC2_READINESS_FOUNDATION.md §8](./HIPAA_SOC2_READINESS_FOUNDATION.md#8-product-wording-rules) if compliance questions arise. Escalate to owner/legal.
+**Support wording rule:** Do **not** tell parents that Wayfinder is “HIPAA compliant”, “SOC 2 compliant”, “certified”, or “audited”. **Support must not promise HIPAA or SOC 2 compliance.** Use **readiness wording only** until legal/security/auditor review. Refer to [HIPAA_SOC2_READINESS_FOUNDATION.md §8](./HIPAA_SOC2_READINESS_FOUNDATION.md#8-product-wording-rules) and [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md). Escalate to owner/legal.
 
 ---
 
@@ -181,6 +181,8 @@ Do **not**:
 - [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) — cross-platform handoff
 - [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — live cutover evidence
 - [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) — compliance preparation (not a certification)
+- [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) — draft security policy (readiness only)
+- [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) — draft classification/retention (legal review required)
 
 ---
 
@@ -191,3 +193,4 @@ Do **not**:
 | 2026-07-10 | PR #161 — initial post-live monitoring and support FAQ (docs only) |
 | 2026-07-11 | PR #162 — parent-facing Plans/Dashboard copy polish; see [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) |
 | 2026-07-20 | PR #163 — HIPAA / SOC 2 readiness foundation cross-link; support wording rule (no compliance claims) |
+| 2026-07-20 | PR #164 — security/classification draft policy cross-links; support readiness wording reminder |
