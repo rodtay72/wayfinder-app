@@ -148,6 +148,7 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 9. **PR #163** HIPAA / SOC 2 readiness foundation — compliance **preparation** docs only; **no compliance claims** in product or support.
 10. **PR #164** compliance evidence expansion + draft security/classification/admin policy — **readiness only**; do not make compliance claims; do not weaken auth/RLS/journal/Stripe safety.
 11. **PR #165** audit-log gap assessment — **docs only**. Do not add runtime logging or external monitoring without legal/security review. Do not capture Stripe Portal URLs, webhook secrets, or raw payloads in support notes.
+12. **PR #166** vendor/subprocessor register — **readiness only**. Do not claim vendor compliance. Do not add or enable new vendors/tools without review.
 
 ---
 
@@ -156,12 +157,12 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 | Platform | Next action |
 | --- | --- |
 | ChatGPT | Use [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) for billing support; legacy Plus per [procedure](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md). Do not claim HIPAA/SOC 2 compliance. Use [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) for readiness framing. |
-| Cursor | Merge PR #165 (audit-log gap assessment, docs only); then PR #166 vendor register or language toggle when owner approves. Do not add runtime logging without review. Do not weaken auth/RLS/journal/Stripe runtime unless instructed. |
-| Codex | If asked to review, verify PR #165 remains docs-only and contains no compliance claims, runtime logging, or secrets. |
+| Cursor | Merge PR #166 (vendor register, docs only); then language toggle or PR #167 audit-log design when owner approves. Do not add vendors/tools without review. Do not weaken auth/RLS/journal/Stripe runtime unless instructed. |
+| Codex | If asked to review, verify PR #166 remains docs-only with no compliance or vendor compliance claims and no secrets. |
 | Claude Projects | Use draft compliance docs for readiness; preserve ALIGN/CAB and privacy baseline. |
 | Claude Code | Reviewer or isolated branch only; no direct production-impact edits without explicit issue allowlist. |
 | OpenClaw | Socialise compliance readiness state; no compliance claim language. |
-| Human owner | Merge PR #165. Then PR #166 vendor register or language toggle per priority. Legacy billing migration remains deferred. |
+| Human owner | Merge PR #166. Then language toggle or PR #167 per priority. Legacy billing migration remains deferred. |
 
 ---
 
@@ -177,3 +178,4 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 | 2026-07-20 | PR #163 — HIPAA / SOC 2 readiness foundation; compliance preparation only; no product claims |
 | 2026-07-20 | PR #164 — draft security/compliance policy docs; readiness only; no auth/RLS/journal/Stripe weakening |
 | 2026-07-20 | PR #165 — audit-log gap assessment platform action; docs only; no runtime logging without review |
+| 2026-07-20 | PR #166 — vendor register platform action; readiness only; no vendor compliance claims |

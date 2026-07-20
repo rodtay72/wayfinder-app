@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-20
 
-**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
+**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) · [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
 
 Read first:
 
@@ -120,6 +120,7 @@ Cross-link: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND
 
 - **One branch / one PR** — focused changes; reviewable diffs
 - **Guarded files require explicit review** — `supabase.js`, SQL/RLS, auth, Stripe runtime, journal save/read (per AGENTS.md)
+- **Vendor review required** before new external AI, translation, analytics, monitoring, or support tools — see [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md) and [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md). **Agreement status unverified** until owner/legal/security confirms current evidence.
 - **Checks must pass** — `git diff --check`, `verify-wayfinder.ps1`, guardrail workflows where applicable
 - **Production smoke after user-facing/runtime merges** — [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md)
 - **Security-impacting PRs require owner review** — auth, RLS, billing, privacy masking, data writes
@@ -156,7 +157,7 @@ Escalate and document (non-sensitive notes only) for:
 | Access review cadence | [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md) | Owner |
 | Application audit-log requirements | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md); PR #167 design doc | Engineering |
 | Breach notification tree if HIPAA scope applies | Legal addendum | Owner + legal |
-| Vendor DPA/BAA review | PR #166 vendor register | Owner + legal |
+| Vendor DPA/BAA review | [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md); collect current evidence | Owner + legal |
 | Retention/deletion process | [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) | Owner + legal |
 | Restore drill evidence | Schedule Supabase restore test; record outcome | Owner + ops |
 
@@ -184,3 +185,4 @@ Escalate to owner + legal/security before proceeding.
 | --- | --- |
 | 2026-07-20 | PR #164 — initial security policy readiness draft (docs only) |
 | 2026-07-20 | PR #165 — cross-links to audit-log gap assessment and event catalog draft |
+| 2026-07-20 | PR #166 — vendor register and review SOP cross-links; vendor review required before new external tools |

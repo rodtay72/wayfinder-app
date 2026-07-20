@@ -25,6 +25,8 @@ Read first:
 
 **Log and support-notes rule:** Do **not** paste logs into support notes or AI tools if they may contain parent emails, child names, reflection content, JWTs, Stripe customer/subscription IDs, Billing Portal URLs, or webhook secrets. Use non-identifying outcome categories only. See [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md).
 
+**Vendor-support rule:** Do **not** paste parent emails, child names, reflection content, JWTs, Stripe IDs, Portal URLs, webhook secrets, raw logs, or PHI examples into vendor support portals, AI tools, or external ticket systems unless reviewed and approved. See [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) and [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md).
+
 ---
 
 ## 1. Current production state
@@ -186,6 +188,8 @@ Do **not**:
 - [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) — draft security policy (readiness only)
 - [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) — draft classification/retention (legal review required)
 - [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) — audit-log gap assessment (readiness only; no runtime logging)
+- [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) — vendor register (readiness only; statuses unverified)
+- [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md) — vendor review checklist
 
 ---
 
@@ -198,3 +202,4 @@ Do **not**:
 | 2026-07-20 | PR #163 — HIPAA / SOC 2 readiness foundation cross-link; support wording rule (no compliance claims) |
 | 2026-07-20 | PR #164 — security/classification draft policy cross-links; support readiness wording reminder |
 | 2026-07-20 | PR #165 — log-paste support reminder; cross-link to audit-log gap assessment |
+| 2026-07-20 | PR #166 — vendor-support rule; cross-links to vendor register and checklist |

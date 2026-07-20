@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-20
 
-**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
+**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 
 This document:
 
@@ -81,6 +81,7 @@ Wayfinder is not a clinical platform. MHP review is optional, parent-controlled 
 | Logs retention | **Gap** — platform defaults only; application audit logs not implemented |
 | Application audit log retention | **Not defined** — pending legal/security review | See AUDIT_LOG_GAP_ASSESSMENT §4 |
 | AI retention if introduced | **Gap** — block until policy exists |
+| External vendor retention | **Not verified per vendor** — review against data category | See [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) §5 — **do not invent retention periods** |
 
 Do not publish retention periods to parents until legal review confirms wording.
 
@@ -91,7 +92,7 @@ Do not publish retention periods to parents until legal review confirms wording.
 - Avoid names in reflections unless truly necessary for the parent’s practice
 - Do not store PHI examples in docs, tickets, or evidence registers
 - **No private reflection translation by default** — language toggle is static UI only; saved journal/Decode text stays in language entered
-- **No external AI or translation services** for private parent/MHP content without approved consent and design review
+- **No external AI or translation services** for private parent/MHP content without approved consent, design review, and vendor review per [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
 - **No analytics** containing child names, reflection content, or journal text
 - Privacy is baseline across all plans — not paid-only
 
@@ -105,6 +106,7 @@ Do not publish retention periods to parents until legal review confirms wording.
 - MHP licence retention rule (legal + owner)
 - Logs retention alignment with providers (ops)
 - Application audit log retention and export/deletion policy (legal + engineering) — see [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)
+- External vendor retention per data category (legal + owner) — see [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 - Research retention policy (legal + research ops)
 - AI retention and subprocessor boundaries if introduced (engineering + legal)
 
@@ -118,3 +120,4 @@ Track in [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md).
 | --- | --- |
 | 2026-07-20 | PR #164 — initial data classification and retention readiness draft (docs only) |
 | 2026-07-20 | PR #165 — application audit logs data category; cross-links to audit-log gap assessment |
+| 2026-07-20 | PR #166 — external vendor retention note; cross-link to vendor register |

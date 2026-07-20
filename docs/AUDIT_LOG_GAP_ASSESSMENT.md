@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-20
 
-**Related:** [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md)
+**Related:** [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 
 Read first:
 
@@ -22,6 +22,8 @@ This document:
 - Does **not** implement logging, tables, APIs, or monitoring
 
 **Future implementation requires legal/security/owner review.**
+
+**Third-party logging/monitoring:** Any external error tracking, APM, or log aggregation provider requires vendor review per [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) and [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md) **before** use. Do not send logs to third-party monitoring without DPA/vendor evidence review.
 
 **Privacy rule:** Do not record parent emails, child names, Supabase UUIDs, JWTs, reflection content, webhook secrets, or PHI examples in evidence notes.
 
@@ -216,3 +218,4 @@ Stop future audit-log **implementation** if:
 | Date | Change |
 | --- | --- |
 | 2026-07-20 | PR #165 — initial audit-log gap assessment (docs only) |
+| 2026-07-20 | PR #166 — third-party logging/monitoring vendor review note; cross-link to vendor register |
