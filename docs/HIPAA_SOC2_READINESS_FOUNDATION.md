@@ -12,6 +12,8 @@
 
 **Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
 
+**Vendor readiness (PR #166):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) · [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md) · [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
+
 Read first:
 
 - [AGENTS.md](../AGENTS.md)
@@ -124,7 +126,7 @@ Checklist of **controls to be reviewed** (not self-attested as complete):
 | Incident response | Is there an IR playbook? | [Production incident triage doc](./PRODUCTION_INCIDENT_TRIAGE_AND_RECOVERY_PLAYBOOK.md) | HIPAA breach assessment addendum if applicable |
 | Breach notification procedure | Who notifies whom, when? | General incident playbook | Legal notification tree if PHI involved |
 | Workforce / admin access policy | Who has prod/admin access? | Owner/admin model | Least privilege; offboarding; MFA policy |
-| Vendor / subprocessor review | Are vendors assessed? | Informal knowledge | Formal register — see §7 and [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) |
+| Vendor / subprocessor review | Are vendors assessed? | [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) (PR #166) | Owner/legal verification of agreements | Owner + legal | Collect DPA/BAA/security evidence |
 | BAA review | Which vendors need BAAs if HIPAA applies? | **Not verified** | Legal review per vendor |
 | Retention / deletion policy | How long is data kept; can users request deletion? | Partial product copy; no full retention schedule | Legal + product retention matrix |
 | Parent consent and sharing boundaries | Is sharing consent-led and bounded? | PARENT_REVIEW_SHARING consent copy; grant expiry | Persisted consent records (PR #101+ track) |
@@ -140,7 +142,7 @@ SOC 2 is an **external audit** readiness map — not self-certification. Map Way
 | --- | --- | --- | --- | --- |
 | **Security** | Supabase auth, RLS, no service role in browser, Stripe live gate (`api/_stripe-runtime-mode.js`), guardrail scripts | Formal security policy; access reviews; vulnerability management | Owner + security | PR #164 policy docs; PR #165 audit-log gap assessment ([AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)) |
 | **Availability** | Vercel + Supabase Pro; incident playbook; production smoke runbook | Uptime targets; DR test evidence; status comms | Owner + ops | Ops evidence in register |
-| **Confidentiality** | Privacy masking rules; Parent/Child IDs; MHP sharing consent; private licence/portrait storage | Data flow diagrams; subprocessor DPAs | Owner + legal | PR #166 vendor register |
+| **Confidentiality** | Privacy masking rules; Parent/Child IDs; MHP sharing consent; private licence/portrait storage | Data flow diagrams; subprocessor DPAs | Owner + legal | [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) (PR #166) |
 | **Privacy** | PDPA/signup acknowledgement track; no ads/no data-selling; consent-led research framing | Privacy notice completeness; data subject request process | Owner + legal | Consent persistence owner apply |
 | **Processing integrity** | Journal save/read contracts; webhook idempotency; entitlement sync RPCs | End-to-end reconciliation tests documented | Engineering | Only if auditor scope includes PI |
 
@@ -173,19 +175,24 @@ Summary table (starter):
 
 ## 7. Vendor / subprocessor readiness
 
-Status is **unknown until reviewed** with current agreements and vendor documentation. Do **not** state vendors are HIPAA-ready unless verified.
+Status is **unverified until reviewed** with current agreements and vendor documentation. Do **not** state vendors are HIPAA-ready or SOC 2-ready unless current agreement/evidence has been reviewed by owner/legal/security.
+
+**Full register:** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
+
+**Review tools:** [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md) · [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
+
+Summary table (detail and evidence columns in register — all rows **Not verified** unless owner updates after review):
 
 | Vendor | Purpose | Data touched | Sensitive / PHI may be involved? | DPA needed | BAA needed if HIPAA applies | SOC 2 report needed | Review status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Supabase** | Auth, Postgres, Storage, RLS | Auth identities, profiles, journal, MHP profiles, licence/portrait objects | Possible — reflection and MHP content | Yes — review | Yes — if HIPAA applies | Yes — for SOC 2 readiness | **Not verified** |
-| **Vercel** | Hosting, serverless API routes | Request metadata, env secrets, API payloads in transit | Possible — if logs capture sensitive payloads | Yes — review | Unlikely direct PHI store; confirm | Yes | **Not verified** |
-| **Stripe** | Checkout, Billing Portal, webhooks | Billing customer refs, plan status, email (Stripe-side) | Unlikely reflection content; billing PII | Yes — review | Typically no for payment processing; legal confirm | Yes | **Not verified** |
-| **OpenAI / AI provider** | Assistive reflection (counsellor/MHP flows if enabled) | Prompt text derived from parent-granted entries | **High** if reflections sent externally | Yes — review | Yes — if HIPAA applies and PHI sent | Yes | **Review before any expansion** |
-| **Email provider** (Supabase Auth email) | Verification, password reset, invites | Email addresses, auth tokens in links | PII | Yes — review | If HIPAA applies to auth email | Provider-dependent | **Not verified** |
-| **Storage** (Supabase Storage) | MHP licence PDFs, portraits | MHP licence documents, images | Possible identifiers | Covered under Supabase review | If HIPAA applies | Via Supabase | **Not verified** |
-| **Analytics** (if any) | Product analytics | Must not include reflection content or child names | Should be none in current canon | N/A unless added | N/A | N/A | **Confirm none in production** |
+| **Supabase** | Auth, Postgres, Storage, RLS | Auth identities, profiles, journal, MHP profiles, licence/portrait objects | Possible — reflection and MHP content | Yes — DPA review required | Yes — if HIPAA applies | Yes — current evidence needed | **Not verified** |
+| **Vercel** | Hosting, serverless API routes | Request metadata, env secrets, API payloads in transit | Possible — if logs capture sensitive payloads | Yes — DPA review required | Legal confirm | Yes | **Not verified** |
+| **Stripe** | Checkout, Billing Portal, webhooks | Billing customer refs, plan status, email (Stripe-side) | Unlikely reflection content; billing PII | Yes — DPA review required | Legal confirm | Yes | **Not verified** |
+| **OpenAI / AI provider** | Assistive reflection if enabled | Prompt text from parent-granted entries | **High** if reflections sent externally | Yes — DPA review required | Yes — if HIPAA applies and PHI sent | Yes | **Blocked until vendor evidence** |
+| **Email provider** (Supabase Auth email) | Verification, password reset, invites | Email addresses, auth tokens in links | PII | Yes — review | Legal confirm if HIPAA applies | Provider-dependent | **Not verified** |
+| **Analytics** | Product analytics | Must not include reflection content | Should be none | N/A unless added | N/A | N/A | **Not currently used** |
 
-**Next action:** PR #166 vendor/subprocessor register with contract dates, data processing terms, and owner sign-off columns.
+**Next action:** Owner/legal/security collect current DPA, BAA (if applicable), and security reports; update register review status — **do not mark verified without evidence**.
 
 ---
 
@@ -240,10 +247,11 @@ Escalate to owner + legal/security before proceeding.
 | --- | --- | --- |
 | **#163** | HIPAA / SOC 2 readiness foundation, gap register starter, wording rules | Docs only — merged |
 | **#164** | Compliance evidence register expansion + draft security/classification/admin policy docs | Docs only — merged |
-| **#165** | Audit-log and event-trail gap assessment + proposed event catalog | Docs only — no runtime logging |
+| **#165** | Audit-log and event-trail gap assessment + proposed event catalog | Docs only — merged |
 | **#166** | Vendor/subprocessor register with DPA/BAA review columns | Docs only |
 | **#167** | Audit-log implementation design (docs only) | Before any SQL/API logging |
-| **Later** | Implementation gaps (logging, retention automation, etc.) | Only after legal/security/auditor review |
+| **Product track** | Language toggle runtime foundation | Planned — separate from compliance docs |
+| **Later** | Implementation gaps (logging, retention automation, vendor evidence collection) | Only after legal/security/auditor review |
 
 **Product sequencing note:** Simplified Chinese language toggle remains a planned parent-facing feature; owner may parallelise with compliance docs but must not weaken privacy or ALIGN/CAB boundaries.
 
@@ -256,3 +264,4 @@ Escalate to owner + legal/security before proceeding.
 | 2026-07-20 | PR #163 — initial HIPAA / SOC 2 readiness foundation (docs only) |
 | 2026-07-20 | PR #164 — cross-links to draft security, data classification, and admin access policy docs |
 | 2026-07-20 | PR #165 — audit-log gap assessment and event catalog draft cross-links; PR #167 in recommended next PRs |
+| 2026-07-20 | PR #166 — vendor/subprocessor register, review checklist, SOP cross-links |

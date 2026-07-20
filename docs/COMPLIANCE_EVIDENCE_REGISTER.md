@@ -10,6 +10,8 @@
 
 **Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
 
+**Vendor readiness (PR #166):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) · [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md) · [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
+
 **Rule:** Do not record secrets, parent emails, child names, Supabase UUIDs, JWTs, reflection content, or PHI samples in this register.
 
 ---
@@ -52,13 +54,26 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | Secret management | AGENTS rules; security policy §5 | SECURITY_POLICY draft, AGENTS.md | Secret rotation drill evidence | High | Document rotation procedure test | Owner | Open |
 | Data classification | Draft levels and category table | [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) | Legal sign-off on PHI categories | High | Legal review | Owner + legal | Blocked on legal |
 | Retention / deletion | Gaps explicit; no invented periods | DATA_CLASSIFICATION draft §4 | Retention schedule + deletion workflow | High | Legal retention matrix | Owner + legal | Blocked on legal |
-| Vendor DPA/BAA review | Vendor table in readiness foundation | HIPAA foundation §7 | Signed status per vendor | High | PR #166 vendor register | Owner + legal | Blocked on vendor review |
+| Vendor DPA/BAA review | Vendor register draft (all statuses unverified) | [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) | Signed DPA/BAA status per vendor — owner/legal confirm | High | Collect current agreements; update register | Owner + legal | Blocked on vendor review |
+| Vendor / subprocessor register | Full register with review columns | VENDOR_SUBPROCESSOR_REGISTER.md | Owner verification of each row | High | Initial owner review pass | Owner | Open |
+| Vendor security review checklist | Pre-integration checklist | VENDOR_SECURITY_REVIEW_CHECKLIST.md | Applied on first new vendor review | Medium | Use before any new integration | Owner + engineering | Open |
+| Vendor review SOP | Draft review workflow | VENDOR_REVIEW_SOP_DRAFT.md | Owner sign-off on SOP | Medium | Owner review SOP draft | Owner | Open |
+| DPA review status | Not verified per vendor | VENDOR_SUBPROCESSOR_REGISTER §3 | Current DPA collected for Supabase, Vercel, Stripe, GitHub | High | Owner collects evidence | Owner + legal | Not verified |
+| BAA review status (if HIPAA applies) | Not verified | VENDOR_SUBPROCESSOR_REGISTER §3, §5 | Legal confirm which vendors need BAAs | High | Legal review | Owner + legal | Blocked on legal |
+| SOC 2 / security report collection | Not verified | VENDOR_SUBPROCESSOR_REGISTER §5 | SOC 2 or bridge letters from key processors | High | Request from Supabase, Vercel, Stripe | Owner | Evidence needed |
+| Subprocessor list review | Not verified | VENDOR_SUBPROCESSOR_REGISTER §5 | Downstream subprocessors documented per vendor | Medium | Collect from each DPA | Owner + legal | Blocked on vendor review |
+| AI vendor boundary | Block without review | VENDOR_SUBPROCESSOR_REGISTER §7, product canon | No private content to external AI | High | Block runtime AI expansion | Engineering + legal | Blocked until vendor evidence |
+| Translation vendor boundary | Not currently used; static UI toggle planned | LANGUAGE_TOGGLE strategy, VENDOR register | No private saved content translation without review | High | Block translation provider until approved | Owner + product | Blocked until vendor evidence |
+| Analytics vendor boundary | Not currently used per canon | VENDOR_SUBPROCESSOR_REGISTER §3 | Confirm no analytics SDK in production | Medium | Engineering confirm none enabled | Engineering | Not verified |
+| Monitoring vendor boundary | Not currently used as third-party APM | AUDIT_LOG_GAP_ASSESSMENT, VENDOR register | Vendor review before error tracking with payloads | High | Block until checklist complete | Engineering | Not currently used |
+| Support tool boundary | Informal email assumed | VENDOR_SUBPROCESSOR_REGISTER §3, POST_LIVE FAQ | Formal helpdesk review if adopted | Medium | Confirm tool; train no sensitive paste | Owner + ops | Not verified |
+| Data processing terms review | Not verified | VENDOR_SUBPROCESSOR_REGISTER §5 | Retention, deletion, incident terms per vendor | High | Legal review collected DPAs | Owner + legal | Blocked on vendor review |
 | Application audit logging | Debug gated; platform logs; webhook idempotency table (not general audit trail) | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), AGENTS.md, SECURITY_POLICY §6 | Formal application audit-log table and event schema | High | PR #167 design doc; implementation after legal/security review | Engineering | Open |
 | Audit event catalog | Proposed event names and metadata rules | [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) | Owner sign-off on required events before implementation | High | Review catalog; align with SOC 2 / HIPAA scope if applicable | Engineering + owner | Planned |
 | Audit retention policy | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, DATA_CLASSIFICATION draft | Legal retention periods for audit logs | High | Legal retention matrix | Owner + legal | Blocked on legal |
 | Audit log viewer / access control | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, ADMIN_ACCESS draft | Who may view audit logs; RLS/admin policy | High | PR #167 design doc | Owner + engineering | Open |
 | Log redaction / minimisation | Draft never-log list; no code enforcement | AUDIT_LOG_GAP_ASSESSMENT §7, AUDIT_EVENT_CATALOG_DRAFT §4 | Explicit redaction policy implemented in code | High | Implement after design review | Engineering | Evidence needed |
-| Platform log retention review | Vercel/Supabase/Stripe defaults assumed | AUDIT_LOG_GAP_ASSESSMENT §3 | Vendor retention documented per provider | Medium | PR #166 vendor register + ops review | Owner + ops | Blocked on vendor review |
+| Platform log retention review | Vercel/Supabase/Stripe defaults assumed | AUDIT_LOG_GAP_ASSESSMENT §3, VENDOR_SUBPROCESSOR_REGISTER §5 | Vendor retention documented per provider | Medium | Owner collects retention docs | Owner + ops | Blocked on vendor review |
 | Incident-to-audit evidence linkage | Incident playbook exists | PRODUCTION_INCIDENT playbook, AUDIT_LOG_GAP_ASSESSMENT §4 | Formal process linking incidents to log evidence | Medium | Document in incident playbook update | Owner | Open |
 | Future AI audit boundary | Block without review in classification draft | DATA_CLASSIFICATION draft, AUDIT_EVENT_CATALOG_DRAFT (`ai.*`) | AI assist audit events and metadata rules | High | Block runtime AI expansion until boundary approved | Engineering + legal | Open |
 | Backup / restore test | Supabase Pro platform backups | Supabase | Restore drill evidence | Medium | Schedule restore drill | Owner + ops | Evidence needed |
@@ -76,3 +91,4 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | 2026-07-20 | PR #163 — starter register aligned with readiness foundation |
 | 2026-07-20 | PR #164 — expanded register; linked draft security, classification, admin policy docs |
 | 2026-07-20 | PR #165 — audit-log gap assessment and event catalog draft; expanded audit-related rows |
+| 2026-07-20 | PR #166 — vendor/subprocessor register, review checklist, SOP; expanded vendor-related rows |

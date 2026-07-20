@@ -8,11 +8,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-20
 
-**Last verified merge:** PR #164 — compliance evidence expansion + draft security/classification/admin policy docs (docs only)
+**Last verified merge:** PR #165 — audit-log gap assessment + proposed event catalog (docs only)
 
-**Next proposed PR:** PR #165 — audit-log gap assessment + proposed event catalog (docs only)
+**Next proposed PR:** PR #166 — vendor/subprocessor register, docs only
 
-**PR #165 (in flight):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md), updates to compliance evidence register and cross-linked readiness docs. **No runtime/API/SQL/auth/RLS/env changes.** **No HIPAA or SOC 2 compliance claim yet** — legal/security/auditor review required.
+**PR #166 (in flight):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md), [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md), [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md), updates to compliance evidence register and cross-linked readiness docs. **No runtime/API/SQL/auth/RLS/env changes.** **No HIPAA or SOC 2 compliance claim yet** — legal/security/auditor review required. **Vendor agreement/evidence status unverified** until owner/legal/security review.
+
+**PR #165 (merged):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md). Docs only.
 
 **PR #164 (merged):** [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md), [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md), [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md), expanded [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md). Docs only.
 
@@ -44,7 +46,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #165 (audit-log gap assessment, docs only). **No HIPAA or SOC 2 compliance claims** until legal/security/auditor review. Then choose next priority: **PR #166 vendor/subprocessor register** or **language toggle runtime foundation** (planned product feature when owner approves). Legacy Plus migration **implementation remains deferred**. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
+**Current owner blocker:** Merge PR #166 (vendor/subprocessor register, docs only). **No HIPAA or SOC 2 compliance claims** until legal/security/auditor review. **Vendor agreement/evidence status unverified** until owner/legal/security review. Then choose next priority: **language toggle runtime foundation** (planned product feature when owner approves) or **PR #167 audit-log implementation design** (docs only). Legacy Plus migration **implementation remains deferred**. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
