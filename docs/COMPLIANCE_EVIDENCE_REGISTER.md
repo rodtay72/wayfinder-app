@@ -8,6 +8,8 @@
 
 **Policy drafts (PR #164):** [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md)
 
+**Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
+
 **Rule:** Do not record secrets, parent emails, child names, Supabase UUIDs, JWTs, reflection content, or PHI samples in this register.
 
 ---
@@ -51,7 +53,14 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | Data classification | Draft levels and category table | [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) | Legal sign-off on PHI categories | High | Legal review | Owner + legal | Blocked on legal |
 | Retention / deletion | Gaps explicit; no invented periods | DATA_CLASSIFICATION draft §4 | Retention schedule + deletion workflow | High | Legal retention matrix | Owner + legal | Blocked on legal |
 | Vendor DPA/BAA review | Vendor table in readiness foundation | HIPAA foundation §7 | Signed status per vendor | High | PR #166 vendor register | Owner + legal | Blocked on vendor review |
-| Audit logging | Debug gated; platform logs | AGENTS.md, SECURITY_POLICY §6 | Application audit trail spec | High | PR #165 gap assessment | Engineering | Open |
+| Application audit logging | Debug gated; platform logs; webhook idempotency table (not general audit trail) | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), AGENTS.md, SECURITY_POLICY §6 | Formal application audit-log table and event schema | High | PR #167 design doc; implementation after legal/security review | Engineering | Open |
+| Audit event catalog | Proposed event names and metadata rules | [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) | Owner sign-off on required events before implementation | High | Review catalog; align with SOC 2 / HIPAA scope if applicable | Engineering + owner | Planned |
+| Audit retention policy | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, DATA_CLASSIFICATION draft | Legal retention periods for audit logs | High | Legal retention matrix | Owner + legal | Blocked on legal |
+| Audit log viewer / access control | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, ADMIN_ACCESS draft | Who may view audit logs; RLS/admin policy | High | PR #167 design doc | Owner + engineering | Open |
+| Log redaction / minimisation | Draft never-log list; no code enforcement | AUDIT_LOG_GAP_ASSESSMENT §7, AUDIT_EVENT_CATALOG_DRAFT §4 | Explicit redaction policy implemented in code | High | Implement after design review | Engineering | Evidence needed |
+| Platform log retention review | Vercel/Supabase/Stripe defaults assumed | AUDIT_LOG_GAP_ASSESSMENT §3 | Vendor retention documented per provider | Medium | PR #166 vendor register + ops review | Owner + ops | Blocked on vendor review |
+| Incident-to-audit evidence linkage | Incident playbook exists | PRODUCTION_INCIDENT playbook, AUDIT_LOG_GAP_ASSESSMENT §4 | Formal process linking incidents to log evidence | Medium | Document in incident playbook update | Owner | Open |
+| Future AI audit boundary | Block without review in classification draft | DATA_CLASSIFICATION draft, AUDIT_EVENT_CATALOG_DRAFT (`ai.*`) | AI assist audit events and metadata rules | High | Block runtime AI expansion until boundary approved | Engineering + legal | Open |
 | Backup / restore test | Supabase Pro platform backups | Supabase | Restore drill evidence | Medium | Schedule restore drill | Owner + ops | Evidence needed |
 | Encryption in transit | HTTPS platform defaults | SECURITY_POLICY draft | Document in owner sign-off | Low | Owner confirmation | Owner | In progress |
 | Encryption at rest | Supabase/Stripe defaults | Provider docs (external) | Confirm plan settings | Medium | Owner verification | Owner | Open |
@@ -66,3 +75,4 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | --- | --- |
 | 2026-07-20 | PR #163 — starter register aligned with readiness foundation |
 | 2026-07-20 | PR #164 — expanded register; linked draft security, classification, admin policy docs |
+| 2026-07-20 | PR #165 — audit-log gap assessment and event catalog draft; expanded audit-related rows |

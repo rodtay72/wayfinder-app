@@ -10,6 +10,8 @@
 
 **Draft policies (PR #164):** [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md)
 
+**Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
+
 Read first:
 
 - [AGENTS.md](../AGENTS.md)
@@ -114,7 +116,7 @@ Checklist of **controls to be reviewed** (not self-attested as complete):
 | Minimum necessary access | Is access limited to what each role needs? | RLS + role separation (`parent`, `counsellor`, admin) | Document minimum necessary per table/API; periodic access review |
 | Unique user identification | Can actions be tied to a unique user? | Supabase `user_id` + Wayfinder Parent ID | Admin/support impersonation policy; shared-device guidance |
 | Access control | Are auth, RLS, and admin paths controlled? | Auth + RLS + owner-admin gates | Emergency access; break-glass procedure |
-| Audit / log review | Can sensitive access be reconstructed? | Application debug gated; platform logs exist | Formal audit log requirements; retention; review cadence |
+| Audit / log review | Can sensitive access be reconstructed? | Application debug gated; platform logs exist; PR #165 gap assessment | Formal audit log requirements; retention; review cadence | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) |
 | Emergency access procedure | Is break-glass documented and approved? | Not documented in repo | Owner + security procedure |
 | Encryption in transit | Is data encrypted in transit? | HTTPS (Vercel/Supabase/Stripe) | Document TLS expectations; certificate pinning N/A for web |
 | Encryption at rest | Is data encrypted at rest? | Supabase/Stripe platform defaults | Confirm provider settings; key management ownership |
@@ -136,7 +138,7 @@ SOC 2 is an **external audit** readiness map — not self-certification. Map Way
 
 | TSC theme | Current evidence (starter) | Gap | Owner | Future PR / action |
 | --- | --- | --- | --- | --- |
-| **Security** | Supabase auth, RLS, no service role in browser, Stripe live gate (`api/_stripe-runtime-mode.js`), guardrail scripts | Formal security policy; access reviews; vulnerability management | Owner + security | PR #164 policy docs; PR #165 audit-log gap assessment |
+| **Security** | Supabase auth, RLS, no service role in browser, Stripe live gate (`api/_stripe-runtime-mode.js`), guardrail scripts | Formal security policy; access reviews; vulnerability management | Owner + security | PR #164 policy docs; PR #165 audit-log gap assessment ([AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)) |
 | **Availability** | Vercel + Supabase Pro; incident playbook; production smoke runbook | Uptime targets; DR test evidence; status comms | Owner + ops | Ops evidence in register |
 | **Confidentiality** | Privacy masking rules; Parent/Child IDs; MHP sharing consent; private licence/portrait storage | Data flow diagrams; subprocessor DPAs | Owner + legal | PR #166 vendor register |
 | **Privacy** | PDPA/signup acknowledgement track; no ads/no data-selling; consent-led research framing | Privacy notice completeness; data subject request process | Owner + legal | Consent persistence owner apply |
@@ -237,9 +239,10 @@ Escalate to owner + legal/security before proceeding.
 | PR | Scope | Type |
 | --- | --- | --- |
 | **#163** | HIPAA / SOC 2 readiness foundation, gap register starter, wording rules | Docs only — merged |
-| **#164** | Compliance evidence register expansion + draft security/classification/admin policy docs | Docs only |
-| **#165** | Runtime audit-log gap assessment | Docs first; implementation only after review |
+| **#164** | Compliance evidence register expansion + draft security/classification/admin policy docs | Docs only — merged |
+| **#165** | Audit-log and event-trail gap assessment + proposed event catalog | Docs only — no runtime logging |
 | **#166** | Vendor/subprocessor register with DPA/BAA review columns | Docs only |
+| **#167** | Audit-log implementation design (docs only) | Before any SQL/API logging |
 | **Later** | Implementation gaps (logging, retention automation, etc.) | Only after legal/security/auditor review |
 
 **Product sequencing note:** Simplified Chinese language toggle remains a planned parent-facing feature; owner may parallelise with compliance docs but must not weaken privacy or ALIGN/CAB boundaries.
@@ -252,3 +255,4 @@ Escalate to owner + legal/security before proceeding.
 | --- | --- |
 | 2026-07-20 | PR #163 — initial HIPAA / SOC 2 readiness foundation (docs only) |
 | 2026-07-20 | PR #164 — cross-links to draft security, data classification, and admin access policy docs |
+| 2026-07-20 | PR #165 — audit-log gap assessment and event catalog draft cross-links; PR #167 in recommended next PRs |

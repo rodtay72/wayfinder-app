@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-20
 
-**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md)
+**Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
 
 This document:
 
@@ -60,6 +60,7 @@ Wayfinder is not a clinical platform. MHP review is optional, parent-controlled 
 | Stripe webhook events | Plan sync payloads (processed server-side) | Confidential | Server; Stripe dashboard | Vercel logs / Stripe | **Unknown / partial** | Log retention TBD | Non-identifying ops notes only |
 | Support tickets / notes | Billing/support correspondence | Confidential / sensitive | Support; owner | External support tool | **Unknown / partial** | **Workflow needed** | Must not store reflection content |
 | Production logs | Vercel/Supabase platform logs | Confidential | Ops; owner | Vercel, Supabase | **Unknown / partial** | Log retention TBD | No reflection content in notes |
+| Application audit logs (future) | Minimised event metadata if implemented | Confidential / sensitive (depends on metadata) | Owner/admin only — **access policy TBD** | Future audit store (not implemented) | **Pending legal/security review** | **Policy needed** | See [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md); never log reflection content, child names, or secrets |
 | Research / consent records | Signup privacy acknowledgement; future consent | Confidential / sensitive | Parent; approved research ops | Consent tables (when applied) | **Unknown / partial** | Separate from app-use retention | Consent persistence track |
 | Language preference | `wayfinder_preferred_language` | Confidential | Parent device/localStorage | Browser localStorage | Client-side until cleared | User can change/clear | Static UI only; reflections not auto-translated |
 | AI prompts / responses (if used) | Grant-scoped assistive text | Sensitive / **potential PHI conditional** | MHP workspace if enabled | Provider-dependent | **Not implemented / TBD** | **Block without review** | No external AI for private content without approved design |
@@ -77,7 +78,8 @@ Wayfinder is not a clinical platform. MHP review is optional, parent-controlled 
 | Parent export request process | **Needed** |
 | Research retention vs app-use retention | **Must be separated** — consent-led research only |
 | MHP licence retention rule | **Gap** — owner + legal |
-| Logs retention | **Gap** — platform defaults only |
+| Logs retention | **Gap** — platform defaults only; application audit logs not implemented |
+| Application audit log retention | **Not defined** — pending legal/security review | See AUDIT_LOG_GAP_ASSESSMENT §4 |
 | AI retention if introduced | **Gap** — block until policy exists |
 
 Do not publish retention periods to parents until legal review confirms wording.
@@ -102,6 +104,7 @@ Do not publish retention periods to parents until legal review confirms wording.
 - Export request process (legal + product)
 - MHP licence retention rule (legal + owner)
 - Logs retention alignment with providers (ops)
+- Application audit log retention and export/deletion policy (legal + engineering) — see [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)
 - Research retention policy (legal + research ops)
 - AI retention and subprocessor boundaries if introduced (engineering + legal)
 
@@ -114,3 +117,4 @@ Track in [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md).
 | Date | Change |
 | --- | --- |
 | 2026-07-20 | PR #164 — initial data classification and retention readiness draft (docs only) |
+| 2026-07-20 | PR #165 — application audit logs data category; cross-links to audit-log gap assessment |
