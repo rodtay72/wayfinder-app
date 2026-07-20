@@ -145,6 +145,7 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 6. **Billing Portal pages** may remain reachable in the browser after Wayfinder sign-out (Stripe-hosted). See [STRIPE_PRE_LIVE_EVIDENCE_PACK.md — Post-cutover operational findings](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md#post-cutover-operational-findings) (PR #159).
 7. **PR #161** post-live monitoring and billing support FAQ — use for ops; do not manually link legacy billing.
 8. **PR #162** parent-facing launch polish and App Version v0.4.6 — live-safe Plans copy; no legacy billing migration; no auth/RLS/journal/Stripe runtime changes.
+9. **PR #163** HIPAA / SOC 2 readiness foundation — compliance **preparation** docs only; **no compliance claims** in product or support.
 
 ---
 
@@ -152,13 +153,13 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 
 | Platform | Next action |
 | --- | --- |
-| ChatGPT | Use [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) for billing support; legacy Plus per [procedure](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md). |
-| Cursor | Merge PR #162; then language toggle foundation planning/runtime PR (separate from billing). Do not manually link legacy billing or change auth/RLS/journal runtime unless instructed. |
-| Codex | If asked to review, verify PR #158 remains docs-only and contains no secrets/IDs. |
-| Claude Projects | Use this brief for copy/research/socialisation review; preserve ALIGN/CAB and privacy baseline. |
+| ChatGPT | Use [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) for billing support; legacy Plus per [procedure](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md). Do not claim HIPAA/SOC 2 compliance. |
+| Cursor | Merge PR #163; then PR #164 evidence expansion or language toggle when owner approves. Do not manually link legacy billing or change auth/RLS/journal runtime unless instructed. |
+| Codex | If asked to review, verify PR #163 remains docs-only and contains no compliance claims or secrets. |
+| Claude Projects | Use [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) for readiness framing; preserve ALIGN/CAB and privacy baseline. |
 | Claude Code | Reviewer or isolated branch only; no direct production-impact edits without explicit issue allowlist. |
-| OpenClaw | Socialise this state across configured agent channels/manual handoff. |
-| Human owner | Merge PR #162 launch polish + App Version. Then decide: language toggle foundation or other parent-facing polish. Legacy billing migration implementation remains deferred. |
+| OpenClaw | Socialise compliance readiness state; no “HIPAA compliant” or “SOC 2 compliant” language. |
+| Human owner | Merge PR #163 readiness foundation. Then PR #164 or language toggle per priority. Legacy billing migration remains deferred. |
 
 ---
 
@@ -171,3 +172,4 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 | 2026-07-10 | PR #160 — legacy Plus migration/support procedure cross-link |
 | 2026-07-10 | PR #161 — post-live monitoring/support FAQ; platform next actions |
 | 2026-07-11 | PR #162 — parent-facing launch polish and App Version v0.4.6; live-safe Plans copy; no legacy billing migration |
+| 2026-07-20 | PR #163 — HIPAA / SOC 2 readiness foundation; compliance preparation only; no product claims |

@@ -4,9 +4,9 @@
 
 **Scope:** Daily monitoring, Stripe webhook checks, billing support FAQ, legacy Plus policy reminder, language toggle planning pointer
 
-**Last updated:** 2026-07-10
+**Last updated:** 2026-07-20
 
-**Related PR:** #161 (docs only)
+**Related PR:** #161 (merged); PR #163 cross-link (compliance readiness)
 
 Read first:
 
@@ -17,8 +17,11 @@ Read first:
 - [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md)
 - [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md)
 - [LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md](./LANGUAGE_TOGGLE_ZH_HANS_STRATEGY.md)
+- [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md)
 
 **Privacy rule:** Do not record parent emails, child names, Supabase UUIDs, JWTs, Stripe customer/subscription IDs, live Price IDs, webhook secrets, Portal URLs, event IDs, or reflection content in monitoring notes or support tickets.
+
+**Support wording rule:** Do **not** tell parents that Wayfinder is “HIPAA compliant”, “SOC 2 compliant”, “certified”, or “audited”. Use privacy-first language and refer to [HIPAA_SOC2_READINESS_FOUNDATION.md §8](./HIPAA_SOC2_READINESS_FOUNDATION.md#8-product-wording-rules) if compliance questions arise. Escalate to owner/legal.
 
 ---
 
@@ -177,6 +180,7 @@ Do **not**:
 - [LAUNCH_OPERATOR_RUNBOOK.md](./LAUNCH_OPERATOR_RUNBOOK.md) — manual authenticated smoke scripts
 - [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md) — cross-platform handoff
 - [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md) — live cutover evidence
+- [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) — compliance preparation (not a certification)
 
 ---
 
@@ -186,3 +190,4 @@ Do **not**:
 | --- | --- |
 | 2026-07-10 | PR #161 — initial post-live monitoring and support FAQ (docs only) |
 | 2026-07-11 | PR #162 — parent-facing Plans/Dashboard copy polish; see [CURRENT_LAUNCH_STATUS.md](./CURRENT_LAUNCH_STATUS.md) |
+| 2026-07-20 | PR #163 — HIPAA / SOC 2 readiness foundation cross-link; support wording rule (no compliance claims) |
