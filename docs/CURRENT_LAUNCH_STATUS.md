@@ -8,13 +8,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-20
 
-**Last verified merge:** PR #162 — parent-facing launch polish, Plans clarity, App Version v0.4.6, MHP terminology consistency
+**Last verified merge:** PR #163 — HIPAA / SOC 2 readiness foundation (docs only)
 
-**Next proposed PR:** PR #163 — HIPAA / SOC 2 readiness foundation (docs only)
+**Next proposed PR:** PR #164 — compliance evidence register expansion + security policy docs (docs only)
 
-**PR #163 (in flight):** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) — readiness map, gap register, evidence checklist, safe wording rules. **No compliance claim yet** — requires legal/security/auditor confirmation before any HIPAA or SOC 2 positioning.
+**PR #164 (in flight):** [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md), [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md), [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md), expanded [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md). **No runtime/API/SQL/auth/RLS/env changes.** **No HIPAA or SOC 2 compliance claim yet** — legal/security/auditor review required.
 
-**PR #162 (merged):** Parent-facing launch polish, Plans clarity, App Version v0.4.6, MHP terminology consistency. Runtime + copy-only API strings in `list-available-mhps.js`.
+**PR #163 (merged):** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) — readiness map, gap register starter, safe wording rules.
+
+**PR #162 (merged):** Parent-facing launch polish, Plans clarity, App Version v0.4.6, MHP terminology consistency.
 
 **PR #161 (merged):** [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) — post-live ops, billing FAQ, language planning refresh. Docs only.
 
@@ -40,7 +42,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #163 (HIPAA / SOC 2 readiness foundation, docs only). **No HIPAA or SOC 2 compliance claims** until legal/security/auditor review. Then decide next priority: **PR #164 compliance evidence expansion**, **language toggle** (next product feature when owner approves), or other parent-facing polish. Legacy Plus migration **implementation remains deferred**. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
+**Current owner blocker:** Merge PR #164 (compliance evidence expansion + draft security policy docs). **No HIPAA or SOC 2 compliance claims** until legal/security/auditor review. Then choose next priority: **PR #165 audit-log gap assessment** or **language toggle runtime foundation** (planned product feature when owner approves). Legacy Plus migration **implementation remains deferred**. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
