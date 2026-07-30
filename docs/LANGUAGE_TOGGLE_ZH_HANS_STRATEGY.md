@@ -122,6 +122,8 @@ Static **UI and product copy** only, for example:
 - research export payloads;
 - Stripe receipts/invoices (Stripe-hosted unless separately approved).
 
+**PR #167 — Chinese (and English) input:** Parents may type journal and Decode free text in **any language they choose** (including 简体中文). Wayfinder saves and displays that text **exactly as entered**. Switching UI language (`en` / `zh-Hans`) changes **static product copy only** — not saved reflection bodies. No automatic translation, romanisation, or rewriting. Helper copy: `reflection.languageHelper` in `WAYFINDER_I18N`. Future audit-log implementation design moves to **PR #168** or later (docs track).
+
 ### Phase 2+ (future, consent-based only)
 
 Automatic or assisted translation of **saved private reflections** requires a **separate approved design** with explicit parent consent, purpose limitation, and no default-on behaviour. Not part of PR #123 or the first runtime toggle PR.
@@ -197,7 +199,7 @@ Simplified Chinese product copy should be:
 
 | Context | Label |
 |---------|-------|
-| Parent/client-facing UI | **Mental Health Professional** / **MHP** (or approved 简体中文 equivalent such as 心理健康专业人士 — final copy in runtime PR) |
+| Parent/client-facing UI | **Mental Health Practitioner (MHP)** / **心理健康从业者（MHP）** (runtime PR #167) |
 | Internal role / code / SQL | `counsellor` — **do not rename** |
 | Review sharing | Parent-controlled sharing; not automatic clinical care |
 
@@ -350,3 +352,4 @@ Ops and billing support reference: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./P
 | --- | --- |
 | 2026-06-29 | PR #123 — initial Simplified Chinese language toggle strategy (docs only) |
 | 2026-07-10 | PR #161 — post-live planning update; static UI copy scope reaffirmed |
+| 2026-07-31 | PR #167 — runtime foundation: static UI toggle, Chinese/English reflection input preserved as entered; MHP terminology; audit-log design deferred to PR #168 |

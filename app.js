@@ -74,6 +74,84 @@ function t(key,fallback){
  return safeKey;
 }
 
+function getPlansPageMeta(){
+ const base=typeof WAYFINDER_PLANS_PAGE!=='undefined'?WAYFINDER_PLANS_PAGE:{};
+ const localizeTier=(tier)=>{
+  const pk=String(tier?.planKey||'').trim();
+  return {
+   ...tier,
+   tagline:t(`plans.tier.${pk}.tagline`,tier?.tagline||''),
+   positioning:t(`plans.tier.${pk}.positioning`,tier?.positioning||''),
+   highlights:(Array.isArray(tier?.highlights)?tier.highlights:[]).map((h,i)=>t(`plans.tier.${pk}.highlight${i}`,h))
+  };
+ };
+ const pick=(key,fallback)=>t(key,String(fallback||'').trim());
+ return {
+  ...base,
+  title:pick('plans.title',base.title||'Plans'),
+  subtitle:pick('plans.subtitle',base.subtitle),
+  privacyBaseline:pick('plans.privacyBaseline',base.privacyBaseline),
+  readAccessReassurance:pick('plans.readAccessReassurance',base.readAccessReassurance),
+  connectDisclaimer:pick('plans.connectDisclaimer',base.connectDisclaimer),
+  sandboxTestModeNote:pick('plans.sandboxTestModeNote',base.sandboxTestModeNote),
+  catalogHeading:pick('plans.catalogHeading',base.catalogHeading),
+  currentPlanLabel:pick('plans.currentPlanLabel',base.currentPlanLabel),
+  unavailableNote:pick('plans.unavailableNote',base.unavailableNote),
+  checkoutUpgradeMonthly:pick('plans.checkoutUpgradeMonthly',base.checkoutUpgradeMonthly),
+  checkoutUpgradeYearly:pick('plans.checkoutUpgradeYearly',base.checkoutUpgradeYearly),
+  checkoutLoading:pick('plans.checkoutLoading',base.checkoutLoading),
+  checkoutDismissNotice:pick('plans.checkoutDismiss',base.checkoutDismissNotice),
+  manageBillingLabel:pick('plans.manageBillingLabel',base.manageBillingLabel),
+  manageBillingLoading:pick('plans.manageBillingLoading',base.manageBillingLoading),
+  currentPlanConfirmedNote:pick('plans.currentPlanConfirmedNote',base.currentPlanConfirmedNote),
+  monthlyLabel:pick('plans.monthlyLabel',base.monthlyLabel),
+  yearlyLabel:pick('plans.yearlyLabel',base.yearlyLabel),
+  freePriceLabel:pick('plans.freePriceLabel',base.freePriceLabel),
+  noCardRequired:pick('plans.noCardRequired',base.noCardRequired),
+  currentPlanBadge:pick('plans.currentPlanBadge',base.currentPlanBadge),
+  checkoutErrorMessage:base.checkoutErrorMessage,
+  checkoutSuccessNotice:base.checkoutSuccessNotice,
+  checkoutCancelledNotice:base.checkoutCancelledNotice,
+  manageBillingErrorMessage:base.manageBillingErrorMessage,
+  manageBillingLegacyErrorMessage:base.manageBillingLegacyErrorMessage,
+  manageBillingNote:base.manageBillingNote,
+  manageBillingSessionSafetyNote:base.manageBillingSessionSafetyNote,
+  billingReturnNotice:base.billingReturnNotice,
+  billingReturnSessionSafetyNote:base.billingReturnSessionSafetyNote,
+  trialActiveDetail:base.trialActiveDetail,
+  trialActiveNoDateDetail:base.trialActiveNoDateDetail,
+  trialEndedDetail:base.trialEndedDetail,
+  catalog:(Array.isArray(base.catalog)?base.catalog:[]).map(localizeTier)
+ };
+}
+
+function getAppVersionPageMeta(){
+ const base=typeof APP_VERSION_PAGE!=='undefined'?APP_VERSION_PAGE:{};
+ return {
+  ...base,
+  title:t('appVersion.title',base.title||'App Version'),
+  subtitle:t('appVersion.subtitle',base.subtitle||''),
+  releasedHeading:t('appVersion.releasedHeading',base.releasedHeading||'Recent updates'),
+  plannedHeading:t('appVersion.plannedHeading',base.plannedHeading||'Planned'),
+  reassurance:t('appVersion.reassurance',base.reassurance||''),
+  workflowNote:t('appVersion.workflowNote',base.workflowNote||'')
+ };
+}
+
+function localizeAppVersionEntry(entry){
+ if(!entry) return entry;
+ if(String(entry.id||'').trim()==='v0-4-7-language-toggle'){
+  return {
+   ...entry,
+   tag:t('appVersion.v047.tag',entry.tag||''),
+   title:t('appVersion.v047.title',entry.title||''),
+   body:t('appVersion.v047.body',entry.body||''),
+   parentAction:t('appVersion.v047.parentAction',entry.parentAction||'')
+  };
+ }
+ return entry;
+}
+
 function usePreferredLanguage(){
  const [lang,setLangState]=useState(()=>getPreferredLanguage());
  useEffect(()=>{
@@ -109,6 +187,10 @@ function LanguageToggle({className=''}){
    >{opt.label}</button>)}
   </div>
  </div>;
+}
+
+function ReflectionLanguageHint({className=''}){
+ return <p className={'hint reflection-language-hint'+(className?' '+className:'')}>{t('reflection.languageHelper','Write in the language that feels most natural to you. Wayfinder will keep your private reflection exactly as entered.')}</p>;
 }
 
 /* ============ DATA ============ */
@@ -3492,9 +3574,10 @@ function AppVersionEntryCard({entry,planned}){
  </article>;
 }
 function AppVersionPage({back,onSignOut}){
+ usePreferredLanguage();
  const versions=typeof WAYFINDER_APP_VERSIONS!=='undefined'?WAYFINDER_APP_VERSIONS:[];
- const pageMeta=typeof APP_VERSION_PAGE!=='undefined'?APP_VERSION_PAGE:{};
- const valid=Array.isArray(versions)?versions.filter(appVersionValidEntry):[];
+ const pageMeta=getAppVersionPageMeta();
+ const valid=Array.isArray(versions)?versions.filter(appVersionValidEntry).map(localizeAppVersionEntry):[];
  const released=valid.filter(e=>appVersionEntryStatus(e)==='released');
  const planned=valid.filter(e=>appVersionEntryStatus(e)==='planned');
  const pageTitle=String(pageMeta.title||'App Version').trim()||'App Version';
@@ -3505,6 +3588,7 @@ function AppVersionPage({back,onSignOut}){
  const workflowNote=String(pageMeta.workflowNote||'').trim();
  return <div className="wrap">
   <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
+  <LanguageToggle className="language-toggle-dashboard language-toggle-subpage"/>
   <div className="card dashboard-section app-version-intro">
    {subtitle ? <p className="dashboard-helper app-version-subtitle">{subtitle}</p> : null}
    {reassurance ? <p className="app-version-reassurance">{reassurance}</p> : null}
@@ -3518,13 +3602,13 @@ function AppVersionPage({back,onSignOut}){
   </div> : null}
   {planned.length>0 ? <div className="card dashboard-section app-version-section app-version-section--planned">
    <h2 className="app-version-section-title">{plannedHeading}</h2>
-   <p className="dashboard-helper app-version-planned-note">These items are planned and may change as Wayfinder develops.</p>
+   <p className="dashboard-helper app-version-planned-note">{t('appVersion.plannedNote','These items are planned and may change as Wayfinder develops.')}</p>
    <div className="app-version-list">
     {planned.map(entry=><AppVersionEntryCard key={String(entry.id||entry.title)} entry={entry} planned/>)}
    </div>
   </div> : null}
   {released.length===0&&planned.length===0 ? <div className="card dashboard-section app-version-empty">
-   <p className="sub">No version notes are available right now.</p>
+   <p className="sub">{t('appVersion.empty','No version notes are available right now.')}</p>
   </div> : null}
  </div>;
 }
@@ -3560,7 +3644,8 @@ function formatPlansTrialDetail(entitlement,pageMeta){
 }
 
 function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismissCheckoutReturnNotice,billingReturnNotice,onDismissBillingReturnNotice}){
- const pageMeta=typeof WAYFINDER_PLANS_PAGE!=='undefined'?WAYFINDER_PLANS_PAGE:{};
+ usePreferredLanguage();
+ const pageMeta=getPlansPageMeta();
  const [loading,setLoading]=useState(true);
  const [unavailable,setUnavailable]=useState(false);
  const [entitlement,setEntitlement]=useState(null);
@@ -3716,6 +3801,7 @@ function PlansPage({back,onSignOut,user,authSession,checkoutReturnNotice,onDismi
 
  return <div className="wrap">
   <Bar title={pageTitle} back={back} onSignOut={onSignOut}/>
+  <LanguageToggle className="language-toggle-dashboard language-toggle-subpage"/>
   {checkoutReturnNotice==='success' ? <div className="card dashboard-section plans-checkout-notice plans-checkout-notice--success" role="status">
    <p className="plans-checkout-notice-text">{checkoutSuccessNotice}</p>
    {typeof onDismissCheckoutReturnNotice==='function' ? <button type="button" className="btn btn-ghost plans-checkout-dismiss" onClick={onDismissCheckoutReturnNotice}>{dismissNoticeLabel}</button> : null}
@@ -3818,27 +3904,27 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
  }));
  const goNext=()=>setStep(s=>Math.min(s+1,DECODE_STEPS.length-1));
  const goBack=()=>setStep(s=>Math.max(s-1,0));
- const textOrEmpty=(value)=>String(value||'').trim()||'Not written yet';
- const listOrEmpty=(value)=>value&&value.length?value.join(', '):'Not selected yet';
+ const textOrEmpty=(value)=>String(value||'').trim()||t('common.notWrittenYet','Not written yet');
+ const listOrEmpty=(value)=>value&&value.length?value.join(', '):t('common.notSelectedYet','Not selected yet');
  const affectSummary=()=>{
   const rated=Object.entries(decode.integrate.affectIntensity||{})
    .filter(([,v])=>v!==undefined&&v!==null)
    .map(([k,v])=>`${k} ${v}/5`);
   if(rated.length)return rated.join(', ');
   if(decode.locate.parentAffects.length)return decode.locate.parentAffects.join(', ');
-  return 'Not selected yet';
+  return t('common.notSelectedYet','Not selected yet');
  };
- const nextAction=[decode.navigate.nextOption,decode.navigate.nextAction.trim()].filter(Boolean).join(' - ')||'Not written yet';
+ const nextAction=[decode.navigate.nextOption,decode.navigate.nextAction.trim()].filter(Boolean).join(' - ')||t('common.notWrittenYet','Not written yet');
 
  const Chip=({active,onClick,children})=><button type="button" className={'chip decode-chip'+(active?' selected':'')} onClick={onClick}>{children}</button>;
  const StepButtons=({primary})=><div className="decode-actions">
-  <button type="button" className="btn btn-secondary" onClick={goBack}>Back</button>
+  <button type="button" className="btn btn-secondary" onClick={goBack}>{t('common.back','Back')}</button>
   <button type="button" className="btn btn-primary" onClick={goNext}>{primary}</button>
  </div>;
- const Stepper=()=>step>0?<div className="decode-stepper" aria-label="Decode a Moment progress">
+ const Stepper=()=>step>0?<div className="decode-stepper" aria-label={t('decode.progressLabel','Decode a Moment progress')}>
   {DECODE_STEPS.slice(1).map((s,i)=><div key={s.label} className={'align-step'+(step===i+1?' active':'')+(step>i+1?' done':'')}>
    <span>{s.label}</span>
-   <small>{s.title}</small>
+   <small>{s.label==='A'?t('decode.align.A.title','Awareness'):s.label==='L'?t('decode.align.L.title','Locate'):s.label==='I'?t('decode.align.I.title','Integrate'):s.label==='G'?t('decode.align.G.title','Growth'):s.label==='N'?t('decode.align.N.title','Navigate'):s.title}</small>
   </div>)}
  </div>:null;
  const saveDecode=async()=>{
@@ -3859,7 +3945,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
   }catch(err){
    console.error('decode save error:',err);
    setSaveState('error');
-   setSaveError('We could not save this reminder yet. Please try again.');
+   setSaveError(t('decode.summary.saveError','We could not save this reminder yet. Please try again.'));
   }
  };
 
@@ -3878,151 +3964,153 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
   </div>;
 
   if(step===1)return <div className="card decode-step-card">
-   <div className="align-kicker">A: Awareness</div>
-   <h1>Awareness</h1>
-   <h2>What did you notice?</h2>
-   <p className="sub">Describe what happened without judging the child.</p>
+   <div className="align-kicker">{t('decode.align.A.kicker','A: Awareness')}</div>
+   <h1>{t('decode.align.A.title','Awareness')}</h1>
+   <h2>{t('decode.align.A.heading','What did you notice?')}</h2>
+   <p className="sub">{t('decode.align.A.sub','Describe what happened without judging the child.')}</p>
    <div className="field">
-    <label>What did your child do?</label>
-    <textarea value={decode.awareness.observedBehaviour} onChange={e=>update('awareness','observedBehaviour',e.target.value)} />
-    <p className="hint">{UI_TEXT.decode.privacyNudge}</p>
+    <label>{t('decode.field.childDid','What did your child do?')}</label>
+    <textarea lang={getPreferredLanguage()} value={decode.awareness.observedBehaviour} onChange={e=>update('awareness','observedBehaviour',e.target.value)} />
+    <p className="hint">{t('decode.privacyNudge',UI_TEXT?.decode?.privacyNudge||'')}</p>
+    <ReflectionLanguageHint/>
    </div>
    <div className="field">
-    <label>When did this happen?</label>
+    <label>{t('decode.field.when','When did this happen?')}</label>
     <div className="chips decode-grid">{DECODE_CONTEXT_OPTIONS.map(option=><Chip key={option} active={decode.awareness.context===option} onClick={()=>update('awareness','context',option)}>{option}</Chip>)}</div>
    </div>
    <div className="field">
-    <label>What did you first notice?</label>
+    <label>{t('decode.field.firstNotice','What did you first notice?')}</label>
     <div className="chips decode-grid">{DECODE_NOTICE_OPTIONS.map(option=><Chip key={option} active={decode.awareness.initialObservation===option} onClick={()=>update('awareness','initialObservation',option)}>{option}</Chip>)}</div>
    </div>
-   <StepButtons primary="Continue to Locate"/>
+   <StepButtons primary={t('decode.continueLocate','Continue to Locate')}/>
   </div>;
 
   if(step===2)return <div className="card decode-step-card">
-   <div className="align-kicker">L: Locate</div>
-   <h1>Locate</h1>
-   <h2>What might this behaviour have been trying to solve for your child?</h2>
-   <p className="sub">Choose what feels possible. This is a hypothesis, not a diagnosis.</p>
+   <div className="align-kicker">{t('decode.align.L.kicker','L: Locate')}</div>
+   <h1>{t('decode.align.L.title','Locate')}</h1>
+   <h2>{t('decode.align.L.heading','What might this behaviour have been trying to solve for your child?')}</h2>
+   <p className="sub">{t('decode.align.L.sub','Choose what feels possible. This is a hypothesis, not a diagnosis.')}</p>
    <div className="field">
-    <label>Possible need underneath the behaviour</label>
+    <label>{t('decode.field.possibleNeed','Possible need underneath the behaviour')}</label>
     <div className="chips decode-grid">{DECODE_NEED_OPTIONS.map(option=><Chip key={option} active={decode.locate.possibleNeeds.includes(option)} onClick={()=>toggle('locate','possibleNeeds',option)}>{option}</Chip>)}</div>
    </div>
    <div className="field">
-    <label>What was happening in you at the same time?</label>
+    <label>{t('decode.field.parentAffect','What was happening in you at the same time?')}</label>
     <div className="chips decode-grid">{DECODE_PARENT_AFFECT_OPTIONS.map(option=><Chip key={option} active={decode.locate.parentAffects.includes(option)} onClick={()=>toggle('locate','parentAffects',option)}>{option}</Chip>)}</div>
    </div>
-   <StepButtons primary="Continue to Integrate"/>
+   <StepButtons primary={t('decode.continueIntegrate','Continue to Integrate')}/>
   </div>;
 
   if(step===3)return <div className="card decode-step-card">
-   <div className="align-kicker">I: Integrate</div>
-   <h1>Integrate</h1>
-   <h2>What happened in your response?</h2>
-   <p className="sub">Now connect the child's possible need with your thinking, feelings, and behaviour.</p>
+   <div className="align-kicker">{t('decode.align.I.kicker','I: Integrate')}</div>
+   <h1>{t('decode.align.I.title','Integrate')}</h1>
+   <h2>{t('decode.align.I.heading','What happened in your response?')}</h2>
+   <p className="sub">{t('decode.align.I.sub','Now connect the child\'s possible need with your thinking, feelings, and behaviour.')}</p>
+   <ReflectionLanguageHint className="reflection-language-hint-compact"/>
    <div className="decode-grid cab-panel-grid">
     <div className="cab-panel c-cog">
-     <h3>My thinking</h3>
-     <label>What thought appeared in your mind?</label>
-     <p className="hint">Examples: "They should know better." "We are going to be late." "This always happens." "I need to stop this now." "I am failing as a parent."</p>
+     <h3>{t('decode.cab.thinking','My thinking')}</h3>
+     <label>{t('decode.cab.thinkingLabel','What thought appeared in your mind?')}</label>
+     <p className="hint">{t('decode.cab.thinkingHint','Examples: "They should know better." "We are going to be late." "This always happens." "I need to stop this now." "I am failing as a parent."')}</p>
      <textarea value={decode.integrate.parentCognition} onChange={e=>update('integrate','parentCognition',e.target.value)} />
     </div>
     <div className="cab-panel c-aff">
-     <h3>My feelings</h3>
-     <label>What did you feel emotionally or in your body?</label>
+     <h3>{t('decode.cab.feelings','My feelings')}</h3>
+     <label>{t('decode.cab.feelingsLabel','What did you feel emotionally or in your body?')}</label>
      <div className="decode-scale-list">{DECODE_INTENSITY_OPTIONS.map(emotion=><div key={emotion} className="decode-scale-row">
       <div className="decode-scale-label">{emotion}</div>
       <div className="decode-scale-options">{[0,1,2,3,4,5].map(value=><button key={value} type="button" className={'decode-scale-dot'+(decode.integrate.affectIntensity[emotion]===value?' selected':'')} onClick={()=>setAffectIntensity(emotion,value)}>{value}</button>)}</div>
      </div>)}</div>
     </div>
     <div className="cab-panel c-beh">
-     <h3>My behaviour / what I did</h3>
-     <label>What did you do next?</label>
+     <h3>{t('decode.cab.behaviour','My behaviour / what I did')}</h3>
+     <label>{t('decode.cab.behaviourLabel','What did you do next?')}</label>
      <div className="chips">{DECODE_PARENT_BEHAVIOUR_OPTIONS.map(option=><Chip key={option} active={decode.integrate.parentBehaviours.includes(option)} onClick={()=>toggle('integrate','parentBehaviours',option)}>{option}</Chip>)}</div>
     </div>
    </div>
-   <StepButtons primary="Continue to Growth"/>
+   <StepButtons primary={t('decode.continueGrowth','Continue to Growth')}/>
   </div>;
 
   if(step===4)return <div className="card decode-step-card">
-   <div className="align-kicker">G: Growth</div>
-   <h1>Growth</h1>
-   <h2>What capacity might help you meet this need next time?</h2>
-   <p className="sub">Growth is not about blaming yourself. It is about building alignment capacity.</p>
+   <div className="align-kicker">{t('decode.align.G.kicker','G: Growth')}</div>
+   <h1>{t('decode.align.G.title','Growth')}</h1>
+   <h2>{t('decode.align.G.heading','What capacity might help you meet this need next time?')}</h2>
+   <p className="sub">{t('decode.align.G.sub','Growth is not about blaming yourself. It is about building alignment capacity.')}</p>
    <div className="field">
-    <label>Capacity to practise</label>
+    <label>{t('decode.field.capacity','Capacity to practise')}</label>
     <div className="chips decode-grid">{DECODE_GROWTH_OPTIONS.map(option=><Chip key={option} active={decode.growth.capacities.includes(option)} onClick={()=>toggle('growth','capacities',option)}>{option}</Chip>)}</div>
    </div>
    <div className="field">
-    <label>What are you becoming aware of?</label>
+    <label>{t('decode.field.awarenessMarkers','What are you becoming aware of?')}</label>
     <div className="chips decode-grid">{DECODE_AWARENESS_MARKERS.map(option=><Chip key={option} active={decode.growth.awarenessMarkers.includes(option)} onClick={()=>toggle('growth','awarenessMarkers',option)}>{option}</Chip>)}</div>
    </div>
-   <StepButtons primary="Continue to Navigate"/>
+   <StepButtons primary={t('decode.continueNavigate','Continue to Navigate')}/>
   </div>;
 
   if(step===5)return <div className="card decode-step-card">
-   <div className="align-kicker">N: Navigate</div>
-   <h1>Navigate</h1>
-   <h2>What will you try next time?</h2>
-   <p className="sub">Choose one small next action. Keep it realistic.</p>
+   <div className="align-kicker">{t('decode.align.N.kicker','N: Navigate')}</div>
+   <h1>{t('decode.align.N.title','Navigate')}</h1>
+   <h2>{t('decode.align.N.heading','What will you try next time?')}</h2>
+   <p className="sub">{t('decode.align.N.sub','Choose one small next action. Keep it realistic.')}</p>
    <div className="field">
-    <label>Possible next action</label>
+    <label>{t('decode.field.nextAction','Possible next action')}</label>
     <div className="chips decode-grid">{DECODE_NEXT_OPTIONS.map(option=><Chip key={option} active={decode.navigate.nextOption===option} onClick={()=>update('navigate','nextOption',option)}>{option}</Chip>)}</div>
    </div>
    <div className="field">
-    <label>My next action</label>
+    <label>{t('decode.field.myNextAction','My next action')}</label>
     <textarea value={decode.navigate.nextAction} onChange={e=>update('navigate','nextAction',e.target.value)} />
    </div>
    <div className="field">
-    <label>Is there anything to repair with your child?</label>
+    <label>{t('decode.field.repair','Is there anything to repair with your child?')}</label>
     <div className="chips decode-grid">{DECODE_REPAIR_OPTIONS.map(option=><Chip key={option} active={decode.navigate.repairIntention===option} onClick={()=>update('navigate','repairIntention',option)}>{option}</Chip>)}</div>
    </div>
    <div className="field">
-    <label>What will I observe next time?</label>
-    <textarea value={decode.navigate.observeNextTime} onChange={e=>update('navigate','observeNextTime',e.target.value)} />
+    <label>{t('decode.field.observeNext','What will I observe next time?')}</label>
+    <textarea lang={getPreferredLanguage()} value={decode.navigate.observeNextTime} onChange={e=>update('navigate','observeNextTime',e.target.value)} />
    </div>
-   <StepButtons primary="Show Summary"/>
+   <StepButtons primary={t('decode.showSummary','Show Summary')}/>
   </div>;
 
   return <div className="card decode-step-card">
-   <div className="align-kicker">Reminder</div>
-   <h1>My Alignment Reminder</h1>
-   <p className="sub">Let's explore this as a reflection, not a conclusion.</p>
+   <div className="align-kicker">{t('decode.summary.kicker','Reminder')}</div>
+   <h1>{t('decode.summary.title','My Alignment Reminder')}</h1>
+   <p className="sub">{t('decode.summary.sub','Let\'s explore this as a reflection, not a conclusion.')}</p>
    {saveState==='saved'
-    ? <p className="decode-note">Saved to your Journal Trail. You can return to this reminder and notice what changes over time.</p>
+    ? <p className="decode-note">{t('decode.summary.savedNote','Saved to your Journal Trail. You can return to this reminder and notice what changes over time.')}</p>
     : saveError
      ? <p className="decode-note">{saveError}</p>
      : null}
    <div className="decode-summary">
-    <div><span>The moment I noticed</span><p>{textOrEmpty(decode.awareness.observedBehaviour)}</p></div>
-    <div><span>One possible signal I explored</span><p>{[decode.awareness.initialObservation,decode.awareness.context].filter(Boolean).join(', ')||'Not selected yet'}</p></div>
-    <div><span>A possible need worth staying curious about</span><p>{listOrEmpty(decode.locate.possibleNeeds)}</p></div>
-    <div><span>What was happening in me</span><p><b>Thinking:</b> {textOrEmpty(decode.integrate.parentCognition)}<br/><b>Feelings:</b> {affectSummary()}<br/><b>Behaviour / What I did:</b> {listOrEmpty(decode.integrate.parentBehaviours)}</p></div>
-    <div><span>Possible alignment gap</span><p>{decodeAlignmentGapText(decode)}</p></div>
-    <div><span>What I want to practise</span><p>{listOrEmpty(decode.growth.capacities)}</p></div>
-    <div><span>My next action</span><p>{nextAction}</p></div>
-    <div><span>Repair intention</span><p>{decode.navigate.repairIntention||'Not selected yet'}</p></div>
-    <div><span>What I will observe next time</span><p>{textOrEmpty(decode.navigate.observeNextTime)}</p></div>
+    <div><span>{t('decode.summary.label.moment','The moment I noticed')}</span><p>{textOrEmpty(decode.awareness.observedBehaviour)}</p></div>
+    <div><span>{t('decode.summary.label.signal','One possible signal I explored')}</span><p>{[decode.awareness.initialObservation,decode.awareness.context].filter(Boolean).join(', ')||t('common.notSelectedYet','Not selected yet')}</p></div>
+    <div><span>{t('decode.summary.label.need','A possible need worth staying curious about')}</span><p>{listOrEmpty(decode.locate.possibleNeeds)}</p></div>
+    <div><span>{t('decode.summary.label.inMe','What was happening in me')}</span><p><b>{t('decode.summary.thinking','Thinking:')}</b> {textOrEmpty(decode.integrate.parentCognition)}<br/><b>{t('decode.summary.feelings','Feelings:')}</b> {affectSummary()}<br/><b>{t('decode.summary.behaviour','Behaviour / What I did:')}</b> {listOrEmpty(decode.integrate.parentBehaviours)}</p></div>
+    <div><span>{t('decode.summary.label.gap','Possible alignment gap')}</span><p>{decodeAlignmentGapText(decode)}</p></div>
+    <div><span>{t('decode.summary.label.practise','What I want to practise')}</span><p>{listOrEmpty(decode.growth.capacities)}</p></div>
+    <div><span>{t('decode.summary.label.next','My next action')}</span><p>{nextAction}</p></div>
+    <div><span>{t('decode.summary.label.repair','Repair intention')}</span><p>{decode.navigate.repairIntention||t('common.notSelectedYet','Not selected yet')}</p></div>
+    <div><span>{t('decode.summary.label.observe','What I will observe next time')}</span><p>{textOrEmpty(decode.navigate.observeNextTime)}</p></div>
    </div>
-   <p className="decode-note">This is a reflection, not an assessment of your child.</p>
+   <p className="decode-note">{t('decode.summary.reflectionNote','This is a reflection, not an assessment of your child.')}</p>
    <p className="decode-note">{UI_TEXT.decode.counsellorReminder}</p>
    {saveState!=='saved'&&(dyads.length===0
-    ?<p className="decode-note" style={{color:'#b44',marginBottom:12}}>Add a child before saving this reminder to Journal Trail.</p>
+    ?<p className="decode-note" style={{color:'#b44',marginBottom:12}}>{t('decode.summary.addChildWarning','Add a child before saving this reminder to Journal Trail.')}</p>
     :<div className="field" style={{marginBottom:16}}>
-     <label>Which child is this reminder connected to?</label>
+     <label>{t('decode.summary.childConnect','Which child is this reminder connected to?')}</label>
      {dyads.length===1
-      ?<p style={{marginTop:8,fontWeight:600,color:'#40514b'}}>Connected to Child ID: {dyads[0].childId}{[dyads[0].childGender,ageFrom(dyads[0].childDob,null)].filter(Boolean).length?' ('+[dyads[0].childGender,ageFrom(dyads[0].childDob,null)].filter(Boolean).join(', ')+')':''}</p>
+      ?<p style={{marginTop:8,fontWeight:600,color:'#40514b'}}>{t('decode.summary.connectedChild','Connected to Child ID:')} {dyads[0].childId}{[dyads[0].childGender,ageFrom(dyads[0].childDob,null)].filter(Boolean).length?' ('+[dyads[0].childGender,ageFrom(dyads[0].childDob,null)].filter(Boolean).join(', ')+')':''}</p>
       :<div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:8}}>{dyads.map(d=>{const meta=[d.childGender,ageFrom(d.childDob,null)].filter(Boolean);return<button type="button" key={d.childId} className={'chip decode-chip'+(selectedChildId===d.childId?' selected':'')} onClick={()=>setSelectedChildId(d.childId)}>Child ID: {d.childId}{meta.length?' · '+meta.join(', '):''}</button>;})}</div>
      }
     </div>
    )}
    <div className="decode-actions">
     {saveState==='saved' ? <>
-     <button type="button" className="btn btn-primary" onClick={onViewTrail}>View Journal Trail</button>
-     <button type="button" className="btn btn-secondary" onClick={()=>onShareForReview?.(savedEntry)}>{typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING.postSaveButtonLabel:'Share this reflection for MHP review'}</button>
-     <button type="button" className="btn btn-secondary" onClick={back}>Return to Dashboard</button>
+     <button type="button" className="btn btn-primary" onClick={onViewTrail}>{t('common.viewTrail','View Journal Trail')}</button>
+     <button type="button" className="btn btn-secondary" onClick={()=>onShareForReview?.(savedEntry)}>{t('reviewShare.postSaveButton',typeof PARENT_REVIEW_SHARING!=='undefined'?PARENT_REVIEW_SHARING.postSaveButtonLabel:'Share this reflection for MHP review')}</button>
+     <button type="button" className="btn btn-secondary" onClick={back}>{t('common.returnDashboard','Return to Dashboard')}</button>
     </> : <>
-     <button type="button" className="btn btn-secondary" onClick={goBack} disabled={saveState==='saving'}>Back</button>
-     <button type="button" className="btn btn-primary" onClick={saveDecode} disabled={saveState==='saving'||!selectedChildId}>{saveState==='saving'?'Saving...':'Save to Journal Trail'}</button>
+     <button type="button" className="btn btn-secondary" onClick={goBack} disabled={saveState==='saving'}>{t('common.back','Back')}</button>
+     <button type="button" className="btn btn-primary" onClick={saveDecode} disabled={saveState==='saving'||!selectedChildId}>{saveState==='saving'?t('common.saving','Saving...'):t('common.saveToTrail','Save to Journal Trail')}</button>
     </>}
    </div>
   </div>;
@@ -4030,6 +4118,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
 
  return <div className="wrap decode-shell">
   <Bar title={t('decode.title','Decode a Moment')} back={back} onSignOut={onSignOut}/>
+  <LanguageToggle className="language-toggle-dashboard language-toggle-subpage"/>
   <Stepper/>
   {screen()}
  </div>;
@@ -5057,8 +5146,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   </div>
 
    {(dashboardPolish.pathwayNote||dashboardPolish.plansEntryNote)?<div className="card dashboard-section dashboard-polish-note">
-    {dashboardPolish.pathwayNote?<p className="dashboard-helper">{dashboardPolish.pathwayNote}</p>:null}
-    {dashboardPolish.plansEntryNote?<p className="dashboard-helper">{dashboardPolish.plansEntryNote}</p>:null}
+    {dashboardPolish.pathwayNote?<p className="dashboard-helper">{t('dashboard.pathwayNote',dashboardPolish.pathwayNote)}</p>:null}
+    {dashboardPolish.plansEntryNote?<p className="dashboard-helper">{t('dashboard.plansEntryNote',dashboardPolish.plansEntryNote)}</p>:null}
    </div>:null}
 
    <SignupPrivacyAcknowledgement
@@ -5622,19 +5711,21 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
  if(loading) return <div className="wrap"><div className="card" style={{textAlign:'center',padding:40,color:'#666'}}>{t('trail.loading','Loading your journal trail...')}</div></div>;
 
  if(shareMode) return <div className="wrap review-share-mode-wrap">
-  <Bar title={reviewMeta.title||'Share for MHP review'} back={exitShareMode} onSignOut={onSignOut}/>
+  <Bar title={t('reviewShare.title',reviewMeta.title||'Share for MHP review')} back={exitShareMode} onSignOut={onSignOut}/>
+  <LanguageToggle className="language-toggle-dashboard language-toggle-subpage"/>
   <ParentReviewSharePanel user={user} parentId={parentId} entries={entries} authSession={authSession} entryTitle={entryTitle} entryDateValue={entryDateValue} fmt={fmt} focusEntryId={shareFocusEntryId} scrollIntoView={shareScroll} onScrollHandled={()=>setShareScroll(false)} entryLocks={entryLocks} feedbackMeta={feedbackMeta}/>
-  <button type="button" className="btn btn-ghost review-share-exit" onClick={exitShareMode}>{reviewMeta.browseTrailLink||'View full journal trail'}</button>
+  <button type="button" className="btn btn-ghost review-share-exit" onClick={exitShareMode}>{t('reviewShare.browseTrail',reviewMeta.browseTrailLink||'View full journal trail')}</button>
  </div>;
 
  return <div className="wrap">
   <Bar title={t('trail.pageTitle','Journal trail')+' - '+parentId} back={back} onSignOut={onSignOut}/>
+  <LanguageToggle className="language-toggle-dashboard language-toggle-subpage"/>
   <div className="card review-share-cta">
    <div>
-    <h2>{reviewMeta.title||'Share for MHP review'}</h2>
-    <p className="sub">{reviewMeta.dashboardCardSubtitle||reviewMeta.subtitle}</p>
+    <h2>{t('reviewShare.title',reviewMeta.title||'Share for MHP review')}</h2>
+    <p className="sub">{t('reviewShare.dashboardCardSubtitle',reviewMeta.dashboardCardSubtitle||reviewMeta.subtitle)}</p>
    </div>
-   <button type="button" className="btn btn-secondary" onClick={()=>enterShareMode(null)}>{reviewMeta.dashboardCardButton||'Open sharing'}</button>
+   <button type="button" className="btn btn-secondary" onClick={()=>enterShareMode(null)}>{t('reviewShare.dashboardCardButton',reviewMeta.dashboardCardButton||'Open sharing')}</button>
   </div>
 
   {topWords.length>0 && <div className="card" style={{background:'#f0f4f2'}}>
@@ -5844,6 +5935,8 @@ function RegisterDyad({parentId,initial,onSave,back,onSignOut}){
 }
 
 function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
+ usePreferredLanguage();
+ const preferredLang=getPreferredLanguage();
  const [stage,setStage]=useState('entry'); // entry | review
  const [phase,setPhase]=useState('A');
  const [activity,setActivity]=useState('');
@@ -7774,11 +7867,12 @@ function CounsellorReview({entry,back,user,authSession,aiEnabled=true,grantGroup
 }
 
 function Bar({title,back,onSignOut}){
+ usePreferredLanguage();
  return <div className="card banner" style={{padding:'18px 22px'}}>
-  <div className="topbar"><div><div style={{fontSize:18,fontWeight:700}}>Shared Journeys</div><div style={{opacity:.82,fontSize:13}}>{title}</div></div>
+  <div className="topbar"><div><div style={{fontSize:18,fontWeight:700}}>{t('bar.sharedJourneys','Shared Journeys')}</div><div style={{opacity:.82,fontSize:13}}>{title}</div></div>
   <div style={{display:'flex',gap:8}}>
-   <button className="switch" onClick={back}>← Back</button>
-   {onSignOut&&<button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>Sign out</button>}
+   <button className="switch" onClick={back}>{t('bar.back','← Back')}</button>
+   {onSignOut&&<button className="switch" onClick={onSignOut} style={{background:'rgba(0,0,0,.08)'}}>{t('nav.signOut','Sign out')}</button>}
   </div></div>
  </div>;
 }
