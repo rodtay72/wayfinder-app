@@ -282,10 +282,11 @@ Explicitly **out of scope** for language work:
 | 2 | **PR #124 (runtime foundation)** | Static UI dictionary + parent dashboard toggle (`localStorage` only) |
 | 3 | **PR #125 (runtime expansion)** | Broader parent portal static copy translation |
 | 4 | **PR #126 (QA hardening)** | Key parity audit, `t()` fallback chain, `localStorage` repair, `<html lang>`, zh-Hans overflow CSS |
-| 5 | Later | MHP portal static copy translation |
-| 6 | Later | Payment upgrade copy localisation (with payment runtime) |
-| 7 | Later | Self-read relationship bytes zh-Hans content |
-| 8 | Future | Consent-gated reflection translation (only if approved) |
+| 5 | **PR #167 (runtime foundation / expansion)** | Parent portal static copy: dashboard, Decode shell, Journal Trail labels, Plans shell, App Version v0.4.7; `localStorage` only — no private content translation |
+| 6 | Later | MHP portal static copy translation |
+| 7 | Later | Payment upgrade copy localisation (with payment runtime) |
+| 8 | Later | Self-read relationship bytes zh-Hans content |
+| 9 | Future | Consent-gated reflection translation (only if approved) |
 
 Do not bundle language toggle with payment gates, research storage, or journal schema changes.
 
@@ -301,7 +302,7 @@ The first **runtime** language toggle PR should be accepted only if:
 - [ ] No private reflections sent to external translation services.
 - [ ] ALIGN/CAB and Decode pathway copy remains non-diagnostic and non-blaming in both languages.
 - [ ] Official ALIGN letters and CAB meanings preserved or clearly mapped in glossary.
-- [ ] MHP parent-facing label remains Mental Health Professional (or approved zh-Hans equivalent); internal role stays `counsellor`.
+- [ ] MHP parent-facing label remains Mental Health Practitioner (MHP) (or approved zh-Hans equivalent); internal role stays `counsellor`.
 - [ ] Dashboard, auth, journal save/read, Parent ID / Child ID, and privacy masking still work.
 - [ ] No parent email, Supabase UUID, child names, tokens, or secrets in normal UI.
 - [ ] App Version entry added **only** if owner approves parent-visible release note for that runtime PR.
@@ -352,4 +353,5 @@ Ops and billing support reference: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./P
 | --- | --- |
 | 2026-06-29 | PR #123 — initial Simplified Chinese language toggle strategy (docs only) |
 | 2026-07-10 | PR #161 — post-live planning update; static UI copy scope reaffirmed |
+| 2026-07-31 | PR #167 — parent portal language toggle runtime foundation/expansion; MHP terminology aligned to Mental Health Practitioner (MHP); audit-log implementation design deferred to PR #168/later |
 | 2026-07-31 | PR #167 — runtime foundation: static UI toggle, Chinese/English reflection input preserved as entered; MHP terminology; audit-log design deferred to PR #168 |
