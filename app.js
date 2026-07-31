@@ -4006,7 +4006,6 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    <h1>{t('decode.align.I.title','Integrate')}</h1>
    <h2>{t('decode.align.I.heading','What happened in your response?')}</h2>
    <p className="sub">{t('decode.align.I.sub','Now connect the child\'s possible need with your thinking, feelings, and behaviour.')}</p>
-   <ReflectionLanguageHint className="reflection-language-hint-compact"/>
    <div className="decode-grid cab-panel-grid">
     <div className="cab-panel c-cog">
      <h3>{t('decode.cab.thinking','My thinking')}</h3>

@@ -586,7 +586,7 @@ const WAYFINDER_APP_VERSIONS = [
     status: "released",
     tag: "Language",
     title: "English / 简体中文 language toggle",
-    body: "Parents can switch supported static Wayfinder guidance between English and Simplified Chinese. You may write journal and Decode reflections in English, 简体中文, or the language that feels most natural—Wayfinder keeps your private text exactly as entered with no automatic translation. Private reflections, child names, and MHP feedback are never auto-translated when you change UI language.",
+    body: "Parents can switch supported static Wayfinder guidance between English and 简体中文. You may write journal and Decode reflections in the language that feels most natural to you. Private reflections, journal entries, Decode text, child names, and MHP feedback stay exactly as entered. Wayfinder does not automatically translate private content when you change UI language.",
     parentAction: "Use Language / 语言 in the dashboard to choose English or 简体中文."
   },
   {
@@ -1152,7 +1152,7 @@ const WAYFINDER_I18N = {
     "appVersion.empty": "No version notes are available right now.",
     "appVersion.v047.tag": "Language",
     "appVersion.v047.title": "English / 简体中文 language toggle",
-    "appVersion.v047.body": "Parents can switch supported static Wayfinder guidance between English and Simplified Chinese. Private reflections, journal entries, Decode text, child names, and MHP feedback stay exactly as entered and are not automatically translated.",
+    "appVersion.v047.body": "Parents can switch supported static Wayfinder guidance between English and 简体中文. You may write journal and Decode reflections in the language that feels most natural to you. Private reflections, journal entries, Decode text, child names, and MHP feedback stay exactly as entered. Wayfinder does not automatically translate private content when you change UI language.",
     "appVersion.v047.parentAction": "Use Language / 语言 in the dashboard to choose English or 简体中文.",
     "reviewShare.title": "Share for Mental Health Practitioner (MHP) review",
     "reviewShare.subtitle": "You choose which journal or Decode entries a Mental Health Practitioner may review. Sharing is time-limited and you can revoke access.",
@@ -1373,7 +1373,7 @@ const WAYFINDER_I18N = {
     "appVersion.empty": "目前没有可用的版本说明。",
     "appVersion.v047.tag": "语言",
     "appVersion.v047.title": "English / 简体中文 语言切换",
-    "appVersion.v047.body": "家长可以在 English 与简体中文之间切换 Wayfinder 支持的静态引导文案。您可以用 English、简体中文或最自然的语言撰写日记与解读反思——Wayfinder 会原样保存，不会自动翻译。切换界面语言时，私人反思、孩子姓名与 MHP 反馈都不会被自动翻译。",
+    "appVersion.v047.body": "家长可以在 English 与简体中文之间切换 Wayfinder 支持的静态引导文案。您可以用最自然的语言撰写日记与解读反思。私人反思、日记记录、解读文字、孩子姓名与 MHP 反馈会原样保留。切换界面语言时，Wayfinder 不会自动翻译您的私人内容。",
     "appVersion.v047.parentAction": "在首页使用「语言 / Language」选择 English 或 简体中文。",
     "reviewShare.title": "分享给心理健康从业者（MHP）审阅",
     "reviewShare.subtitle": "由您选择哪些日记或解读记录可供 MHP 审阅。分享有时限，您可随时撤销。",
