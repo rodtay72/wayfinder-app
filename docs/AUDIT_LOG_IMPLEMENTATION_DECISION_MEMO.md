@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-31
 
-**Related:** [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)
+**Related:** [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md) (PR #172 migration draft — **not applied**) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)
 
 Read first: [AGENTS.md](../AGENTS.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 
@@ -133,7 +133,7 @@ Option A alone is acceptable for **Phase 2A**; Option B may supplement **Phase 2
 
 ## 8. First implementation candidate after memo
 
-**Proposed next PR (after owner approval):** **PR #172 — `audit_logs` SQL migration draft** (not production-applied until reviewed).
+**Proposed next PR (after owner approval):** **PR #172 — `audit_logs` SQL migration draft** — [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql), [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md). **Not production-applied** when the PR merges. **Decision remains Option C hybrid; server-side-first emitters are still later PRs.**
 
 PR #172 guardrails (proposal):
 
@@ -190,7 +190,7 @@ This decision supports **readiness alignment** (not certification) for:
 | **Decision** | **Option C — hybrid phased approach; server-side high-value events first (Phase 2A)** |
 | **Date** | 2026-07-31 |
 | **Status** | **Proposed** — owner approval required before implementation |
-| **Blocked until** | PR #171 merged **and** owner explicitly approves PR #172 migration scope (and any emitter PRs separately) |
+| **Blocked until** | PR #171 merged **and** owner explicitly approves PR #172 apply to Supabase (repo draft may merge without apply) |
 
 ---
 
@@ -212,3 +212,4 @@ This decision supports **readiness alignment** (not certification) for:
 | Date | Change |
 | --- | --- |
 | 2026-07-31 | PR #171 — initial implementation decision memo (docs only) |
+| 2026-07-31 | PR #172 — migration draft cross-link; decision unchanged (hybrid server-side first) |
