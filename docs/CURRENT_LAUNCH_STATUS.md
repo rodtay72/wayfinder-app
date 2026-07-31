@@ -8,13 +8,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-31
 
-**Last verified merge:** PR #169 — audit-log implementation design, docs only (merge `3b3f8bc`)
+**Last verified merge:** PR #170 — audit-log SQL/RLS proposal, docs only (merge `4ceec23`)
 
-**Next proposed / in flight:** PR #170 — audit-log SQL/RLS proposal ([AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md)), **docs only** (`docs/pr-170-audit-log-sql-rls-proposal`)
+**Next proposed / in flight:** PR #171 — audit-log implementation decision memo ([AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md)), **docs only** (`docs/pr-171-audit-log-implementation-decision-memo`)
 
-**PR #169 (merged):** [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) — metadata-only audit-log design; phased implementation; **no runtime logging**.
+**PR #170 (merged):** [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) — Phase 1 SQL/RLS **proposal**; **not applied**.
 
-**Compliance-readiness track:** Design-only continues with PR #170 (Phase 1 SQL/RLS **proposal**). **No audit-log runtime.** **No SQL/RLS applied.** **No HIPAA, SOC 2, ISO, or GAICC compliance claim.**
+**PR #169 (merged):** [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) — metadata-only audit-log design; **no runtime logging**.
+
+**Compliance-readiness track:** Design-only continues with PR #171 (insertion route decision). **No audit-log runtime.** **No SQL/RLS applied.** **No API/RPC created.** **No HIPAA, SOC 2, ISO, or GAICC compliance claim.**
 
 **PR #166 (merged):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md), [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md), [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md). Docs only. Vendor agreement status **unverified** until owner/legal/security review.
 
@@ -50,7 +52,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Complete PR #167 production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) if not done; merge PR #170 SQL/RLS proposal when ready. **No HIPAA, SOC 2, ISO, or GAICC compliance claims.** **No audit-log runtime; no SQL/RLS applied.** Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No external translation API.** **No manual** `user_entitlements` or `stripe_billing_references` edits.
+**Current owner blocker:** Complete PR #167 production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) if not done; merge PR #171 decision memo when ready. **No HIPAA, SOC 2, ISO, or GAICC compliance claims.** **No audit-log runtime; no SQL/RLS applied; no API/RPC.** Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No external translation API.** **No manual** `user_entitlements` or `stripe_billing_references` edits.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
