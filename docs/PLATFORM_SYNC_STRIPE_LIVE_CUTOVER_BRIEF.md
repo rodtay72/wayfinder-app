@@ -157,12 +157,14 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 | Platform | Next action |
 | --- | --- |
 | ChatGPT | Use [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) for billing support; legacy Plus per [procedure](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md). Do not claim HIPAA/SOC 2 compliance. Use [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) for readiness framing. |
-| Cursor | Merge PR #167 (language toggle — static UI only; no external translation; saved reflections unchanged). Then PR #168 audit-log design docs or next owner priority. Do not weaken auth/RLS/journal/Stripe runtime unless instructed. |
-| Codex | If asked to review, verify PR #167: no SQL/API/auth/RLS/Stripe changes; no private content auto-translation; no external translation vendor. |
+| Cursor | PR #167 language toggle **merged**. Run production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md). PR #168 docs-only post-merge status; **PR #169** or later for audit-log design docs. Do not weaken auth/RLS/journal/Stripe runtime unless instructed. |
+| Codex | PR #167 merged: static UI + display-only chip labels; no SQL/API/auth/RLS/Stripe changes; no private content auto-translation; no external translation vendor. |
 | Claude Projects | Use draft compliance docs for readiness; preserve ALIGN/CAB and privacy baseline. |
 | Claude Code | Reviewer or isolated branch only; no direct production-impact edits without explicit issue allowlist. |
 | OpenClaw | Socialise compliance readiness state; no compliance claim language. |
-| Human owner | Merge PR #167. Language toggle is not paid. PR #168 audit-log design deferred. Legacy billing migration remains deferred. |
+| Human owner | PR #167 merged — language toggle is not paid; no billing/Stripe change. Complete PR #167 production smoke checklist. PR #168 language post-merge docs; PR #169 audit-log design deferred. Legacy billing migration remains deferred. |
+
+**Platform note (PR #167):** Language toggle merged. **No billing, Stripe, entitlement, vendor, or private-content translation change.**
 
 ---
 
@@ -179,3 +181,5 @@ No manual edits to entitlements or `stripe_billing_references` should be made un
 | 2026-07-20 | PR #164 — draft security/compliance policy docs; readiness only; no auth/RLS/journal/Stripe weakening |
 | 2026-07-20 | PR #165 — audit-log gap assessment platform action; docs only; no runtime logging without review |
 | 2026-07-20 | PR #166 — vendor register platform action; readiness only; no vendor compliance claims |
+| 2026-07-31 | PR #167 merged — language toggle; no billing/Stripe/entitlement/private-content translation change |
+| 2026-07-31 | PR #168 — language toggle post-merge smoke evidence (docs only); audit-log design → PR #169 |

@@ -122,7 +122,7 @@ Static **UI and product copy** only, for example:
 - research export payloads;
 - Stripe receipts/invoices (Stripe-hosted unless separately approved).
 
-**PR #167 — Chinese (and English) input:** Parents may type journal and Decode free text in **any language they choose** (including 简体中文). Wayfinder saves and displays that text **exactly as entered**. Switching UI language (`en` / `zh-Hans`) changes **static product copy only** — not saved reflection bodies. No automatic translation, romanisation, or rewriting. Helper copy: `reflection.languageHelper` in `WAYFINDER_I18N`. Future audit-log implementation design moves to **PR #168** or later (docs track).
+**PR #167 (merged — runtime):** Parent portal language toggle on `main` (merge `12ce685`). Parents may type journal and Decode free text in **any language they choose** (including 简体中文). Wayfinder saves and displays that text **exactly as entered**. Switching UI language (`en` / `zh-Hans`) changes **static product copy only** — not saved reflection bodies. Decode and dashboard static chips use **display-only** zh-Hans labels; stored values remain English constants. No automatic translation, romanisation, or rewriting. Helper copy: `reflection.languageHelper` in `WAYFINDER_I18N`. Post-merge smoke checklist: [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md). Audit-log implementation design moves to **PR #169** or later (docs track).
 
 ### Phase 2+ (future, consent-based only)
 
@@ -282,7 +282,7 @@ Explicitly **out of scope** for language work:
 | 2 | **PR #124 (runtime foundation)** | Static UI dictionary + parent dashboard toggle (`localStorage` only) |
 | 3 | **PR #125 (runtime expansion)** | Broader parent portal static copy translation |
 | 4 | **PR #126 (QA hardening)** | Key parity audit, `t()` fallback chain, `localStorage` repair, `<html lang>`, zh-Hans overflow CSS |
-| 5 | **PR #167 (runtime foundation / expansion)** | Parent portal static copy: dashboard, Decode shell, Journal Trail labels, Plans shell, App Version v0.4.7; `localStorage` only — no private content translation |
+| 5 | **PR #167 (merged)** | Parent portal static copy: dashboard, Decode shell + static chip display labels, Journal Trail labels, Plans shell, App Version v0.4.7; `localStorage` only — no private content translation — see [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) |
 | 6 | Later | MHP portal static copy translation |
 | 7 | Later | Payment upgrade copy localisation (with payment runtime) |
 | 8 | Later | Self-read relationship bytes zh-Hans content |
@@ -344,6 +344,7 @@ Ops and billing support reference: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./P
 | [PWA_INSTALL_COMPATIBILITY_AUDIT.md](./PWA_INSTALL_COMPATIBILITY_AUDIT.md) | PWA complete; Android install warning deferred |
 | [MHP_PROFILE_IMAGE_STRATEGY.md](./MHP_PROFILE_IMAGE_STRATEGY.md) | Portrait privacy unchanged |
 | [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md) | Post-live ops and billing FAQ |
+| [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) | PR #167 merge record + production smoke checklist |
 
 ---
 
@@ -353,5 +354,4 @@ Ops and billing support reference: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./P
 | --- | --- |
 | 2026-06-29 | PR #123 — initial Simplified Chinese language toggle strategy (docs only) |
 | 2026-07-10 | PR #161 — post-live planning update; static UI copy scope reaffirmed |
-| 2026-07-31 | PR #167 — parent portal language toggle runtime foundation/expansion; MHP terminology aligned to Mental Health Practitioner (MHP); audit-log implementation design deferred to PR #168/later |
-| 2026-07-31 | PR #167 — runtime foundation: static UI toggle, Chinese/English reflection input preserved as entered; MHP terminology; audit-log design deferred to PR #168 |
+| 2026-07-31 | PR #167 **merged** — parent portal language toggle; static chip display labels; Chinese/English reflection input preserved as entered; MHP terminology; post-merge evidence doc PR #168; audit-log design deferred to PR #169/later |
