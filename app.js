@@ -4012,7 +4012,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
      <h3>{t('decode.cab.thinking','My thinking')}</h3>
      <label>{t('decode.cab.thinkingLabel','What thought appeared in your mind?')}</label>
      <p className="hint">{t('decode.cab.thinkingHint','Examples: "They should know better." "We are going to be late." "This always happens." "I need to stop this now." "I am failing as a parent."')}</p>
-     <textarea value={decode.integrate.parentCognition} onChange={e=>update('integrate','parentCognition',e.target.value)} />
+     <textarea lang={getPreferredLanguage()} value={decode.integrate.parentCognition} onChange={e=>update('integrate','parentCognition',e.target.value)} />
     </div>
     <div className="cab-panel c-aff">
      <h3>{t('decode.cab.feelings','My feelings')}</h3>
@@ -4058,7 +4058,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    </div>
    <div className="field">
     <label>{t('decode.field.myNextAction','My next action')}</label>
-    <textarea value={decode.navigate.nextAction} onChange={e=>update('navigate','nextAction',e.target.value)} />
+    <textarea lang={getPreferredLanguage()} value={decode.navigate.nextAction} onChange={e=>update('navigate','nextAction',e.target.value)} />
    </div>
    <div className="field">
     <label>{t('decode.field.repair','Is there anything to repair with your child?')}</label>
@@ -5985,25 +5985,26 @@ function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
   <div className="card">
    <h2>What I noticed in myself</h2>
    <p className="sub" style={{marginBottom:18}}>Write what actually happened — not what you wish happened. Be honest and specific.</p>
+   <ReflectionLanguageHint className="reflection-language-hint-journal"/>
    
    <div className="cab-block cog">
     <label>My thoughts — what went through my mind when I saw {activity?'my child during this activity':'what was happening'}</label>
-    <textarea placeholder="Example: I worried they weren't doing it right, or that I should have explained better" value={cab.thoughts} onChange={e=>setCabF('thoughts',e.target.value)}/>
+    <textarea lang={preferredLang} placeholder="Example: I worried they weren't doing it right, or that I should have explained better" value={cab.thoughts} onChange={e=>setCabF('thoughts',e.target.value)}/>
    </div>
    
    <div className="cab-block aff">
     <label>My feelings — what I felt when I saw {activity?'my child during this activity':'what was happening'}</label>
-    <textarea placeholder="Example: Anxious, a bit frustrated, like I was failing as a parent" value={cab.feelings} onChange={e=>setCabF('feelings',e.target.value)}/>
+    <textarea lang={preferredLang} placeholder="Example: Anxious, a bit frustrated, like I was failing as a parent" value={cab.feelings} onChange={e=>setCabF('feelings',e.target.value)}/>
    </div>
    
    <div className="cab-block beh">
     <label>My actions — what I actually did when I saw {activity?'my child during this activity':'what was happening'}</label>
-    <textarea placeholder="Example: I jumped in and started directing, then took over when they hesitated" value={cab.actions} onChange={e=>setCabF('actions',e.target.value)}/>
+    <textarea lang={preferredLang} placeholder="Example: I jumped in and started directing, then took over when they hesitated" value={cab.actions} onChange={e=>setCabF('actions',e.target.value)}/>
    </div>
    
    <div className="cab-block mng">
     <label>The meaning I made — what I think this means when I saw {activity?'my child during this activity':'what was happening'}</label>
-    <textarea placeholder="Example: I assumed their hesitation meant they couldn't do it without me helping" value={cab.meaning} onChange={e=>setCabF('meaning',e.target.value)}/>
+    <textarea lang={preferredLang} placeholder="Example: I assumed their hesitation meant they couldn't do it without me helping" value={cab.meaning} onChange={e=>setCabF('meaning',e.target.value)}/>
     <p className="hint">Your own interpretation — there's no right answer.</p>
    </div>
    
