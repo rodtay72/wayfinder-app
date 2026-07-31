@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-20
 
-**Related:** [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
+**Related:** [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 
 Read first:
 
@@ -208,7 +208,8 @@ Stop future audit-log **implementation** if:
 | **#165** (merged) | Audit-log gap assessment + event catalog draft — docs only |
 | **#166** (merged) | Vendor/subprocessor register |
 | **#169** (merged) | Audit-log implementation **design** — [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) |
-| **#170** (proposal) | SQL/RLS **proposal** — [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) — docs only |
+| **#170** (merged) | SQL/RLS **proposal** — [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) |
+| **#171** (memo) | Implementation **decision memo** — [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) — hybrid server-side first |
 | **Later** | SQL migration + runtime — only after legal/security/owner review |
 
 ---
@@ -221,3 +222,4 @@ Stop future audit-log **implementation** if:
 | 2026-07-20 | PR #166 — third-party logging/monitoring vendor review note; cross-link to vendor register |
 | 2026-07-31 | PR #169 — design response cross-link; implementation gap remains open; no runtime logging |
 | 2026-07-31 | PR #170 — SQL/RLS proposal cross-link; no migration applied |
+| 2026-07-31 | PR #171 — decision memo cross-link; implementation gap remains open |
