@@ -80,7 +80,7 @@ Platform logs alone are **not** sufficient for a full application audit trail.
 
 | Gap | Notes |
 | --- | --- |
-| No formal application audit-log table | `stripe_webhook_events` is billing idempotency only — SQL/RLS **proposal** in [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) (PR #170); **not applied** |
+| No formal application audit-log table | SQL migration **draft** in repo (PR #172); **not applied** to Supabase — see [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md) |
 | No documented Wayfinder event schema | [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) is **draft/design-only**; implementation design: [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) (PR #169) |
 | No audit retention policy | Pending legal/security review |
 | Access-review evidence cadence not fully operationalised | Draft in admin policy; first review not recorded |
@@ -209,8 +209,9 @@ Stop future audit-log **implementation** if:
 | **#166** (merged) | Vendor/subprocessor register |
 | **#169** (merged) | Audit-log implementation **design** — [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) |
 | **#170** (merged) | SQL/RLS **proposal** — [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) |
-| **#171** (memo) | Implementation **decision memo** — [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) — hybrid server-side first |
-| **Later** | SQL migration + runtime — only after legal/security/owner review |
+| **#171** (merged) | Implementation **decision memo** — [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) |
+| **#172** (draft) | SQL migration draft — [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql) — **not applied** |
+| **Later** | Supabase apply + runtime emitters — only after review |
 
 ---
 
@@ -223,3 +224,4 @@ Stop future audit-log **implementation** if:
 | 2026-07-31 | PR #169 — design response cross-link; implementation gap remains open; no runtime logging |
 | 2026-07-31 | PR #170 — SQL/RLS proposal cross-link; no migration applied |
 | 2026-07-31 | PR #171 — decision memo cross-link; implementation gap remains open |
+| 2026-07-31 | PR #172 — migration draft in repo; gap open until Supabase apply and emitters |

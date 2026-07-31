@@ -1,6 +1,6 @@
 # Audit Log SQL/RLS Proposal
 
-**Status:** **Proposal only** — no SQL applied, no migration file, no runtime.
+**Status:** **Proposal** — PR #172 adds migration draft [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql) and [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md). **Not applied** to Supabase unless owner runs SQL manually after review.
 
 **Branch track:** PR #170 — audit-log SQL/RLS proposal (docs only)
 
@@ -13,7 +13,8 @@
 - [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md)
 - [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
 - [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)
-- [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) (PR #171 — insertion route; **SQL/RLS proposal still not applied**)
+- [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) (PR #171 — insertion route)
+- [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md) (PR #172 — migration draft in repo; **not applied**)
 
 Read first: [AGENTS.md](../AGENTS.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md)
 
@@ -307,3 +308,4 @@ See [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETEN
 | --- | --- |
 | 2026-07-31 | PR #170 — initial SQL/RLS proposal (docs only) |
 | 2026-07-31 | PR #171 — decision memo cross-link; proposal remains not applied |
+| 2026-07-31 | PR #172 — migration draft cross-link in repo; not applied to Supabase |
