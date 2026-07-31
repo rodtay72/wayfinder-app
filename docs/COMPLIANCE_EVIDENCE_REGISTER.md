@@ -8,7 +8,7 @@
 
 **Policy drafts (PR #164):** [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md)
 
-**Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) (PR #169 design only)
+**Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) (PR #170 proposal — not applied)
 
 **Vendor readiness (PR #166):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) · [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md) · [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
 
@@ -68,10 +68,11 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | Monitoring vendor boundary | Not currently used as third-party APM | AUDIT_LOG_GAP_ASSESSMENT, VENDOR register | Vendor review before error tracking with payloads | High | Block until checklist complete | Engineering | Not currently used |
 | Support tool boundary | Informal email assumed | VENDOR_SUBPROCESSOR_REGISTER §3, POST_LIVE FAQ | Formal helpdesk review if adopted | Medium | Confirm tool; train no sensitive paste | Owner + ops | Not verified |
 | Data processing terms review | Not verified | VENDOR_SUBPROCESSOR_REGISTER §5 | Retention, deletion, incident terms per vendor | High | Legal review collected DPAs | Owner + legal | Blocked on vendor review |
-| Application audit logging | Debug gated; platform logs; webhook idempotency table (not general audit trail) | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md), AGENTS.md | Formal application audit-log table and runtime emitters | High | PR #169 design proposed; **implementation not started**; legal/security review before SQL/API | Engineering | Open |
+| Application audit logging | Debug gated; platform logs; webhook idempotency table (not general audit trail) | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md), [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md), AGENTS.md | Formal application audit-log table and runtime emitters | High | PR #169 + #170 proposal; **not implemented**; no migration/RLS applied | Engineering | Open |
+| Audit log SQL/RLS schema | Not applied | [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) | Reviewed migration + RLS on staging | High | Owner/security/Supabase review before apply | Engineering | Proposed |
 | Audit event catalog | Draft event names and metadata rules | [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md), [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) §6 | Owner sign-off on required events before implementation | High | Review catalog; align with SOC 2 / HIPAA scope if applicable | Engineering + owner | Planned |
-| Audit retention policy | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, DATA_CLASSIFICATION draft, AUDIT_LOG_IMPLEMENTATION_DESIGN §8 | Legal retention periods for audit logs | High | Legal retention matrix | Owner + legal | Blocked on legal |
-| Audit log viewer / access control | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, ADMIN_ACCESS draft, AUDIT_LOG_IMPLEMENTATION_DESIGN §7 | Who may view audit logs; RLS/admin policy | High | PR #169 design; runtime in later PR | Owner + engineering | Open |
+| Audit retention policy | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, DATA_CLASSIFICATION draft, AUDIT_LOG_SQL_RLS_PROPOSAL §9 | Legal retention periods for audit logs | High | Legal retention matrix | Owner + legal | Blocked on legal |
+| Audit log viewer / access control | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, ADMIN_ACCESS draft, AUDIT_LOG_IMPLEMENTATION_DESIGN §7, AUDIT_LOG_SQL_RLS_PROPOSAL §5–§7 | Who may view audit logs; RLS/admin policy | High | PR #170 proposal; runtime in later PR | Owner + engineering | Open |
 | Log redaction / minimisation | Draft never-log list; no code enforcement | AUDIT_LOG_GAP_ASSESSMENT §7, AUDIT_EVENT_CATALOG_DRAFT §4 | Explicit redaction policy implemented in code | High | Implement after design review | Engineering | Evidence needed |
 | Platform log retention review | Vercel/Supabase/Stripe defaults assumed | AUDIT_LOG_GAP_ASSESSMENT §3, VENDOR_SUBPROCESSOR_REGISTER §5 | Vendor retention documented per provider | Medium | Owner collects retention docs | Owner + ops | Blocked on vendor review |
 | Incident-to-audit evidence linkage | Incident playbook exists | PRODUCTION_INCIDENT playbook, AUDIT_LOG_GAP_ASSESSMENT §4 | Formal process linking incidents to log evidence | Medium | Document in incident playbook update | Owner | Open |
@@ -93,3 +94,4 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | 2026-07-20 | PR #165 — audit-log gap assessment and event catalog draft; expanded audit-related rows |
 | 2026-07-20 | PR #166 — vendor/subprocessor register, review checklist, SOP; expanded vendor-related rows |
 | 2026-07-31 | PR #169 — audit-log implementation design row; status design proposed / implementation not started |
+| 2026-07-31 | PR #170 — audit-log SQL/RLS proposal row; proposed / not implemented |

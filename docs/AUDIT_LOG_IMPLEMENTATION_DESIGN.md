@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-31
 
-**Related:** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
+**Related:** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) (PR #170 Phase 1 proposal — **does not apply SQL/RLS**) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 
 Read first: [AGENTS.md](../AGENTS.md) · [WAYFINDER_ALIGN_PRODUCT_CANON.md](./WAYFINDER_ALIGN_PRODUCT_CANON.md)
 
@@ -307,7 +307,7 @@ Each phase requires a **separate approved PR**.
 | Phase | Scope |
 | --- | --- |
 | **0** | Design only — **PR #169 (this doc)** |
-| **1** | SQL/RLS **proposal** only — no runtime |
+| **1** | SQL/RLS **proposal** only — no runtime — [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) (PR #170) |
 | **2** | Server-side logging primitives (reviewed RPC or API) |
 | **3** | Auth/billing/MHP event instrumentation |
 | **4** | Journal/decode **metadata-only** instrumentation |
@@ -348,3 +348,4 @@ Each phase requires a **separate approved PR**.
 | Date | Change |
 | --- | --- |
 | 2026-07-31 | PR #169 — initial audit-log implementation design (docs only) |
+| 2026-07-31 | PR #170 — Phase 1 SQL/RLS proposal cross-link |
