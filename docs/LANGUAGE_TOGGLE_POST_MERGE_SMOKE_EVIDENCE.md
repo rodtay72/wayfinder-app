@@ -20,7 +20,8 @@ Read first:
 
 - **PR #167 merged** on `main`.
 - **Merge commit:** `12ce685ce17187041c2ea182bab25b63f2fd1938`.
-- Parent-facing **English / 简体中文** language toggle is released on production after deploy.
+- Parent-facing **English / 简体中文** language toggle is on `main` with PR #167; treat as live on production **only after** deploy reflects merge `12ce685` **and** the owner completes §4 checklist below.
+- **Production smoke:** Not verified in this document until §4 items are checked by the owner/operator.
 - Parents may write journal and Decode reflections in **Chinese or English**; saved text is preserved **exactly as entered**.
 - **No auto-translation** of private reflections when UI language changes.
 - **No external translation API or vendor** for parent content.
