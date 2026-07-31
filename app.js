@@ -74,6 +74,94 @@ function t(key,fallback){
  return safeKey;
 }
 
+function slugOption(value){
+ return String(value||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+
+function optionLabel(group,value){
+ const raw=String(value??'').trim();
+ if(!raw) return '';
+ const slug=slugOption(raw);
+ if(!slug) return raw;
+ return t(`option.${group}.${slug}`,raw);
+}
+
+function formatStoredOptionList(values,group){
+ const list=Array.isArray(values)?values.filter(Boolean):[];
+ if(!list.length) return t('common.notSelectedYet','Not selected yet');
+ return list.map(v=>optionLabel(group,v)).join(', ');
+}
+
+function formatStoredOptionValue(value,group){
+ const raw=String(value??'').trim();
+ if(!raw) return '';
+ return optionLabel(group,raw);
+}
+
+function formatChildNeedsWords(words,separator){
+ const list=Array.isArray(words)?words:[];
+ return list.map(w=>optionLabel('childNeedsWord',w)).join(separator);
+}
+
+function displayDecodeChipValue(value){
+ const raw=String(value??'').trim();
+ if(!raw) return '';
+ if(DECODE_CONTEXT_OPTIONS.includes(raw)) return optionLabel('decodeContext',raw);
+ if(DECODE_NOTICE_OPTIONS.includes(raw)) return optionLabel('decodeNotice',raw);
+ if(DECODE_NEED_OPTIONS.includes(raw)) return optionLabel('decodeNeed',raw);
+ if(DECODE_PARENT_AFFECT_OPTIONS.includes(raw)) return optionLabel('decodeParentAffect',raw);
+ if(DECODE_INTENSITY_OPTIONS.includes(raw)) return optionLabel('decodeIntensity',raw);
+ if(DECODE_PARENT_BEHAVIOUR_OPTIONS.includes(raw)) return optionLabel('decodeParentBehaviour',raw);
+ if(DECODE_GROWTH_OPTIONS.includes(raw)) return optionLabel('decodeGrowth',raw);
+ if(DECODE_AWARENESS_MARKERS.includes(raw)) return optionLabel('decodeAwarenessMarker',raw);
+ if(DECODE_NEXT_OPTIONS.includes(raw)) return optionLabel('decodeNext',raw);
+ if(DECODE_REPAIR_OPTIONS.includes(raw)) return optionLabel('decodeRepair',raw);
+ return raw;
+}
+
+function displayDecodeStoredList(value){
+ if(Array.isArray(value)){
+  const parts=value.filter(Boolean).map(displayDecodeChipValue);
+  return parts.length?parts.join(', '):'';
+ }
+ const text=decodeDisplayText(value,'');
+ if(!text||text==='-') return text==='-'?'':text;
+ return text.split(',').map(s=>displayDecodeChipValue(s.trim())).join(', ');
+}
+
+function displayDecodeSignalValue(value){
+ if(Array.isArray(value)){
+  const parts=value.filter(Boolean).map(displayDecodeChipValue);
+  return parts.length?parts.join(', '):'';
+ }
+ return displayDecodeStoredList(value);
+}
+
+function displayDecodeNextActionStored(stored){
+ const raw=decodeDisplayText(stored,'');
+ if(!raw||raw==='-') return raw;
+ const idx=raw.indexOf(' - ');
+ if(idx>-1){
+  const opt=raw.slice(0,idx).trim();
+  const note=raw.slice(idx+3);
+  const optDisplay=displayDecodeChipValue(opt);
+  return note?`${optDisplay} - ${note}`:optDisplay;
+ }
+ return displayDecodeChipValue(raw)||raw;
+}
+
+function displayDecodeFeelingsStored(value){
+ if(value&&typeof value==='object'&&!Array.isArray(value)){
+  const parts=Object.entries(value)
+   .filter(([,v])=>v!==undefined&&v!==null&&v!=='')
+   .map(([k,v])=>`${displayDecodeChipValue(k)} ${v}/5`);
+  return parts.length?parts.join(', '):'';
+ }
+ const text=decodeDisplayText(value,'');
+ if(!text||text==='-') return text;
+ return text.replace(/\b(Frustration|Anxiety|Helplessness|Embarrassment|Anger)\b/g,(m)=>displayDecodeChipValue(m));
+}
+
 function getPlansPageMeta(){
  const base=typeof WAYFINDER_PLANS_PAGE!=='undefined'?WAYFINDER_PLANS_PAGE:{};
  const localizeTier=(tier)=>{
@@ -3905,16 +3993,17 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
  const goNext=()=>setStep(s=>Math.min(s+1,DECODE_STEPS.length-1));
  const goBack=()=>setStep(s=>Math.max(s-1,0));
  const textOrEmpty=(value)=>String(value||'').trim()||t('common.notWrittenYet','Not written yet');
- const listOrEmpty=(value)=>value&&value.length?value.join(', '):t('common.notSelectedYet','Not selected yet');
+ const listOrEmpty=(values,group)=>formatStoredOptionList(values,group);
  const affectSummary=()=>{
   const rated=Object.entries(decode.integrate.affectIntensity||{})
    .filter(([,v])=>v!==undefined&&v!==null)
-   .map(([k,v])=>`${k} ${v}/5`);
+   .map(([k,v])=>`${optionLabel('decodeIntensity',k)} ${v}/5`);
   if(rated.length)return rated.join(', ');
-  if(decode.locate.parentAffects.length)return decode.locate.parentAffects.join(', ');
+  if(decode.locate.parentAffects.length)return formatStoredOptionList(decode.locate.parentAffects,'decodeParentAffect');
   return t('common.notSelectedYet','Not selected yet');
  };
- const nextAction=[decode.navigate.nextOption,decode.navigate.nextAction.trim()].filter(Boolean).join(' - ')||t('common.notWrittenYet','Not written yet');
+ const nextActionParts=[decode.navigate.nextOption?formatStoredOptionValue(decode.navigate.nextOption,'decodeNext'):'',decode.navigate.nextAction.trim()].filter(Boolean);
+ const nextAction=nextActionParts.length?nextActionParts.join(' - '):t('common.notWrittenYet','Not written yet');
 
  const Chip=({active,onClick,children})=><button type="button" className={'chip decode-chip'+(active?' selected':'')} onClick={onClick}>{children}</button>;
  const StepButtons=({primary})=><div className="decode-actions">
@@ -3976,11 +4065,11 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    </div>
    <div className="field">
     <label>{t('decode.field.when','When did this happen?')}</label>
-    <div className="chips decode-grid">{DECODE_CONTEXT_OPTIONS.map(option=><Chip key={option} active={decode.awareness.context===option} onClick={()=>update('awareness','context',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_CONTEXT_OPTIONS.map(option=><Chip key={option} active={decode.awareness.context===option} onClick={()=>update('awareness','context',option)}>{optionLabel('decodeContext',option)}</Chip>)}</div>
    </div>
    <div className="field">
     <label>{t('decode.field.firstNotice','What did you first notice?')}</label>
-    <div className="chips decode-grid">{DECODE_NOTICE_OPTIONS.map(option=><Chip key={option} active={decode.awareness.initialObservation===option} onClick={()=>update('awareness','initialObservation',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_NOTICE_OPTIONS.map(option=><Chip key={option} active={decode.awareness.initialObservation===option} onClick={()=>update('awareness','initialObservation',option)}>{optionLabel('decodeNotice',option)}</Chip>)}</div>
    </div>
    <StepButtons primary={t('decode.continueLocate','Continue to Locate')}/>
   </div>;
@@ -3992,11 +4081,11 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    <p className="sub">{t('decode.align.L.sub','Choose what feels possible. This is a hypothesis, not a diagnosis.')}</p>
    <div className="field">
     <label>{t('decode.field.possibleNeed','Possible need underneath the behaviour')}</label>
-    <div className="chips decode-grid">{DECODE_NEED_OPTIONS.map(option=><Chip key={option} active={decode.locate.possibleNeeds.includes(option)} onClick={()=>toggle('locate','possibleNeeds',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_NEED_OPTIONS.map(option=><Chip key={option} active={decode.locate.possibleNeeds.includes(option)} onClick={()=>toggle('locate','possibleNeeds',option)}>{optionLabel('decodeNeed',option)}</Chip>)}</div>
    </div>
    <div className="field">
     <label>{t('decode.field.parentAffect','What was happening in you at the same time?')}</label>
-    <div className="chips decode-grid">{DECODE_PARENT_AFFECT_OPTIONS.map(option=><Chip key={option} active={decode.locate.parentAffects.includes(option)} onClick={()=>toggle('locate','parentAffects',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_PARENT_AFFECT_OPTIONS.map(option=><Chip key={option} active={decode.locate.parentAffects.includes(option)} onClick={()=>toggle('locate','parentAffects',option)}>{optionLabel('decodeParentAffect',option)}</Chip>)}</div>
    </div>
    <StepButtons primary={t('decode.continueIntegrate','Continue to Integrate')}/>
   </div>;
@@ -4017,14 +4106,14 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
      <h3>{t('decode.cab.feelings','My feelings')}</h3>
      <label>{t('decode.cab.feelingsLabel','What did you feel emotionally or in your body?')}</label>
      <div className="decode-scale-list">{DECODE_INTENSITY_OPTIONS.map(emotion=><div key={emotion} className="decode-scale-row">
-      <div className="decode-scale-label">{emotion}</div>
+      <div className="decode-scale-label">{optionLabel('decodeIntensity',emotion)}</div>
       <div className="decode-scale-options">{[0,1,2,3,4,5].map(value=><button key={value} type="button" className={'decode-scale-dot'+(decode.integrate.affectIntensity[emotion]===value?' selected':'')} onClick={()=>setAffectIntensity(emotion,value)}>{value}</button>)}</div>
      </div>)}</div>
     </div>
     <div className="cab-panel c-beh">
      <h3>{t('decode.cab.behaviour','My behaviour / what I did')}</h3>
      <label>{t('decode.cab.behaviourLabel','What did you do next?')}</label>
-     <div className="chips">{DECODE_PARENT_BEHAVIOUR_OPTIONS.map(option=><Chip key={option} active={decode.integrate.parentBehaviours.includes(option)} onClick={()=>toggle('integrate','parentBehaviours',option)}>{option}</Chip>)}</div>
+     <div className="chips">{DECODE_PARENT_BEHAVIOUR_OPTIONS.map(option=><Chip key={option} active={decode.integrate.parentBehaviours.includes(option)} onClick={()=>toggle('integrate','parentBehaviours',option)}>{optionLabel('decodeParentBehaviour',option)}</Chip>)}</div>
     </div>
    </div>
    <StepButtons primary={t('decode.continueGrowth','Continue to Growth')}/>
@@ -4037,11 +4126,11 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    <p className="sub">{t('decode.align.G.sub','Growth is not about blaming yourself. It is about building alignment capacity.')}</p>
    <div className="field">
     <label>{t('decode.field.capacity','Capacity to practise')}</label>
-    <div className="chips decode-grid">{DECODE_GROWTH_OPTIONS.map(option=><Chip key={option} active={decode.growth.capacities.includes(option)} onClick={()=>toggle('growth','capacities',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_GROWTH_OPTIONS.map(option=><Chip key={option} active={decode.growth.capacities.includes(option)} onClick={()=>toggle('growth','capacities',option)}>{optionLabel('decodeGrowth',option)}</Chip>)}</div>
    </div>
    <div className="field">
     <label>{t('decode.field.awarenessMarkers','What are you becoming aware of?')}</label>
-    <div className="chips decode-grid">{DECODE_AWARENESS_MARKERS.map(option=><Chip key={option} active={decode.growth.awarenessMarkers.includes(option)} onClick={()=>toggle('growth','awarenessMarkers',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_AWARENESS_MARKERS.map(option=><Chip key={option} active={decode.growth.awarenessMarkers.includes(option)} onClick={()=>toggle('growth','awarenessMarkers',option)}>{optionLabel('decodeAwarenessMarker',option)}</Chip>)}</div>
    </div>
    <StepButtons primary={t('decode.continueNavigate','Continue to Navigate')}/>
   </div>;
@@ -4053,7 +4142,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    <p className="sub">{t('decode.align.N.sub','Choose one small next action. Keep it realistic.')}</p>
    <div className="field">
     <label>{t('decode.field.nextAction','Possible next action')}</label>
-    <div className="chips decode-grid">{DECODE_NEXT_OPTIONS.map(option=><Chip key={option} active={decode.navigate.nextOption===option} onClick={()=>update('navigate','nextOption',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_NEXT_OPTIONS.map(option=><Chip key={option} active={decode.navigate.nextOption===option} onClick={()=>update('navigate','nextOption',option)}>{optionLabel('decodeNext',option)}</Chip>)}</div>
    </div>
    <div className="field">
     <label>{t('decode.field.myNextAction','My next action')}</label>
@@ -4061,7 +4150,7 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
    </div>
    <div className="field">
     <label>{t('decode.field.repair','Is there anything to repair with your child?')}</label>
-    <div className="chips decode-grid">{DECODE_REPAIR_OPTIONS.map(option=><Chip key={option} active={decode.navigate.repairIntention===option} onClick={()=>update('navigate','repairIntention',option)}>{option}</Chip>)}</div>
+    <div className="chips decode-grid">{DECODE_REPAIR_OPTIONS.map(option=><Chip key={option} active={decode.navigate.repairIntention===option} onClick={()=>update('navigate','repairIntention',option)}>{optionLabel('decodeRepair',option)}</Chip>)}</div>
    </div>
    <div className="field">
     <label>{t('decode.field.observeNext','What will I observe next time?')}</label>
@@ -4081,13 +4170,13 @@ function DecodeMomentFlow({user,parentId,authSession,dyads=[],back,onViewTrail,o
      : null}
    <div className="decode-summary">
     <div><span>{t('decode.summary.label.moment','The moment I noticed')}</span><p>{textOrEmpty(decode.awareness.observedBehaviour)}</p></div>
-    <div><span>{t('decode.summary.label.signal','One possible signal I explored')}</span><p>{[decode.awareness.initialObservation,decode.awareness.context].filter(Boolean).join(', ')||t('common.notSelectedYet','Not selected yet')}</p></div>
-    <div><span>{t('decode.summary.label.need','A possible need worth staying curious about')}</span><p>{listOrEmpty(decode.locate.possibleNeeds)}</p></div>
-    <div><span>{t('decode.summary.label.inMe','What was happening in me')}</span><p><b>{t('decode.summary.thinking','Thinking:')}</b> {textOrEmpty(decode.integrate.parentCognition)}<br/><b>{t('decode.summary.feelings','Feelings:')}</b> {affectSummary()}<br/><b>{t('decode.summary.behaviour','Behaviour / What I did:')}</b> {listOrEmpty(decode.integrate.parentBehaviours)}</p></div>
+    <div><span>{t('decode.summary.label.signal','One possible signal I explored')}</span><p>{[decode.awareness.initialObservation,decode.awareness.context].filter(Boolean).map(displayDecodeChipValue).join(', ')||t('common.notSelectedYet','Not selected yet')}</p></div>
+    <div><span>{t('decode.summary.label.need','A possible need worth staying curious about')}</span><p>{listOrEmpty(decode.locate.possibleNeeds,'decodeNeed')}</p></div>
+    <div><span>{t('decode.summary.label.inMe','What was happening in me')}</span><p><b>{t('decode.summary.thinking','Thinking:')}</b> {textOrEmpty(decode.integrate.parentCognition)}<br/><b>{t('decode.summary.feelings','Feelings:')}</b> {affectSummary()}<br/><b>{t('decode.summary.behaviour','Behaviour / What I did:')}</b> {listOrEmpty(decode.integrate.parentBehaviours,'decodeParentBehaviour')}</p></div>
     <div><span>{t('decode.summary.label.gap','Possible alignment gap')}</span><p>{decodeAlignmentGapText(decode)}</p></div>
-    <div><span>{t('decode.summary.label.practise','What I want to practise')}</span><p>{listOrEmpty(decode.growth.capacities)}</p></div>
+    <div><span>{t('decode.summary.label.practise','What I want to practise')}</span><p>{listOrEmpty(decode.growth.capacities,'decodeGrowth')}</p></div>
     <div><span>{t('decode.summary.label.next','My next action')}</span><p>{nextAction}</p></div>
-    <div><span>{t('decode.summary.label.repair','Repair intention')}</span><p>{decode.navigate.repairIntention||t('common.notSelectedYet','Not selected yet')}</p></div>
+    <div><span>{t('decode.summary.label.repair','Repair intention')}</span><p>{decode.navigate.repairIntention?formatStoredOptionValue(decode.navigate.repairIntention,'decodeRepair'):t('common.notSelectedYet','Not selected yet')}</p></div>
     <div><span>{t('decode.summary.label.observe','What I will observe next time')}</span><p>{textOrEmpty(decode.navigate.observeNextTime)}</p></div>
    </div>
    <p className="decode-note">{t('decode.summary.reflectionNote','This is a reflection, not an assessment of your child.')}</p>
@@ -4993,8 +5082,8 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
   return date&&!isNaN(date)?date.getTime():0;
  };
  const entryChildId=(entry)=>entry?.childId||entry?.child_id||entry?.dyadId||entry?.dyad_id||'';
- const entryTitle=(entry)=>isBehaviourDecodeEntry(entry)?'Alignment Reminder':entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
- const entryPhaseLabel=(entry)=>isBehaviourDecodeEntry(entry)?'Decode a Moment':entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
+ const entryTitle=(entry)=>isBehaviourDecodeEntry(entry)?t('trail.entryTitle.decode','Alignment Reminder'):entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
+ const entryPhaseLabel=(entry)=>isBehaviourDecodeEntry(entry)?t('trail.entryPhase.decode','Decode a Moment'):entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
  const childMatchesEntry=(child,entry)=>{
   const childId=child?.childId||child?.child_id||'';
   const id=entryChildId(entry);
@@ -5280,7 +5369,7 @@ function ClientApp({back,user,parentId,profile,authReady,authSession,onSignOut})
    <div className="card dashboard-lean-card">
     <h2>{t('dashboard.leanInto','This week, lean into')}</h2>
     <p className="dashboard-lean-words">{shiftWords.join(' · ')}</p>
-    <p className="dashboard-helper">{t('dashboard.leanIntoNeeds','Possible needs to stay curious about:')} {CHILD_NEEDS_WORDS.join(' · ')}</p>
+    <p className="dashboard-helper">{t('dashboard.leanIntoNeeds','Possible needs to stay curious about:')} {formatChildNeedsWords(CHILD_NEEDS_WORDS,' · ')}</p>
    </div>
   </div>
   <ParentSignupInviteModal open={inviteShareOpen} context="parent" onClose={()=>setInviteShareOpen(false)}/>
@@ -5605,8 +5694,8 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
   return date&&!isNaN(date)?date.getTime():0;
  };
  const entryChildId=(entry)=>entry?.childId||entry?.child_id||entry?.dyadId||entry?.dyad_id||'';
- const entryTitle=(entry)=>isBehaviourDecodeEntry(entry)?'Alignment Reminder':entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
- const entryPhaseLabel=(entry)=>isBehaviourDecodeEntry(entry)?'Decode a Moment':entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
+ const entryTitle=(entry)=>isBehaviourDecodeEntry(entry)?t('trail.entryTitle.decode','Alignment Reminder'):entry?.activity||entry?.activityTitle||entry?.title||'Wayfinder activity';
+ const entryPhaseLabel=(entry)=>isBehaviourDecodeEntry(entry)?t('trail.entryPhase.decode','Decode a Moment'):entry?.phase&&PHASES[entry.phase]?PHASES[entry.phase]:entry?.phase||'';
  const dyadByChildId=Object.fromEntries((dyads||[]).map(d=>[String(d.childId||d.child_id||''),d]));
  const entryChildAge=(entry)=>{
   const childId=entryChildId(entry);
@@ -5812,13 +5901,13 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
    {needOptions.length>0 && <div className="trail-filter-row">
     <span className="trail-filter-label" id="trail-need-label">{t('trail.needLabel',UI_TEXT.trail.needLabel)}</span>
     <div className="trail-filter-chips" role="group" aria-labelledby="trail-need-label">
-     {needOptions.map(n=><button type="button" key={n} className={'chip trail-chip'+(needFilter.includes(n)?' selected':'')} onClick={()=>toggleArr(needFilter,setNeedFilter,n)}>{n}</button>)}
+     {needOptions.map(n=><button type="button" key={n} className={'chip trail-chip'+(needFilter.includes(n)?' selected':'')} onClick={()=>toggleArr(needFilter,setNeedFilter,n)}>{optionLabel('decodeNeed',n)}</button>)}
     </div>
    </div>}
    {growthOptions.length>0 && <div className="trail-filter-row">
     <span className="trail-filter-label" id="trail-growth-label">{t('trail.growthLabel',UI_TEXT.trail.growthLabel)}</span>
     <div className="trail-filter-chips" role="group" aria-labelledby="trail-growth-label">
-     {growthOptions.map(g=><button type="button" key={g} className={'chip trail-chip'+(growthFilter.includes(g)?' selected':'')} onClick={()=>toggleArr(growthFilter,setGrowthFilter,g)}>{g}</button>)}
+     {growthOptions.map(g=><button type="button" key={g} className={'chip trail-chip'+(growthFilter.includes(g)?' selected':'')} onClick={()=>toggleArr(growthFilter,setGrowthFilter,g)}>{optionLabel('decodeGrowth',g)}</button>)}
     </div>
    </div>}
    <div className="trail-filter-meta">
@@ -5844,7 +5933,7 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
      <button type="button" className="trail-entry-toggle" aria-expanded={isOpen} onClick={()=>setOpenId(isOpen?null:e.id)}>
       <span className="trail-entry-main">
        <span className="trail-entry-title">{entryTitle(e)}</span>
-       <span className="trail-entry-meta">{fmt(entryDateValue(e))}{phaseLabel?' · '+phaseLabel:''} · Child ID: {childId||'Not saved'} · {childAge||'-'} old</span>
+       <span className="trail-entry-meta">{fmt(entryDateValue(e))}{phaseLabel?' · '+phaseLabel:''} · {t('trail.entry.childIdPrefix','Child ID:')} {childId||t('trail.entry.notSaved','Not saved')} · {childAge||'-'} {t('trail.entry.yearsOld','old')}</span>
       </span>
       <span className="trail-entry-chevron" aria-hidden="true">{isOpen?'−':'+'}</span>
      </button>
@@ -5855,24 +5944,24 @@ function JournalTrail({user,parentId,dyads,authSession,back,onSignOut,initialSha
      </div>
      {isDecode && <div className="decode-trail-card">
       <div className="decode-trail-header">
-       <span className="pill">Alignment Reminder</span>
-       <span className="decode-trail-type">Decode a Moment · Child ID: {childId||'Not saved'}</span>
+       <span className="pill">{t('trail.decode.pill','Alignment Reminder')}</span>
+       <span className="decode-trail-type">{t('trail.decode.typeLine','Decode a Moment')} · {t('trail.decode.childIdPrefix','Child ID:')} {childId||t('trail.decode.childNotSaved','Not saved')}</span>
       </div>
       <div className="decode-trail-summary">
-       <div className="decode-trail-field"><span>Behaviour</span><p>{decodeDisplayText(reminder.observed_behaviour||reminder.moment_noticed)}</p></div>
-       <div className="decode-trail-field"><span>A possible need worth staying curious about</span><p>{decodeDisplayText(reminder.possible_need_worth_staying_curious_about)}</p></div>
-       <div className="decode-trail-field"><span>Possible CAB misalignment</span><p>{decodeDisplayText(reminder.possible_alignment_gap)}</p></div>
-       <div className="decode-trail-field"><span>Growth capacity</span><p>{decodeDisplayText(reminder.stabilising_response_to_practise)}</p></div>
-       <div className="decode-trail-field decode-trail-highlight"><span>Next action</span><p>{decodeDisplayText(reminder.next_action)}</p></div>
-       <div className="decode-trail-field decode-trail-highlight"><span>Repair intention</span><p>{decodeDisplayText(reminder.repair_intention)}</p></div>
+       <div className="decode-trail-field"><span>{t('trail.decode.field.behaviour','Behaviour')}</span><p>{decodeDisplayText(reminder.observed_behaviour||reminder.moment_noticed)}</p></div>
+       <div className="decode-trail-field"><span>{t('decode.summary.label.need','A possible need worth staying curious about')}</span><p>{displayDecodeStoredList(reminder.possible_need_worth_staying_curious_about)||decodeDisplayText(reminder.possible_need_worth_staying_curious_about)}</p></div>
+       <div className="decode-trail-field"><span>{t('trail.decode.field.gap','Possible CAB misalignment')}</span><p>{decodeDisplayText(reminder.possible_alignment_gap)}</p></div>
+       <div className="decode-trail-field"><span>{t('trail.decode.field.growth','Growth capacity')}</span><p>{displayDecodeStoredList(reminder.stabilising_response_to_practise)||decodeDisplayText(reminder.stabilising_response_to_practise)}</p></div>
+       <div className="decode-trail-field decode-trail-highlight"><span>{t('trail.decode.field.next','Next action')}</span><p>{displayDecodeNextActionStored(reminder.next_action)||decodeDisplayText(reminder.next_action)}</p></div>
+       <div className="decode-trail-field decode-trail-highlight"><span>{t('decode.summary.label.repair','Repair intention')}</span><p>{displayDecodeChipValue(reminder.repair_intention)||decodeDisplayText(reminder.repair_intention)}</p></div>
       </div>
-      <p className="decode-trail-foot">This is a reflection, not an assessment of your child.</p>
+      <p className="decode-trail-foot">{t('trail.decode.foot',"This is a reflection, not an assessment of your child.")}</p>
      </div>}
      {isOpen && (isDecode ? <div className="trail-entry-detail trail-entry-detail-decode">
       <div className="decode-trail-summary decode-trail-summary-secondary">
-       <div className="decode-trail-field"><span>One possible signal I explored</span><p>{decodeDisplayText(reminder.possible_signal_explored||reminder.awareness_signals)}</p></div>
-       <div className="decode-trail-field"><span>What was happening in me</span><p><b>Thinking:</b> {decodeDisplayText(reminder.thinking)}<br/><b>Feelings:</b> {decodeDisplayText(reminder.feelings||reminder.affect_intensity)}<br/><b>Behaviour / What I did:</b> {decodeDisplayText(reminder.behaviour_what_i_did)}</p></div>
-       <div className="decode-trail-field"><span>What I will observe next time</span><p>{decodeDisplayText(reminder.what_i_will_observe_next_time)}</p></div>
+       <div className="decode-trail-field"><span>{t('decode.summary.label.signal','One possible signal I explored')}</span><p>{displayDecodeSignalValue(reminder.possible_signal_explored||reminder.awareness_signals)||decodeDisplayText(reminder.possible_signal_explored||reminder.awareness_signals)}</p></div>
+       <div className="decode-trail-field"><span>{t('decode.summary.label.inMe','What was happening in me')}</span><p><b>{t('decode.summary.thinking','Thinking:')}</b> {decodeDisplayText(reminder.thinking)}<br/><b>{t('decode.summary.feelings','Feelings:')}</b> {displayDecodeFeelingsStored(reminder.feelings||reminder.affect_intensity)||decodeDisplayText(reminder.feelings||reminder.affect_intensity)}<br/><b>{t('decode.summary.behaviour','Behaviour / What I did:')}</b> {displayDecodeStoredList(reminder.behaviour_what_i_did)||decodeDisplayText(reminder.behaviour_what_i_did)}</p></div>
+       <div className="decode-trail-field"><span>{t('decode.summary.label.observe','What I will observe next time')}</span><p>{decodeDisplayText(reminder.what_i_will_observe_next_time)}</p></div>
       </div>
      </div> : <div className="trail-entry-detail">
       <div className="trail-activity-detail">
@@ -6026,7 +6115,7 @@ function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
   <div className="card" style={{borderLeft:'4px solid var(--sage)'}}>
    <h2>Desired emotional scaffolding for {childAge?`my ${childAge} old`:'my child'}</h2>
    <p className="sub" style={{marginBottom:12}}>What your child needs from you to feel safe and seen:</p>
-   <div className="chips" style={{marginBottom:0}}>{CHILD_NEEDS_WORDS.map(w=><div key={w} className="chip warmth" style={{cursor:'default'}}>{w}</div>)}</div>
+   <div className="chips" style={{marginBottom:0}}>{CHILD_NEEDS_WORDS.map(w=><div key={w} className="chip warmth" style={{cursor:'default'}}>{optionLabel('childNeedsWord',w)}</div>)}</div>
   </div>
 
   {/* Section 3: What I became aware of (stability markers) */}
@@ -6074,7 +6163,7 @@ function ClientJournal({parentId,dyad,onDone,back,user,onSignOut}){
       {Object.entries(markers).filter(([k,v])=>v.claimed && v.evidence.trim()).map(([k,v])=>v.evidence).join(' ')}
      </div>
     </div>}
-    <div style={{marginBottom:10}}><strong>What my child needs:</strong> {CHILD_NEEDS_WORDS.join(', ')}</div>
+    <div style={{marginBottom:10}}><strong>What my child needs:</strong> {formatChildNeedsWords(CHILD_NEEDS_WORDS,', ')}</div>
     <div><strong>My shift:</strong> Lower D&C ({SHIFT_LOWER_DC.slice(0,2).join(', ')}), Raise I&S ({SHIFT_RAISE_IS.slice(0,2).join(', ')})</div>
    </div>
   </div>

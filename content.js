@@ -1027,6 +1027,20 @@ const WAYFINDER_I18N = {
     "trail.entryPlural": "entries",
     "trail.emotionalPatterns": "Your emotional patterns",
     "trail.emotionalPatternsHelper": "Words that show up most in your reflections.",
+    "trail.decode.pill": "Alignment Reminder",
+    "trail.decode.typeLine": "Decode a Moment",
+    "trail.decode.childIdPrefix": "Child ID:",
+    "trail.decode.childNotSaved": "Not saved",
+    "trail.decode.field.behaviour": "Behaviour",
+    "trail.decode.field.gap": "Possible CAB misalignment",
+    "trail.decode.field.growth": "Growth capacity",
+    "trail.decode.field.next": "Next action",
+    "trail.decode.foot": "This is a reflection, not an assessment of your child.",
+    "trail.entry.childIdPrefix": "Child ID:",
+    "trail.entry.notSaved": "Not saved",
+    "trail.entry.yearsOld": "old",
+    "trail.entryTitle.decode": "Alignment Reminder",
+    "trail.entryPhase.decode": "Decode a Moment",
     "bar.back": "← Back",
     "bar.sharedJourneys": "Shared Journeys",
     "common.back": "Back",
@@ -1248,8 +1262,22 @@ const WAYFINDER_I18N = {
     "trail.entryPlural": "条记录",
     "trail.emotionalPatterns": "您的常见情绪线索",
     "trail.emotionalPatternsHelper": "在您的反思中较常出现的词语。",
+    "trail.decode.pill": "对齐提醒",
+    "trail.decode.typeLine": "解读一个时刻",
+    "trail.decode.childIdPrefix": "孩子 ID：",
+    "trail.decode.childNotSaved": "未保存",
+    "trail.decode.field.behaviour": "行为",
+    "trail.decode.field.gap": "可能的 CAB 未对齐",
+    "trail.decode.field.growth": "成长能力",
+    "trail.decode.field.next": "下一步行动",
+    "trail.decode.foot": "这是一份反思，不是对孩子的评估。",
+    "trail.entry.childIdPrefix": "孩子 ID：",
+    "trail.entry.notSaved": "未保存",
+    "trail.entry.yearsOld": "岁",
+    "trail.entryTitle.decode": "对齐提醒",
+    "trail.entryPhase.decode": "解读一个时刻",
     "bar.back": "← 返回",
-    "bar.sharedJourneys": "Shared Journeys",
+    "bar.sharedJourneys": "共享旅程",
     "common.back": "返回",
     "common.notWrittenYet": "尚未填写",
     "common.notSelectedYet": "尚未选择",
@@ -1386,6 +1414,134 @@ const WAYFINDER_I18N = {
     "decode.privacyNudge": "请勿填写姓名等可识别信息。请使用孩子的 Child ID，或简单描述发生了什么。"
   }
 };
+
+// Decode static chip display labels (zh-Hans). Stored/saved values remain English constants in app.js.
+const WAYFINDER_DECODE_OPTION_ZH = {
+  decodeContext: {
+    "Morning": "早晨",
+    "School transition": "上学过渡",
+    "Mealtime": "用餐时间",
+    "Bedtime": "睡前",
+    "Screen time": "屏幕时间",
+    "Social situation": "社交情境",
+    "Leaving / transition": "离开 / 过渡",
+    "Other": "其他"
+  },
+  decodeNotice: {
+    "Refusal": "拒绝",
+    "Meltdown": "情绪崩溃",
+    "Withdrawal": "退缩",
+    "Repeating questions": "反复提问",
+    "Deflecting": "转移话题",
+    "Restlessness": "坐立不安",
+    "Clinging": "黏人",
+    "Arguing": "争辩",
+    "Physical complaint": "身体不适",
+    "Other": "其他"
+  },
+  decodeNeed: {
+    "Safety": "安全",
+    "Connection": "连接",
+    "Control / agency": "掌控 / 自主",
+    "Predictability": "可预期",
+    "Emotional regulation": "情绪调节",
+    "Sensory regulation": "感官调节",
+    "Avoidance of overwhelm": "避免过载",
+    "Help expressing something": "帮助表达",
+    "I am not sure yet": "我还不确定"
+  },
+  decodeParentAffect: {
+    "Frustrated": "沮丧",
+    "Worried": "担心",
+    "Rushed": "匆忙",
+    "Angry": "生气",
+    "Helpless": "无助",
+    "Embarrassed": "尴尬",
+    "Confused": "困惑",
+    "Tired": "疲惫",
+    "Disappointed": "失望",
+    "Other": "其他"
+  },
+  decodeIntensity: {
+    "Frustration": "沮丧",
+    "Anxiety": "焦虑",
+    "Helplessness": "无助",
+    "Embarrassment": "尴尬",
+    "Anger": "愤怒"
+  },
+  decodeParentBehaviour: {
+    "Raised my voice": "提高了音量",
+    "Corrected quickly": "很快纠正",
+    "Explained too much": "解释过多",
+    "Threatened consequence": "威胁后果",
+    "Withdrew": "退开 / 冷处理",
+    "Gave in": "让步",
+    "Rushed the child": "催促孩子",
+    "Tried to fix immediately": "立刻想修复",
+    "Stayed calm": "保持冷静",
+    "Paused": "暂停一下",
+    "Connected first": "先建立连接",
+    "Other": "其他"
+  },
+  decodeGrowth: {
+    "Pause before responding": "回应前先暂停",
+    "Stay curious": "保持好奇",
+    "Name the feeling": "说出感受",
+    "Offer predictability": "提供可预期性",
+    "Connect before correcting": "先连接再纠正",
+    "Reduce urgency": "降低紧迫感",
+    "Give choice": "给予选择",
+    "Co-regulate first": "先共同调节",
+    "Repair after rupture": "破裂后修复",
+    "Ask instead of assume": "提问而非假设"
+  },
+  decodeAwarenessMarker: {
+    "I was here in the moment": "我在当下",
+    "I watched without racing ahead to fix": "我先观察，不急着修复",
+    "I let go of managing how everyone was doing": "我放下要管理每个人状态的想法",
+    "I named what I expected": "我说出了我的期待",
+    "I found the thought beneath my feeling": "我找到了感受背后的想法",
+    "We worked it out together": "我们一起慢慢理清"
+  },
+  decodeNext: {
+    "Pause for 10 seconds": "暂停 10 秒",
+    "Lower my voice": "降低音量",
+    "Name what I see": "说出我看到的",
+    "Offer two choices": "提供两个选择",
+    "Say what is happening next": "说明接下来会发生什么",
+    "Move closer instead of shouting": "靠近而不是喊叫",
+    "Ask what feels hard": "询问哪里感到困难",
+    "Repair afterwards": "之后修复"
+  },
+  decodeRepair: {
+    "No repair needed": "不需要修复",
+    "I may need to reconnect": "我可能需要重新连接",
+    "I may need to apologise": "我可能需要道歉",
+    "I may need to explain calmly": "我可能需要平静解释",
+    "I may need to try again later": "我可能需要稍后再试"
+  }
+};
+
+const WAYFINDER_CHILD_NEEDS_WORD_ZH = {
+  "Patient": "耐心",
+  "Warm": "温暖",
+  "Encouraging": "鼓励",
+  "Present": "在场"
+};
+
+(function mergeWayfinderDecodeOptionLabels(){
+ const slug=(value)=>String(value||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+ if(typeof WAYFINDER_I18N==='undefined') return;
+ const mergeGroup=(group,map)=>{
+  Object.entries(map).forEach(([enVal,zhVal])=>{
+   const key=`option.${group}.${slug(enVal)}`;
+   if(!WAYFINDER_I18N.en[key]) WAYFINDER_I18N.en[key]=enVal;
+   WAYFINDER_I18N['zh-Hans'][key]=zhVal;
+  });
+ };
+ Object.entries(WAYFINDER_DECODE_OPTION_ZH).forEach(([group,map])=>mergeGroup(group,map));
+ mergeGroup('childNeedsWord',WAYFINDER_CHILD_NEEDS_WORD_ZH);
+})();
 
 // PR #126: lightweight runtime parity check (static UI keys only).
 if(typeof window!=='undefined'){
