@@ -6,13 +6,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-07-31
 
-**Last verified merge:** PR #165 — audit-log gap assessment + proposed event catalog (docs only)
+**Last verified merge:** PR #166 — vendor/subprocessor register, docs only
 
-**Next proposed PR:** PR #166 — vendor/subprocessor register, docs only
+**Next proposed / in flight:** PR #167 — Simplified Chinese language toggle runtime foundation (`feature/pr-167-language-toggle-runtime-foundation`)
 
-**PR #166 (in flight):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md), [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md), [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md), updates to compliance evidence register and cross-linked readiness docs. **No runtime/API/SQL/auth/RLS/env changes.** **No HIPAA or SOC 2 compliance claim yet** — legal/security/auditor review required. **Vendor agreement/evidence status unverified** until owner/legal/security review.
+**PR #167 (in flight):** Parent-facing static UI `en` / `zh-Hans` toggle (`localStorage` `wayfinder_preferred_language`); Decode/Plans/App Version shell; **Chinese and English journal/Decode input preserved as entered** — no auto-translation; no external translation vendor; App Version **v0.4.7**. **No SQL/API/auth/RLS/journal payload/Stripe env changes.**
+
+**Compliance-readiness track:** Paused after PR #166. Audit-log implementation design deferred to **PR #168** or later (docs).
+
+**PR #166 (merged):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md), [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md), [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md). Docs only. Vendor agreement status **unverified** until owner/legal/security review.
 
 **PR #165 (merged):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md). Docs only.
 
@@ -46,7 +50,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Merge PR #166 (vendor/subprocessor register, docs only). **No HIPAA or SOC 2 compliance claims** until legal/security/auditor review. **Vendor agreement/evidence status unverified** until owner/legal/security review. Then choose next priority: **language toggle runtime foundation** (planned product feature when owner approves) or **PR #167 audit-log implementation design** (docs only). Legacy Plus migration **implementation remains deferred**. **No manual** `user_entitlements` or `stripe_billing_references` edits. Legacy Plus: [STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md](./STRIPE_LEGACY_PLUS_MIGRATION_SUPPORT_PROCEDURE.md).
+**Current owner blocker:** Merge PR #167 (language toggle runtime foundation). **No HIPAA or SOC 2 compliance claims.** Compliance-readiness paused after PR #166; **PR #168** (or later) for audit-log implementation design docs. **No external translation API** — parents may type Chinese/English in journal/Decode; saved text stays as entered. Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No manual** `user_entitlements` or `stripe_billing_references` edits.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 

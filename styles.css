@@ -176,6 +176,10 @@
   .language-toggle-btn{border:0;background:transparent;color:inherit;font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;cursor:pointer;line-height:1;}
   .language-toggle-btn.is-active{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12);}
   .language-toggle-dashboard{width:100%;justify-content:flex-end;margin-bottom:2px;}
+  .language-toggle-subpage{margin:0 0 12px;padding:0 4px;justify-content:flex-end;}
+  .reflection-language-hint{margin-top:6px;line-height:1.55;}
+  .reflection-language-hint-compact{margin:0 0 10px;}
+  .reflection-language-hint-journal{margin:-8px 0 14px;}
   .dashboard-actions .language-toggle-options{background:rgba(255,255,255,.18);}
   .dashboard-actions .language-toggle-btn.is-active{background:rgba(255,255,255,.92);color:var(--ink);}
   html[lang="zh-Hans"] .dashboard-actions{max-width:400px;}

@@ -27,6 +27,10 @@ Read first:
 
 **Vendor-support rule:** Do **not** paste parent emails, child names, reflection content, JWTs, Stripe IDs, Portal URLs, webhook secrets, raw logs, or PHI examples into vendor support portals, AI tools, or external ticket systems unless reviewed and approved. See [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) and [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md).
 
+**Language toggle rule (PR #167):** Static UI only — **no** external translation vendor. **Do not** paste private reflections into translation tools. Saved journal/Decode text stays as entered when parents switch language.
+
+**Language / reflection rule (PR #167):** UI language toggle is **static product copy only** (`en` / `zh-Hans`). Parents may write journal and Decode reflections in Chinese or English; Wayfinder **does not auto-translate** saved private text when UI language changes. **Do not** paste private reflections into translation tools or external AI for support troubleshooting.
+
 ---
 
 ## 1. Current production state
