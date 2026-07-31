@@ -8,15 +8,13 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-31
 
-**Last verified merge:** PR #168 — language toggle post-merge status + smoke evidence, docs only (merge `1fa369f`)
+**Last verified merge:** PR #169 — audit-log implementation design, docs only (merge `3b3f8bc`)
 
-**Next proposed / in flight:** PR #169 — audit-log implementation design ([AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md)), **docs only** (`docs/pr-169-audit-log-implementation-design`)
+**Next proposed / in flight:** PR #170 — audit-log SQL/RLS proposal ([AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md)), **docs only** (`docs/pr-170-audit-log-sql-rls-proposal`)
 
-**PR #168 (merged):** Post-merge record for PR #167 language toggle; production smoke checklist in [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) — **owner production smoke remains pending** until §4 checklist is completed.
+**PR #169 (merged):** [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) — metadata-only audit-log design; phased implementation; **no runtime logging**.
 
-**PR #167 (merged):** Parent-facing static UI `en` / `zh-Hans` toggle (`localStorage` `wayfinder_preferred_language`); Decode/Plans/App Version shell; Decode and dashboard static option **display-only** localisation; **Chinese and English journal/Decode input preserved as entered** — no auto-translation; no external translation vendor; App Version **v0.4.7**. **No SQL/API/auth/RLS/journal payload/Stripe env changes.**
-
-**Compliance-readiness track:** Resumes **design-only** with PR #169. **No application audit-log runtime yet.** **No HIPAA, SOC 2, ISO, or GAICC compliance claim.**
+**Compliance-readiness track:** Design-only continues with PR #170 (Phase 1 SQL/RLS **proposal**). **No audit-log runtime.** **No SQL/RLS applied.** **No HIPAA, SOC 2, ISO, or GAICC compliance claim.**
 
 **PR #166 (merged):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md), [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md), [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md). Docs only. Vendor agreement status **unverified** until owner/legal/security review.
 
@@ -52,7 +50,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Complete PR #167 production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) if not done; merge PR #169 audit-log design docs when ready. **No HIPAA, SOC 2, ISO, or GAICC compliance claims.** **No application audit-log runtime yet.** Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No external translation API.** **No manual** `user_entitlements` or `stripe_billing_references` edits.
+**Current owner blocker:** Complete PR #167 production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) if not done; merge PR #170 SQL/RLS proposal when ready. **No HIPAA, SOC 2, ISO, or GAICC compliance claims.** **No audit-log runtime; no SQL/RLS applied.** Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No external translation API.** **No manual** `user_entitlements` or `stripe_billing_references` edits.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 

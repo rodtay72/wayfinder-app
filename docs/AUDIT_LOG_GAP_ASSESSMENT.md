@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-20
 
-**Related:** [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
+**Related:** [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 
 Read first:
 
@@ -80,7 +80,7 @@ Platform logs alone are **not** sufficient for a full application audit trail.
 
 | Gap | Notes |
 | --- | --- |
-| No formal application audit-log table | `stripe_webhook_events` is billing idempotency only — not a general audit trail; **no runtime audit emitters** |
+| No formal application audit-log table | `stripe_webhook_events` is billing idempotency only — SQL/RLS **proposal** in [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) (PR #170); **not applied** |
 | No documented Wayfinder event schema | [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) is **draft/design-only**; implementation design: [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) (PR #169) |
 | No audit retention policy | Pending legal/security review |
 | Access-review evidence cadence not fully operationalised | Draft in admin policy; first review not recorded |
@@ -207,8 +207,9 @@ Stop future audit-log **implementation** if:
 | --- | --- |
 | **#165** (merged) | Audit-log gap assessment + event catalog draft — docs only |
 | **#166** (merged) | Vendor/subprocessor register |
-| **#169** (design) | Audit-log implementation **design** — [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) — docs only |
-| **Later** | SQL/API/runtime implementation — only after legal/security/owner review |
+| **#169** (merged) | Audit-log implementation **design** — [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) |
+| **#170** (proposal) | SQL/RLS **proposal** — [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) — docs only |
+| **Later** | SQL migration + runtime — only after legal/security/owner review |
 
 ---
 
@@ -219,3 +220,4 @@ Stop future audit-log **implementation** if:
 | 2026-07-20 | PR #165 — initial audit-log gap assessment (docs only) |
 | 2026-07-20 | PR #166 — third-party logging/monitoring vendor review note; cross-link to vendor register |
 | 2026-07-31 | PR #169 — design response cross-link; implementation gap remains open; no runtime logging |
+| 2026-07-31 | PR #170 — SQL/RLS proposal cross-link; no migration applied |
