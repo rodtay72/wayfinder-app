@@ -1,7 +1,7 @@
 # Language Toggle Post-Merge Smoke Evidence
 
-**Status:** Docs-only post-merge record for PR #167  
-**Last updated:** 2026-07-31  
+**Status:** Docs-only post-merge record for PR #167
+**Last updated:** 2026-07-31
 **Branch track:** PR #168 — language toggle post-merge status + smoke evidence (docs only)
 
 Read first:
