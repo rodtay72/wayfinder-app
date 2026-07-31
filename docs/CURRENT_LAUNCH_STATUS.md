@@ -8,13 +8,15 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-31
 
-**Last verified merge:** PR #167 — Simplified Chinese language toggle + Chinese journal input (runtime on `main`; merge `12ce685`)
+**Last verified merge:** PR #168 — language toggle post-merge status + smoke evidence, docs only (merge `1fa369f`)
 
-**Next proposed / in flight:** PR #168 — language toggle post-merge status + smoke evidence ([LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md)), **docs only** (`docs/pr-168-language-toggle-post-merge-status`)
+**Next proposed / in flight:** PR #169 — audit-log implementation design ([AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md)), **docs only** (`docs/pr-169-audit-log-implementation-design`)
 
-**PR #167 (merged):** Parent-facing static UI `en` / `zh-Hans` toggle (`localStorage` `wayfinder_preferred_language`); Decode/Plans/App Version shell; Decode and dashboard static option **display-only** localisation; **Chinese and English journal/Decode input preserved as entered** — no auto-translation; no external translation vendor; App Version **v0.4.7**. **No SQL/API/auth/RLS/journal payload/Stripe env changes.** Post-merge smoke checklist: [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md).
+**PR #168 (merged):** Post-merge record for PR #167 language toggle; production smoke checklist in [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) — **owner production smoke remains pending** until §4 checklist is completed.
 
-**Compliance-readiness track:** Paused after PR #166. Audit-log implementation design deferred to **PR #169** or later (docs).
+**PR #167 (merged):** Parent-facing static UI `en` / `zh-Hans` toggle (`localStorage` `wayfinder_preferred_language`); Decode/Plans/App Version shell; Decode and dashboard static option **display-only** localisation; **Chinese and English journal/Decode input preserved as entered** — no auto-translation; no external translation vendor; App Version **v0.4.7**. **No SQL/API/auth/RLS/journal payload/Stripe env changes.**
+
+**Compliance-readiness track:** Resumes **design-only** with PR #169. **No application audit-log runtime yet.** **No HIPAA, SOC 2, ISO, or GAICC compliance claim.**
 
 **PR #166 (merged):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md), [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md), [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md). Docs only. Vendor agreement status **unverified** until owner/legal/security review.
 
@@ -50,7 +52,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Run production smoke for PR #167 per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md); merge PR #168 docs when ready. **No HIPAA or SOC 2 compliance claims.** Compliance-readiness paused after PR #166; **PR #169** (or later) for audit-log implementation design docs. **No external translation API** — parents may type Chinese/English in journal/Decode; saved text stays as entered. Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No manual** `user_entitlements` or `stripe_billing_references` edits.
+**Current owner blocker:** Complete PR #167 production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) if not done; merge PR #169 audit-log design docs when ready. **No HIPAA, SOC 2, ISO, or GAICC compliance claims.** **No application audit-log runtime yet.** Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No external translation API.** **No manual** `user_entitlements` or `stripe_billing_references` edits.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 

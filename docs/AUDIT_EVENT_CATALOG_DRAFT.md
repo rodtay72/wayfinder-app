@@ -1,12 +1,14 @@
 # Audit Event Catalog — Draft
 
-**Status:** **Proposed** event catalog for future audit-trail design — **no implementation**, **no compliance claim**.
+**Status:** **Draft / design-only** event catalog for future audit-trail implementation — **no implementation**, **no compliance claim**.
 
-**Branch:** `docs/pr-165-audit-log-gap-assessment`
+**Branch:** `docs/pr-165-audit-log-gap-assessment` (catalog); implementation design: [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) (PR #169)
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-07-31
 
-**Parent doc:** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md)
+**Parent docs:** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md)
+
+**Important:** Static event names describe **metadata-only** logging. Event names must **not** imply private reflection content, journal text, child names, or AI prompt/response bodies are logged.
 
 All events below have status **proposed**. **Implementation requires legal/security/owner review.**
 
@@ -143,3 +145,4 @@ Track answers in [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTE
 | Date | Change |
 | --- | --- |
 | 2026-07-20 | PR #165 — initial proposed event catalog (docs only) |
+| 2026-07-31 | PR #169 — draft/design-only note; cross-link to implementation design; metadata-only reminder |

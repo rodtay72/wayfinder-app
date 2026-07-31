@@ -25,6 +25,8 @@ Read first:
 
 **Log and support-notes rule:** Do **not** paste logs into support notes or AI tools if they may contain parent emails, child names, reflection content, JWTs, Stripe customer/subscription IDs, Billing Portal URLs, or webhook secrets. Use non-identifying outcome categories only. See [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md).
 
+**Audit-log support rule (PR #169 design):** Do not request or paste private reflection content into support logs. Use event IDs, masked Parent ID / Child ID, timestamps, and pass/fail status only.
+
 **Vendor-support rule:** Do **not** paste parent emails, child names, reflection content, JWTs, Stripe IDs, Portal URLs, webhook secrets, raw logs, or PHI examples into vendor support portals, AI tools, or external ticket systems unless reviewed and approved. See [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) and [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md).
 
 **Language toggle rule (PR #167):** Static UI only — **no** external translation vendor. **Do not** paste private reflections into translation tools. Saved journal/Decode text stays as entered when parents switch language.
