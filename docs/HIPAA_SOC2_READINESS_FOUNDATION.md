@@ -10,7 +10,7 @@
 
 **Draft policies (PR #164):** [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md)
 
-**Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md)
+**Audit trail readiness (PR #165):** [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) (PR #169 — **design only**; HIPAA/SOC 2 **readiness** only — **not compliance**)
 
 **Vendor readiness (PR #166):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) · [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md) · [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
 
@@ -248,12 +248,13 @@ Escalate to owner + legal/security before proceeding.
 | **#163** | HIPAA / SOC 2 readiness foundation, gap register starter, wording rules | Docs only — merged |
 | **#164** | Compliance evidence register expansion + draft security/classification/admin policy docs | Docs only — merged |
 | **#165** | Audit-log and event-trail gap assessment + proposed event catalog | Docs only — merged |
-| **#166** | Vendor/subprocessor register with DPA/BAA review columns | Docs only |
-| **#167** | Audit-log implementation design (docs only) | Before any SQL/API logging |
-| **Product track** | Language toggle runtime foundation | Planned — separate from compliance docs |
+| **#166** | Vendor/subprocessor register with DPA/BAA review columns | Docs only — merged |
+| **#167** | Simplified Chinese language toggle runtime (product) | Merged — separate from compliance docs |
+| **#168** | Language toggle post-merge smoke evidence | Docs only — merged |
+| **#169** | Audit-log implementation design ([AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md)) | Docs only — before any SQL/API logging |
 | **Later** | Implementation gaps (logging, retention automation, vendor evidence collection) | Only after legal/security/auditor review |
 
-**Product sequencing note:** Simplified Chinese language toggle remains a planned parent-facing feature; owner may parallelise with compliance docs but must not weaken privacy or ALIGN/CAB boundaries.
+**Product sequencing note:** Language toggle (PR #167) merged; owner production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md). Compliance audit-log design continues in PR #169 without weakening privacy or ALIGN/CAB boundaries.
 
 ---
 
@@ -263,5 +264,6 @@ Escalate to owner + legal/security before proceeding.
 | --- | --- |
 | 2026-07-20 | PR #163 — initial HIPAA / SOC 2 readiness foundation (docs only) |
 | 2026-07-20 | PR #164 — cross-links to draft security, data classification, and admin access policy docs |
-| 2026-07-20 | PR #165 — audit-log gap assessment and event catalog draft cross-links; PR #167 in recommended next PRs |
+| 2026-07-20 | PR #165 — audit-log gap assessment and event catalog draft cross-links; PR #169 implementation design in recommended next PRs |
+| 2026-07-31 | PR #169 — audit-log implementation design cross-link; product/compliance PR sequencing updated |
 | 2026-07-20 | PR #166 — vendor/subprocessor register, review checklist, SOP cross-links |
