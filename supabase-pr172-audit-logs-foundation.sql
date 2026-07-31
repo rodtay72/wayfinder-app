@@ -126,4 +126,9 @@ create index if not exists audit_logs_child_id_masked_idx
 
 alter table public.audit_logs enable row level security;
 
+-- Explicitly revoke direct table privileges from browser/API roles.
+-- Future access must be added only through separately reviewed server-side/API/RPC PRs.
+revoke all on table public.audit_logs from anon;
+revoke all on table public.audit_logs from authenticated;
+
 -- Intentionally no CREATE POLICY statements in this migration draft.
