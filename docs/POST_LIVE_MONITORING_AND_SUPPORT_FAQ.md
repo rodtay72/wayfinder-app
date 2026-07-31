@@ -31,6 +31,8 @@ Read first:
 
 **Language / reflection rule (PR #167):** UI language toggle is **static product copy only** (`en` / `zh-Hans`). Parents may write journal and Decode reflections in Chinese or English; Wayfinder **does not auto-translate** saved private text when UI language changes. **Do not** paste private reflections into translation tools or external AI for support troubleshooting.
 
+**Support note (PR #167 merged):** Parents may write reflections in English or Chinese. Support must not paste private reflections into translation tools. Wayfinder does not auto-translate private content. Post-merge smoke checklist: [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md).
+
 ---
 
 ## 1. Current production state
