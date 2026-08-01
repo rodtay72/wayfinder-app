@@ -6,7 +6,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Repo:** `rodtay72/wayfinder-app`
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-01
 
 **Last verified merge:** PR #172 — `audit_logs` SQL migration draft in repo ([AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md); merge `e50cb20`)
 

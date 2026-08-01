@@ -4,7 +4,7 @@
 
 **Branch:** `docs/pr-165-audit-log-gap-assessment`
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-08-01
 
 **Related:** [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) · [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [SECURITY_POLICY_READINESS_DRAFT.md](./SECURITY_POLICY_READINESS_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md)
 
@@ -225,4 +225,4 @@ Stop future audit-log **implementation** if:
 | 2026-07-31 | PR #170 — SQL/RLS proposal cross-link; no migration applied |
 | 2026-07-31 | PR #171 — decision memo cross-link; implementation gap remains open |
 | 2026-07-31 | PR #172 — migration draft in repo; gap open until Supabase apply and emitters |
-| 2026-07-31 | PR #173 — apply checklist and dry-run evidence template cross-link |
+| 2026-08-01 | PR #173 — apply checklist and dry-run evidence template cross-link |

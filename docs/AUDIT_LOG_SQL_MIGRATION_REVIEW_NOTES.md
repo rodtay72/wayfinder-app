@@ -6,7 +6,7 @@
 
 **Branch track:** PR #172 — `audit_logs` SQL migration draft (not applied)
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-01
 
 **Related:** [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) (PR #173 — apply checklist; **not applied**)
 
@@ -101,4 +101,4 @@ Insertion route: [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEME
 | Date | Change |
 | --- | --- |
 | 2026-07-31 | PR #172 — initial migration review notes |
-| 2026-07-31 | PR #173 — cross-link apply checklist and dry-run evidence template |
+| 2026-08-01 | PR #173 — cross-link apply checklist and dry-run evidence template |

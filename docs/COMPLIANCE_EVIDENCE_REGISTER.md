@@ -2,7 +2,7 @@
 
 **Status:** Working register for HIPAA / SOC 2 **readiness** — not a certification record.
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-08-01
 
 **Parent doc:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md)
 
@@ -98,4 +98,4 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | 2026-07-31 | PR #170 — audit-log SQL/RLS proposal row; proposed / not implemented |
 | 2026-07-31 | PR #171 — audit-log implementation decision memo row; proposed / not implemented |
 | 2026-07-31 | PR #172 — audit_logs SQL migration draft row; draft / not applied |
-| 2026-07-31 | PR #173 — migration apply checklist cross-link; staging dry-run evidence template |
+| 2026-08-01 | PR #173 — migration apply checklist cross-link; staging dry-run evidence template |

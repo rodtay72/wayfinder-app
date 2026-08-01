@@ -6,7 +6,7 @@
 
 **Related:** [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md) · [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md)
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-01
 
 This document makes **no** HIPAA, SOC 2, ISO, or GAICC **certification** claim. It does **not** authorise applying SQL to Supabase by merging this PR.
 
@@ -147,4 +147,4 @@ Only after staging (and production, if approved) verification passes:
 
 | Date | Change |
 | --- | --- |
-| 2026-07-31 | PR #173 — migration apply checklist and dry-run evidence template (docs only) |
+| 2026-08-01 | PR #173 — migration apply checklist and dry-run evidence template (docs only) |
