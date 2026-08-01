@@ -8,15 +8,17 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Last updated:** 2026-07-31
 
-**Last verified merge:** PR #171 — audit-log implementation decision memo, docs only (merge `39501ce`)
+**Last verified merge:** PR #172 — `audit_logs` SQL migration draft in repo ([AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md); merge `e50cb20`)
 
-**Next proposed / in flight:** PR #172 — `audit_logs` SQL migration draft ([AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md)), **not applied** to Supabase (`feature/pr-172-audit-log-sql-migration-draft`)
+**Next proposed / in flight:** PR #173 — audit_logs migration apply checklist and dry-run evidence template ([AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md)), **docs only** — **not applied** to Supabase
+
+**PR #172 (merged):** [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql) — SQL exists in repo; **not applied** to Supabase. **No audit-log runtime yet.**
 
 **PR #171 (merged):** [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) — hybrid phased insertion; server-side first.
 
 **PR #170 (merged):** [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) — SQL/RLS proposal.
 
-**Compliance-readiness track:** PR #172 adds **SQL migration draft in repo only**. **No Supabase production apply.** **No audit-log runtime.** **No API/RPC.** **No HIPAA, SOC 2, ISO, or GAICC compliance claim.**
+**Compliance-readiness track:** PR #172 merged — **SQL migration draft in repo only**. PR #173 adds **apply checklist / dry-run evidence template** (docs only). **No Supabase production apply.** **No audit-log runtime.** **No API/RPC.** **No HIPAA, SOC 2, ISO, or GAICC compliance claim.**
 
 **PR #166 (merged):** [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md), [VENDOR_SECURITY_REVIEW_CHECKLIST.md](./VENDOR_SECURITY_REVIEW_CHECKLIST.md), [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md). Docs only. Vendor agreement status **unverified** until owner/legal/security review.
 
@@ -52,7 +54,7 @@ Living snapshot for agents and owners. Update after user-facing merges and produ
 
 **Stripe:** **Live Stripe active** on Production. Legacy Plus migration **implementation deferred** — support procedure merged (PR #160). Post-live monitoring FAQ merged (PR #161). No save gating. Privacy baseline unchanged. Evidence: [STRIPE_PRE_LIVE_EVIDENCE_PACK.md](./STRIPE_PRE_LIVE_EVIDENCE_PACK.md). **Platform sync:** [PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md](./PLATFORM_SYNC_STRIPE_LIVE_CUTOVER_BRIEF.md)
 
-**Current owner blocker:** Complete PR #167 production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) if not done; review/merge PR #172 migration draft — **do not apply** [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql) to Supabase production until [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md) checklist is complete. **No HIPAA, SOC 2, ISO, or GAICC compliance claims.** **No audit-log runtime; no API/RPC.** Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No external translation API.** **No manual** `user_entitlements` or `stripe_billing_references` edits.
+**Current owner blocker:** Complete PR #167 production smoke per [LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md](./LANGUAGE_TOGGLE_POST_MERGE_SMOKE_EVIDENCE.md) if not done; use [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) before any owner-approved apply of [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql) to Supabase staging or production — **do not apply** without §2 preconditions and §4 go/no-go. **No HIPAA, SOC 2, ISO, or GAICC compliance claims.** **No audit-log runtime; no API/RPC.** Legacy Plus migration **implementation remains deferred**. Language toggle is **not** a paid feature. **No external translation API.** **No manual** `user_entitlements` or `stripe_billing_references` edits.
 
 **Launch freeze:** Active — see [docs/LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md](./LAUNCH_FREEZE_GO_NO_GO_PROTOCOL.md)
 
