@@ -6,9 +6,9 @@
 
 **Branch track:** PR #172 — `audit_logs` SQL migration draft (not applied)
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-01
 
-**Related:** [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md)
+**Related:** [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) · [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) · [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) · [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) (PR #173 — apply checklist; **not applied**)
 
 This document makes **no** HIPAA, SOC 2, ISO, or GAICC **certification** claim.
 
@@ -71,6 +71,7 @@ This document makes **no** HIPAA, SOC 2, ISO, or GAICC **certification** claim.
 - [ ] Confirm **no policies** grant `SELECT`/`INSERT` to parent or MHP roles
 - [ ] Confirm **no runtime code** depends on table until emitters are approved
 - [ ] Post-apply verification queries in SQL file header
+- [ ] Use [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) for staging dry-run and evidence template (PR #173)
 
 ---
 
@@ -85,10 +86,9 @@ This document makes **no** HIPAA, SOC 2, ISO, or GAICC **certification** claim.
 
 ## 7. Next PR after this
 
-**PR #173** (proposed) should be either:
+**PR #173 (merged or in flight):** [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) — staging dry-run steps, production go/no-go, post-apply evidence template, rollback checklist (**docs only**; does not apply SQL).
 
-- Migration review / **staging dry-run evidence** (docs only), or
-- **Server-side audit emitter** design for high-value billing/admin events (still no broad client insert)
+**After owner-approved Supabase apply:** server-side audit emitter design for high-value billing/admin events (still no broad client insert) — separate PR.
 
 **No runtime emitters** until migration apply decision is clear and RLS insert path is reviewed.
 
@@ -101,3 +101,4 @@ Insertion route: [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEME
 | Date | Change |
 | --- | --- |
 | 2026-07-31 | PR #172 — initial migration review notes |
+| 2026-08-01 | PR #173 — cross-link apply checklist and dry-run evidence template |

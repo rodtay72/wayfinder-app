@@ -4,7 +4,7 @@
 
 **Branch:** `docs/pr-164-compliance-evidence-security-policy`
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-08-01
 
 **Related:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md) · [COMPLIANCE_EVIDENCE_REGISTER.md](./COMPLIANCE_EVIDENCE_REGISTER.md) · [DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md](./DATA_CLASSIFICATION_AND_RETENTION_DRAFT.md) · [ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md](./ADMIN_ACCESS_AND_OFFBOARDING_POLICY_DRAFT.md) · [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md) · [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md) · [VENDOR_SUBPROCESSOR_REGISTER.md](./VENDOR_SUBPROCESSOR_REGISTER.md) · [VENDOR_REVIEW_SOP_DRAFT.md](./VENDOR_REVIEW_SOP_DRAFT.md)
 
@@ -110,7 +110,7 @@ Monitoring notes and support tickets must **avoid**:
 
 Record only **non-identifying outcome categories** (e.g. “webhook processed”, “dashboard load failed for verified user”, “Plans page unavailable”).
 
-**Application audit-log requirements are not yet fully implemented.** PR #165 gap assessment: [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md). Draft event catalog: [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md). Implementation design (PR #169): [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md). SQL/RLS proposal (PR #170): [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) — **proposal only; not applied.** Decision memo (PR #171): [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md). Migration draft (PR #172): [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md) — **`public.audit_logs` is deny-by-default with RLS enabled and no allow policies in the draft; parent and MHP roles must not read rows unless future reviewed policies are explicitly approved.** **Audit log access must be least privilege, masked where support-facing, and auditable in a future phase.** **Audit logs must not store private reflection content, child names, journal/Decode/CAB text, MHP feedback bodies, tokens, or AI prompt/response content.** **No runtime logging in PR #165–#172** (PR #172 is schema draft only)
+**Application audit-log requirements are not yet fully implemented.** PR #165 gap assessment: [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md). Draft event catalog: [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md). Implementation design (PR #169): [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md). SQL/RLS proposal (PR #170): [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md) — **proposal only; not applied.** Decision memo (PR #171): [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md). Migration draft (PR #172): [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md). Apply checklist (PR #173): [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) — **`public.audit_logs` is deny-by-default with RLS enabled and no allow policies in the draft; parent and MHP roles must not read rows unless future reviewed policies are explicitly approved.** SQL **not applied** until owner completes checklist. **Audit log access must be least privilege, masked where support-facing, and auditable in a future phase.** **Audit logs must not store private reflection content, child names, journal/Decode/CAB text, MHP feedback bodies, tokens, or AI prompt/response content.** **No runtime logging in PR #165–#173** (PR #172 is schema draft only; PR #173 is apply checklist only)
 
 Cross-link: [POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md](./POST_LIVE_MONITORING_AND_SUPPORT_FAQ.md)
 
@@ -189,4 +189,5 @@ Escalate to owner + legal/security before proceeding.
 | 2026-07-31 | PR #170 — SQL/RLS proposal cross-link; least-privilege auditable access |
 | 2026-07-31 | PR #171 — decision memo; server-side high-value events before client-originated |
 | 2026-07-31 | PR #172 — audit_logs deny-by-default migration draft; no parent/MHP access in draft |
+| 2026-08-01 | PR #173 — migration apply checklist; no Supabase apply in PR |
 | 2026-07-20 | PR #166 — vendor register and review SOP cross-links; vendor review required before new external tools |

@@ -2,7 +2,7 @@
 
 **Status:** Working register for HIPAA / SOC 2 **readiness** — not a certification record.
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-08-01
 
 **Parent doc:** [HIPAA_SOC2_READINESS_FOUNDATION.md](./HIPAA_SOC2_READINESS_FOUNDATION.md)
 
@@ -69,7 +69,7 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | Support tool boundary | Informal email assumed | VENDOR_SUBPROCESSOR_REGISTER §3, POST_LIVE FAQ | Formal helpdesk review if adopted | Medium | Confirm tool; train no sensitive paste | Owner + ops | Not verified |
 | Data processing terms review | Not verified | VENDOR_SUBPROCESSOR_REGISTER §5 | Retention, deletion, incident terms per vendor | High | Legal review collected DPAs | Owner + legal | Blocked on vendor review |
 | Application audit logging | Debug gated; platform logs; webhook idempotency table (not general audit trail) | [AUDIT_LOG_GAP_ASSESSMENT.md](./AUDIT_LOG_GAP_ASSESSMENT.md), [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md), [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md), [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md), AGENTS.md | Formal application audit-log table and runtime emitters | High | PR #169–#171 docs; **not implemented** | Engineering | Open |
-| Audit log SQL/RLS schema | Migration draft in repo; **not applied** | [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md), [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql), [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md) | Owner-approved apply + RLS verification on staging | High | Review PR #172; staging dry-run; no production apply in PR | Engineering | Draft |
+| Audit log SQL/RLS schema | Migration draft in repo (PR #172 merged); **not applied** | [AUDIT_LOG_SQL_RLS_PROPOSAL.md](./AUDIT_LOG_SQL_RLS_PROPOSAL.md), [supabase-pr172-audit-logs-foundation.sql](../supabase-pr172-audit-logs-foundation.sql), [AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md](./AUDIT_LOG_SQL_MIGRATION_REVIEW_NOTES.md), [AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md](./AUDIT_LOG_MIGRATION_APPLY_CHECKLIST.md) | Owner-approved apply + RLS verification on staging | High | Staging dry-run per apply checklist (PR #173); no production apply in docs PR | Engineering | Draft |
 | Audit log insertion route decision | Proposed hybrid server-side first | [AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md](./AUDIT_LOG_IMPLEMENTATION_DECISION_MEMO.md) | Owner approval; Phase 2A emitters in later PR | High | PR #171 merged; emitters after migration apply decision | Owner + engineering | Proposed |
 | Audit event catalog | Draft event names and metadata rules | [AUDIT_EVENT_CATALOG_DRAFT.md](./AUDIT_EVENT_CATALOG_DRAFT.md), [AUDIT_LOG_IMPLEMENTATION_DESIGN.md](./AUDIT_LOG_IMPLEMENTATION_DESIGN.md) §6 | Owner sign-off on required events before implementation | High | Review catalog; align with SOC 2 / HIPAA scope if applicable | Engineering + owner | Planned |
 | Audit retention policy | Not defined | AUDIT_LOG_GAP_ASSESSMENT §4, DATA_CLASSIFICATION draft, AUDIT_LOG_SQL_RLS_PROPOSAL §9 | Legal retention periods for audit logs | High | Legal retention matrix | Owner + legal | Blocked on legal |
@@ -98,3 +98,4 @@ Do **not** mark any row as compliant. “In progress” is not an attestation.
 | 2026-07-31 | PR #170 — audit-log SQL/RLS proposal row; proposed / not implemented |
 | 2026-07-31 | PR #171 — audit-log implementation decision memo row; proposed / not implemented |
 | 2026-07-31 | PR #172 — audit_logs SQL migration draft row; draft / not applied |
+| 2026-08-01 | PR #173 — migration apply checklist cross-link; staging dry-run evidence template |
